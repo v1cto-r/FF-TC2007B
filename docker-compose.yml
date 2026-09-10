@@ -1,0 +1,52 @@
+name: ff-deploy
+
+networks:
+  edge:
+    external: true
+
+services:
+  ff_api:
+    build:
+      context: ./api
+    container_name: FF_Api
+    env_file: .env
+    environment:
+      DB_HOST: ff_postgres
+      MINIO_HOST: ff_minio
+    ports:
+      - "5005:5005"
+    restart: unless-stopped
+    depends_on:
+      - ff_database
+      - ff_minio
+
+  ff_postgres:
+    image: postgres:18
+    container_name: FF_Postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5002:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    restart: unless-stopped
+
+  ff_minio:
+    image: quay.io/minio/minio:latest
+    container_name: FF_Minio
+    ports:
+      - "5003:9000" # API Port
+      - "5004:9001" # Web Console Port
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USERNAME}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
+    command: server --console-address ":9001" /data
+    restart: unless-stopped
+
+volumes:
+  minio_data:
+  postgres_data:
