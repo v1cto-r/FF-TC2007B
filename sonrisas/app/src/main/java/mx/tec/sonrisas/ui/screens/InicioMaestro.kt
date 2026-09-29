@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import mx.tec.sonrisas.model.Evento
 
 // Colores aproximados del diseño (ajusta con los hex exactos de Figma)
 private val Coral = Color(0xFFE07B5F)
@@ -59,12 +60,7 @@ private val TextoOscuro = Color(0xFF3D3D5C)
 private val TextoGris = Color(0xFF6B6B80)
 
 // Modelo simple para los eventos de la lista
-data class Evento(
-    val dia: String,
-    val titulo: String,
-    val descripcion: String,
-    val esCoral: Boolean
-)
+
 
 @Composable
 fun InicioMaestraScreen(
