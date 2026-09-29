@@ -1,4 +1,4 @@
-package mx.tec.sonrisasdecristal.ui.theme.Screens
+package mx.tec.sonrisasdecristal.ui.screens.login
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
