@@ -27,6 +27,7 @@ fun ChatPadreScreen(
     modifier: Modifier = Modifier,
     titulo: String = "Maestra Laura",
     subtitulo: String = "Prescolares B",
+    onAtras: (() -> Unit)? = null,
     onEnviar: (String) -> Unit = {},
     onCamara: () -> Unit = {},
     onReintentar: () -> Unit = {},
@@ -43,6 +44,7 @@ fun ChatPadreScreen(
             TopBarAtras(
                 titulo = titulo,
                 subtitulo = subtitulo,
+                onAtras = onAtras,
                 mostrarAvatar = true
             )
             ChatContenido(
