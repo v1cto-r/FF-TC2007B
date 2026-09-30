@@ -5,18 +5,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,12 +40,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import mx.tec.sonrisas.ui.theme.*
 import mx.tec.sonrisas.R
+import mx.tec.sonrisas.ui.theme.*
 
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,
+    errorMensaje: String? = null,
     onIniciarSesion: (correo: String, contrasena: String) -> Unit = { _, _ -> },
     onOlvideContrasena: () -> Unit = {},
     onContactarSoporte: () -> Unit = {}
@@ -71,7 +73,7 @@ fun LoginScreen(
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(64.dp))
+        Spacer(Modifier.height(40.dp))
 
         Image(
             painter = painterResource(R.drawable.logo),
@@ -87,7 +89,46 @@ fun LoginScreen(
             color = TextoOscuro
         )
 
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(20.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = CoralSuave)
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = null,
+                    tint = Coral,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "Usuarios para pruebas:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextoOscuro
+                    )
+                    Text(
+                        text = "• Maestra: maestra@sonrisas.edu.mx (o 'maestra') / 123",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoOscuro
+                    )
+                    Text(
+                        text = "• Padre: padre@sonrisas.edu.mx (o 'padre') / 123",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoOscuro
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
 
         Text(
             text = "Correo electrónico",
@@ -141,6 +182,16 @@ fun LoginScreen(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
         )
 
+        if (errorMensaje != null) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = errorMensaje,
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
         Spacer(Modifier.height(8.dp))
         Text(
             text = "¿Olvidaste tu contraseña?",
@@ -151,7 +202,7 @@ fun LoginScreen(
             color = Coral
         )
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(24.dp))
 
         Button(
             onClick = { onIniciarSesion(correo, contrasena) },

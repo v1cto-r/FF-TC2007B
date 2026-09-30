@@ -27,6 +27,7 @@ fun SonrisasApp() {
         SesionEstado.Anonimo -> {
             val loginViewModel: LoginViewModel = viewModel(factory = AppViewModelProvider.Factory)
             LoginScreen(
+                errorMensaje = loginViewModel.errorMensaje,
                 onIniciarSesion = { correo, contrasena ->
                     loginViewModel.iniciarSesion(correo, contrasena)
                 }
