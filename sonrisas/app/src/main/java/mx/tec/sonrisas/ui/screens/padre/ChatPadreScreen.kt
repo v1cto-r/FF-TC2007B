@@ -11,22 +11,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import mx.tec.sonrisas.model.Mensaje
-import mx.tec.sonrisas.model.Mocks
-import mx.tec.sonrisas.model.UiState
+import java.time.LocalDateTime
+import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.ui.components.BottomBar
 import mx.tec.sonrisas.ui.components.TabsPadre
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.components.chat.CampoMensaje
 import mx.tec.sonrisas.ui.components.chat.ChatContenido
+import mx.tec.sonrisas.ui.state.UiState
 import mx.tec.sonrisas.ui.theme.*
 
 @Composable
 fun ChatPadreScreen(
-    estado: UiState<List<Mensaje>>,
+    estado: UiState<List<Message>>,
+    currentUserId: String,
     modifier: Modifier = Modifier,
     titulo: String = "Maestra Laura",
-    subtitulo: String = "Prescolares B",
+    subtitulo: String? = null,
     onAtras: (() -> Unit)? = null,
     onEnviar: (String) -> Unit = {},
     onCamara: () -> Unit = {},
@@ -49,6 +50,7 @@ fun ChatPadreScreen(
             )
             ChatContenido(
                 estado = estado,
+                currentUserId = currentUserId,
                 textoVacio = "Escribe un mensaje a la maestra",
                 onReintentar = onReintentar,
                 modifier = Modifier.weight(1f)
@@ -72,6 +74,9 @@ fun ChatPadreScreen(
 @Composable
 private fun ChatPadrePreview() {
     SonrisasTheme {
-        ChatPadreScreen(estado = UiState.Exito(Mocks.mensajesPadre))
+        ChatPadreScreen(
+            estado = UiState.Exito(listOf(Message(chatId = "1", authorId = "padre", content = "Hola", sentAt = LocalDateTime.now()))),
+            currentUserId = "padre"
+        )
     }
 }

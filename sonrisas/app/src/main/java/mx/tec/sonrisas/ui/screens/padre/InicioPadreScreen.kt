@@ -26,9 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import mx.tec.sonrisas.model.Actividad
-import mx.tec.sonrisas.model.Mocks
-import mx.tec.sonrisas.model.UiState
+import mx.tec.sonrisas.ui.components.ActividadUi
 import mx.tec.sonrisas.ui.components.AvatarCircular
 import mx.tec.sonrisas.ui.components.BottomBar
 import mx.tec.sonrisas.ui.components.EstadoCargando
@@ -36,11 +34,13 @@ import mx.tec.sonrisas.ui.components.EstadoError
 import mx.tec.sonrisas.ui.components.EstadoVacio
 import mx.tec.sonrisas.ui.components.TabsPadre
 import mx.tec.sonrisas.ui.components.TarjetaActividad
+import mx.tec.sonrisas.ui.components.TipoActividadUi
+import mx.tec.sonrisas.ui.state.UiState
 import mx.tec.sonrisas.ui.theme.*
 
 @Composable
 fun InicioPadreScreen(
-    estado: UiState<List<Actividad>>,
+    estado: UiState<List<ActividadUi>>,
     modifier: Modifier = Modifier,
     nombrePadre: String = "María",
     ninos: List<String> = listOf("Sofía", "Mateo"),
@@ -186,6 +186,10 @@ private fun SelectorNinoHoy(
 @Composable
 private fun InicioPadrePreview() {
     SonrisasTheme {
-        InicioPadreScreen(estado = UiState.Exito(Mocks.actividades))
+        InicioPadreScreen(
+            estado = UiState.Exito(
+                listOf(ActividadUi(TipoActividadUi.Comida, "Comió su comida", "Sopa de fideo y tacos de pollo", "1:00 PM"))
+            )
+        )
     }
 }

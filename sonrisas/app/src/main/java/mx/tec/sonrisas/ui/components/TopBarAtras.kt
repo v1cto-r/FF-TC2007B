@@ -44,15 +44,16 @@ fun TopBarAtras(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = titulo,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = TextoOscuro
+                color = TextoOscuro,
             )
             if (subtitulo != null) {
                 Text(
                     text = subtitulo,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextoGris
+                    color = TextoGris,
+                    modifier = Modifier.padding(4.dp)
                 )
             }
         }

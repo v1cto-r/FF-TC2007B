@@ -1,32 +1,38 @@
 package mx.tec.sonrisas.ui.components.chat
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import mx.tec.sonrisas.model.Mensaje
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.ui.components.AvatarCircular
 import mx.tec.sonrisas.ui.theme.*
 
+private val horaFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale("es", "MX"))
+
+fun formatearHora(momento: LocalDateTime): String = momento.format(horaFormatter)
+
 @Composable
 fun BurbujaChat(
-    mensaje: Mensaje,
+    message: Message,
+    esMio: Boolean,
     modifier: Modifier = Modifier,
     avatarRes: Int? = null
 ) {
-    val esMio = mensaje.esMio
     val fondo = if (esMio) Coral else Color.White
     val colorTexto = if (esMio) Color.White else TextoOscuro
     val colorHora = if (esMio) Color.White.copy(alpha = 0.8f) else TextoGris
@@ -46,36 +52,32 @@ fun BurbujaChat(
             AvatarCircular(tamano = 24.dp, imagenRes = avatarRes)
             Spacer(Modifier.width(8.dp))
         }
-        Column(
+        val hora = formatearHora(message.sentAt)
+        val estiloTexto = MaterialTheme.typography.bodyMedium
+        val estiloHora = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp)
+        val textMeasurer = rememberTextMeasurer()
+        val density = LocalDensity.current
+        val relleno = remember(hora, estiloTexto, estiloHora, density) {
+            val anchoHora = textMeasurer.measure(hora, estiloHora).size.width
+            val anchoEspacio = textMeasurer.measure(" ", estiloTexto).size.width.coerceAtLeast(1)
+            " ".repeat(anchoHora / anchoEspacio + 4)
+        }
+
+        Box(
             modifier = Modifier
                 .widthIn(max = 260.dp)
                 .background(fondo, forma)
-                .padding(if (mensaje.imagenRes != null) 6.dp else 12.dp),
-            horizontalAlignment = Alignment.End
+                .padding(12.dp)
         ) {
-            mensaje.imagenRes?.let { res ->
-                Image(
-                    painter = painterResource(res),
-                    contentDescription = "Foto enviada",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(140.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                )
-                Spacer(Modifier.height(4.dp))
-            }
-            if (mensaje.texto.isNotEmpty()) {
-                Text(
-                    text = mensaje.texto,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colorTexto
-                )
-                Spacer(Modifier.height(4.dp))
-            }
             Text(
-                text = mensaje.hora,
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                text = message.content + relleno,
+                style = estiloTexto,
+                color = colorTexto
+            )
+            Text(
+                text = hora,
+                modifier = Modifier.align(Alignment.BottomEnd),
+                style = estiloHora,
                 color = colorHora
             )
         }
@@ -87,8 +89,14 @@ fun BurbujaChat(
 private fun BurbujaChatPreview() {
     SonrisasTheme {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            BurbujaChat(Mensaje("Hola Maestra Laura, muchas gracias por el aviso.", "11:15 AM", esMio = false))
-            BurbujaChat(Mensaje("¡Muchas gracias por el reporte, maestra!", "2:30 PM", esMio = true))
+            BurbujaChat(
+                Message(chatId = "1", authorId = "padre", content = "Hola Maestra Laura, muchas gracias por el aviso.", sentAt = LocalDateTime.now()),
+                esMio = false
+            )
+            BurbujaChat(
+                Message(chatId = "1", authorId = "maestra", content = "¡Muchas gracias por el reporte, maestra!", sentAt = LocalDateTime.now()),
+                esMio = true
+            )
         }
     }
 }

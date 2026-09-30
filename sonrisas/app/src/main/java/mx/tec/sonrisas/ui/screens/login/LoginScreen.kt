@@ -2,7 +2,6 @@ package mx.tec.sonrisas.ui.screens.login
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,8 +47,6 @@ fun LoginScreen(
     modifier: Modifier = Modifier,
     errorMensaje: String? = null,
     onIniciarSesion: (correo: String, contrasena: String) -> Unit = { _, _ -> },
-    onOlvideContrasena: () -> Unit = {},
-    onContactarSoporte: () -> Unit = {}
 ) {
     var correo by remember { mutableStateOf("") }
     var contrasena by remember { mutableStateOf("") }
@@ -79,7 +76,7 @@ fun LoginScreen(
             painter = painterResource(R.drawable.logo),
             contentDescription = "Logo de Estancia Mariposa",
             contentScale = ContentScale.Fit,
-            modifier = Modifier.size(96.dp)
+            modifier = Modifier.size(128.dp)
         )
 
         Spacer(Modifier.height(16.dp))
@@ -142,7 +139,7 @@ fun LoginScreen(
             value = correo,
             onValueChange = { correo = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("correo@ejemplo.com", color = TextoGris) },
+            placeholder = { Text("juan@correo.com", color = TextoGris) },
             leadingIcon = { Icon(Icons.Outlined.Email, contentDescription = null, tint = TextoGris) },
             singleLine = true,
             shape = forma,
@@ -164,7 +161,7 @@ fun LoginScreen(
             value = contrasena,
             onValueChange = { contrasena = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("••••••••", color = TextoGris) },
+            placeholder = { Text("contraseña123", color = TextoGris) },
             leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = null, tint = TextoGris) },
             trailingIcon = {
                 IconButton(onClick = { verContrasena = !verContrasena }) {
@@ -192,16 +189,6 @@ fun LoginScreen(
             )
         }
 
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "¿Olvidaste tu contraseña?",
-            modifier = Modifier
-                .align(Alignment.End)
-                .clickable(onClick = onOlvideContrasena),
-            style = MaterialTheme.typography.bodySmall,
-            color = Coral
-        )
-
         Spacer(Modifier.height(24.dp))
 
         Button(
@@ -217,19 +204,35 @@ fun LoginScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "¿No tienes una cuenta? ",
-                style = MaterialTheme.typography.bodySmall,
-                color = TextoGris
-            )
-            Text(
-                text = "Contacta a soporte",
-                modifier = Modifier.clickable(onClick = onContactarSoporte),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold,
-                color = Coral
-            )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = null,
+                    tint = TextoGris,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "¿Olvidaste tu contraseña o no tienes cuenta?",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoGris
+                    )
+                    Text(
+                        text = "Ponte en contacto con tu estancia.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoOscuro
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(24.dp))

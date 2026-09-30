@@ -11,22 +11,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import mx.tec.sonrisas.model.Mensaje
-import mx.tec.sonrisas.model.Mocks
-import mx.tec.sonrisas.model.UiState
+import java.time.LocalDateTime
+import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.ui.components.BottomBar
 import mx.tec.sonrisas.ui.components.TabsMaestra
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.components.chat.CampoMensaje
 import mx.tec.sonrisas.ui.components.chat.ChatContenido
+import mx.tec.sonrisas.ui.state.UiState
 import mx.tec.sonrisas.ui.theme.*
 
 @Composable
 fun ChatMaestraScreen(
-    estado: UiState<List<Mensaje>>,
+    estado: UiState<List<Message>>,
+    currentUserId: String,
     modifier: Modifier = Modifier,
-    titulo: String = "Chat con María",
-    subtitulo: String = "Madre de Sofía",
+    titulo: String = "Chat",
+    subtitulo: String? = null,
     onAtras: () -> Unit = {},
     onEnviar: (String) -> Unit = {},
     onCamara: () -> Unit = {},
@@ -49,10 +50,10 @@ fun ChatMaestraScreen(
             )
             ChatContenido(
                 estado = estado,
+                currentUserId = currentUserId,
                 textoVacio = "Envía un mensaje para iniciar la conversación",
                 onReintentar = onReintentar,
-                modifier = Modifier.weight(1f),
-                tituloAviso = "AVISO GENERAL ENVIADO"
+                modifier = Modifier.weight(1f)
             )
             CampoMensaje(
                 valor = texto,
@@ -73,6 +74,9 @@ fun ChatMaestraScreen(
 @Composable
 private fun ChatMaestraPreview() {
     SonrisasTheme {
-        ChatMaestraScreen(estado = UiState.Exito(Mocks.mensajesMaestra))
+        ChatMaestraScreen(
+            estado = UiState.Exito(listOf(Message(chatId = "1", authorId = "maestra", content = "Hola", sentAt = LocalDateTime.now()))),
+            currentUserId = "maestra"
+        )
     }
 }

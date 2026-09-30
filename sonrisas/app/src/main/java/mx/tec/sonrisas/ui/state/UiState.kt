@@ -1,4 +1,4 @@
-package mx.tec.sonrisas.model
+package mx.tec.sonrisas.ui.state
 
 sealed interface UiState<out T> {
     data object Cargando : UiState<Nothing>
