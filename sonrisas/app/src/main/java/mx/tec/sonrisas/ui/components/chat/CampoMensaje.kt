@@ -78,22 +78,24 @@ fun CampoMensaje(
             }
         }
 
-        Spacer(Modifier.width(8.dp))
+        if (valor.isNotBlank()) {
+            Spacer(Modifier.width(8.dp))
 
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Coral)
-                .clickable(onClick = onEnviar),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Send,
-                contentDescription = "Enviar mensaje",
-                tint = Color.White,
-                modifier = Modifier.size(20.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Coral)
+                    .clickable(onClick = onEnviar),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = "Enviar mensaje",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }

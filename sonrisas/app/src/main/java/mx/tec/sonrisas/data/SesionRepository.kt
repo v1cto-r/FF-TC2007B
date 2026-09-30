@@ -1,12 +1,15 @@
 package mx.tec.sonrisas.data
 
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import mx.tec.sonrisas.domain.Rol
 import mx.tec.sonrisas.domain.Sesion
 
-class SesionRepository {
+@Singleton
+class SesionRepository @Inject constructor() {
 
     private val _sesion = MutableStateFlow<Sesion?>(null)
     val sesion: Flow<Sesion?> = _sesion.asStateFlow()

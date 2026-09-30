@@ -22,9 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import mx.tec.sonrisas.model.Mocks
-import mx.tec.sonrisas.model.Nino
-import mx.tec.sonrisas.model.UiState
+import mx.tec.sonrisas.domain.Child
+import mx.tec.sonrisas.domain.GroupEnum
 import mx.tec.sonrisas.ui.components.BottomBar
 import mx.tec.sonrisas.ui.components.EstadoCargando
 import mx.tec.sonrisas.ui.components.EstadoError
@@ -32,13 +31,15 @@ import mx.tec.sonrisas.ui.components.EstadoVacio
 import mx.tec.sonrisas.ui.components.ItemNino
 import mx.tec.sonrisas.ui.components.TabsMaestra
 import mx.tec.sonrisas.ui.components.TopBarAtras
+import mx.tec.sonrisas.ui.state.NinoConEstado
+import mx.tec.sonrisas.ui.state.UiState
 import mx.tec.sonrisas.ui.theme.*
 
 @Composable
 fun NinosScreen(
-    estado: UiState<List<Nino>>,
+    estado: UiState<List<NinoConEstado>>,
     modifier: Modifier = Modifier,
-    onNinoClick: (Nino) -> Unit = {},
+    onNinoClick: (Child) -> Unit = {},
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
@@ -94,7 +95,7 @@ fun NinosScreen(
 
                     is UiState.Exito -> {
                         val filtrados = estado.datos.filter {
-                            it.nombre.contains(busqueda, ignoreCase = true)
+                            it.child.fullName.contains(busqueda, ignoreCase = true)
                         }
                         if (filtrados.isEmpty()) {
                             Text(
@@ -110,8 +111,12 @@ fun NinosScreen(
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                items(filtrados) { nino ->
-                                    ItemNino(nino = nino, onClick = { onNinoClick(nino) })
+                                items(filtrados) { ninoConEstado ->
+                                    ItemNino(
+                                        child = ninoConEstado.child,
+                                        presente = ninoConEstado.presente,
+                                        onClick = { onNinoClick(ninoConEstado.child) }
+                                    )
                                 }
                             }
                         }
@@ -126,6 +131,13 @@ fun NinosScreen(
 @Composable
 private fun NinosPreview() {
     SonrisasTheme {
-        NinosScreen(estado = UiState.Exito(Mocks.ninos))
+        NinosScreen(
+            estado = UiState.Exito(
+                listOf(
+                    NinoConEstado(Child(fullName = "Sofía Martínez", daycareCenter = "Estancia Mariposa", group = GroupEnum.P, parentName = "María López"), true),
+                    NinoConEstado(Child(fullName = "Valentina Ruiz", daycareCenter = "Estancia Mariposa", group = GroupEnum.M, parentName = "Carla Ruiz"), false)
+                )
+            )
+        )
     }
 }

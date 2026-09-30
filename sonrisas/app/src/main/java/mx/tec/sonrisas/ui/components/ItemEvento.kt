@@ -14,16 +14,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import mx.tec.sonrisas.model.Evento
+import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
+import mx.tec.sonrisas.domain.Notice
 import mx.tec.sonrisas.ui.theme.*
 
 @Composable
 fun ItemEvento(
-    evento: Evento,
+    notice: Notice,
     modifier: Modifier = Modifier
 ) {
-    val colorFondo = if (evento.esCoral) CoralSuave else VerdeSuave
-    val colorTexto = if (evento.esCoral) Coral else Verde
+    val dia = notice.date.dayOfWeek
+        .getDisplayName(TextStyle.SHORT, Locale("es", "MX"))
+        .uppercase(Locale("es", "MX"))
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -38,26 +42,26 @@ fun ItemEvento(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .background(colorFondo, RoundedCornerShape(12.dp)),
+                    .background(VerdeSuave, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = evento.dia,
+                    text = dia,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = colorTexto
+                    color = Verde
                 )
             }
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(
-                    text = evento.titulo,
+                    text = notice.name,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     color = TextoOscuro
                 )
                 Text(
-                    text = evento.descripcion,
+                    text = notice.description,
                     style = MaterialTheme.typography.bodySmall,
                     color = TextoGris
                 )
@@ -71,8 +75,7 @@ fun ItemEvento(
 private fun ItemEventoPreview() {
     SonrisasTheme {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ItemEvento(Evento("VIE", "Reunión de Padres", "Taller mensual de entrega de reportes - 4:00 PM", true))
-            ItemEvento(Evento("LUN", "Vacunación programada", "Campaña nacional de salud infantil - 9:00 AM", false))
+            ItemEvento(Notice(name = "Reunión de Padres", description = "Taller mensual de entrega de reportes - 4:00 PM", date = LocalDate.now()))
         }
     }
 }

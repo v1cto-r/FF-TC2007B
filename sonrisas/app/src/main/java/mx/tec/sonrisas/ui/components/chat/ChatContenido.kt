@@ -9,21 +9,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import mx.tec.sonrisas.model.Mensaje
-import mx.tec.sonrisas.model.UiState
+import java.time.LocalDateTime
+import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.ui.components.EstadoCargando
 import mx.tec.sonrisas.ui.components.EstadoError
 import mx.tec.sonrisas.ui.components.EstadoVacio
+import mx.tec.sonrisas.ui.state.UiState
 import mx.tec.sonrisas.ui.theme.SonrisasTheme
 
 @Composable
 fun ChatContenido(
-    estado: UiState<List<Mensaje>>,
+    estado: UiState<List<Message>>,
+    currentUserId: String,
     textoVacio: String,
     onReintentar: () -> Unit,
     modifier: Modifier = Modifier,
-    avatarRes: Int? = null,
-    tituloAviso: String = "AVISO GENERAL"
+    avatarRes: Int? = null
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when (estado) {
@@ -56,14 +57,17 @@ fun ChatContenido(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(mensajes) { mensaje ->
-                        if (mensaje.esAviso) {
+                        if (mensaje.isAviso) {
                             AvisoGeneral(
-                                titulo = tituloAviso,
-                                texto = mensaje.texto,
-                                hora = mensaje.hora
+                                texto = mensaje.content,
+                                hora = formatearHora(mensaje.sentAt)
                             )
                         } else {
-                            BurbujaChat(mensaje = mensaje, avatarRes = avatarRes)
+                            BurbujaChat(
+                                message = mensaje,
+                                esMio = mensaje.authorId == currentUserId,
+                                avatarRes = avatarRes
+                            )
                         }
                     }
                 }
@@ -79,11 +83,11 @@ private fun ChatContenidoPreview() {
         ChatContenido(
             estado = UiState.Exito(
                 listOf(
-                    Mensaje("Este viernes habrá taller de pintura.", "8:30 AM", esMio = false, esAviso = true),
-                    Mensaje("Hola, Sofía se divirtió mucho hoy.", "2:15 PM", esMio = false),
-                    Mensaje("¡Muchas gracias, maestra!", "2:30 PM", esMio = true)
+                    Message(chatId = "1", authorId = "padre", content = "Hola, Sofía se divirtió mucho hoy.", sentAt = LocalDateTime.now()),
+                    Message(chatId = "1", authorId = "maestra", content = "¡Muchas gracias, maestra!", sentAt = LocalDateTime.now())
                 )
             ),
+            currentUserId = "maestra",
             textoVacio = "Envía un mensaje al padre de familia",
             onReintentar = {}
         )

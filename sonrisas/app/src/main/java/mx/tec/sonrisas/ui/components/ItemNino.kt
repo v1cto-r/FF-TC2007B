@@ -14,13 +14,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import mx.tec.sonrisas.model.EstadoAsistencia
-import mx.tec.sonrisas.model.Nino
+import mx.tec.sonrisas.domain.Child
+import mx.tec.sonrisas.domain.GroupEnum
+import mx.tec.sonrisas.domain.etiqueta
 import mx.tec.sonrisas.ui.theme.*
 
 @Composable
 fun ItemNino(
-    nino: Nino,
+    child: Child,
+    presente: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -36,22 +38,22 @@ fun ItemNino(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AvatarCircular(tamano = 40.dp, imagenRes = nino.fotoRes)
+            AvatarCircular(tamano = 40.dp)
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = nino.nombre,
+                    text = child.fullName,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     color = TextoOscuro
                 )
                 Text(
-                    text = nino.sala,
+                    text = "${child.daycareCenter} · ${child.group.etiqueta()}",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextoGris
                 )
             }
-            ChipAsistencia(estado = nino.asistencia)
+            ChipAsistencia(presente = presente)
         }
     }
 }
@@ -61,8 +63,16 @@ fun ItemNino(
 private fun ItemNinoPreview() {
     SonrisasTheme {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ItemNino(Nino("Sofía Martínez", "Sala 3 · Prescolares B", EstadoAsistencia.Presente), onClick = {})
-            ItemNino(Nino("Valentina Ruiz", "Sala 3 · Prescolares B", EstadoAsistencia.Ausente), onClick = {})
+            ItemNino(
+                Child(fullName = "Sofía Martínez", daycareCenter = "Estancia Mariposa", group = GroupEnum.P, parentName = "María López"),
+                presente = true,
+                onClick = {}
+            )
+            ItemNino(
+                Child(fullName = "Valentina Ruiz", daycareCenter = "Estancia Mariposa", group = GroupEnum.M, parentName = "Carla Ruiz"),
+                presente = false,
+                onClick = {}
+            )
         }
     }
 }

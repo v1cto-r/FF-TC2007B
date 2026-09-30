@@ -13,15 +13,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import mx.tec.sonrisas.model.EstadoAsistencia
 import mx.tec.sonrisas.ui.theme.*
 
 @Composable
 fun ChipAsistencia(
-    estado: EstadoAsistencia,
+    presente: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val presente = estado == EstadoAsistencia.Presente
     val color = if (presente) Verde else Coral
     val fondo = if (presente) VerdeSuave else CoralSuave
     val texto = if (presente) "Presente" else "Ausente"
@@ -52,8 +50,8 @@ fun ChipAsistencia(
 private fun ChipAsistenciaPreview() {
     SonrisasTheme {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ChipAsistencia(EstadoAsistencia.Presente)
-            ChipAsistencia(EstadoAsistencia.Ausente)
+            ChipAsistencia(presente = true)
+            ChipAsistencia(presente = false)
         }
     }
 }
