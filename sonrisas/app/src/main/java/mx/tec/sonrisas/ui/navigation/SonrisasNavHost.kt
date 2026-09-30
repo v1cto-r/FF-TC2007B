@@ -45,6 +45,7 @@ fun SonrisasNavHost(
                 estado = viewModel.estadoEventos,
                 presentes = viewModel.presentes,
                 total = viewModel.total,
+                onAviso = { nav.navigate(Route.CHAT_MAESTRA) },
                 onReintentar = { viewModel.cargarInicio() },
                 onTab = { indice ->
                     when (indice) {
@@ -105,6 +106,7 @@ fun SonrisasNavHost(
 
             ChatMaestraScreen(
                 estado = viewModel.estadoMensajes,
+                onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(texto) },
                 onReintentar = { viewModel.cargarMensajes() },
                 onTab = { indice ->
@@ -140,6 +142,7 @@ fun SonrisasNavHost(
 
             ChatPadreScreen(
                 estado = viewModel.estadoMensajes,
+                onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(texto) },
                 onReintentar = { viewModel.cargarMensajes() },
                 onTab = { indice ->
