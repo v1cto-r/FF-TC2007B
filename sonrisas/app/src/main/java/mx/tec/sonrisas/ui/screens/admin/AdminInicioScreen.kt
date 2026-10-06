@@ -24,6 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import mx.tec.sonrisas.ui.components.AccionRapida
 import mx.tec.sonrisas.ui.components.BottomBar
+import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.components.TituloSeccion
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.*
@@ -38,6 +39,8 @@ fun AdminInicioScreen(
     onSalonClick: (SalonUi) -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
+    FlagSecureDisable()
+
     val salonesSinMaestra = salones.filter { it.maestro == null }
 
     Scaffold(

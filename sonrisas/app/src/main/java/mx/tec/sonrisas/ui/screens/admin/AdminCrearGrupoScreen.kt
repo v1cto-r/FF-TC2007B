@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import mx.tec.sonrisas.ui.components.CampoTexto
+import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.ItemPersona
 import mx.tec.sonrisas.ui.components.TituloSeccion
 import mx.tec.sonrisas.ui.components.TopBarAtras
@@ -36,6 +37,7 @@ fun AdminCrearGrupoScreen(
     onAtras: () -> Unit = {},
     onCrear: () -> Unit = {}
 ) {
+    FlagSecureEnable()
     var nombre by remember { mutableStateOf("") }
     var maestroSel by remember { mutableStateOf<String?>(null) }
     var alumnosSel by remember { mutableStateOf(setOf<String>()) }
