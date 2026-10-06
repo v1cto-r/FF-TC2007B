@@ -19,7 +19,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import mx.tec.sonrisas.ui.components.BottomBar
 import mx.tec.sonrisas.ui.components.CampoTexto
-import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.TituloSeccion
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.*
@@ -30,7 +29,6 @@ fun AdminInscripcionScreen(
     onIniciar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
-    FlagSecureEnable()
     var nombreTutor by remember { mutableStateOf("") }
     var apellidoTutor by remember { mutableStateOf("") }
     var nombreAlumno by remember { mutableStateOf("") }

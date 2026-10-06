@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import mx.tec.sonrisas.ui.components.CampoTexto
-import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.Coral
 import mx.tec.sonrisas.ui.theme.Fondo
@@ -35,7 +34,6 @@ fun BroadcastFormScreen(
     onEnviar: (titulo: String, mensaje: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    FlagSecureEnable()
     var tituloMensaje by remember { mutableStateOf("") }
     var mensaje by remember { mutableStateOf("") }
 

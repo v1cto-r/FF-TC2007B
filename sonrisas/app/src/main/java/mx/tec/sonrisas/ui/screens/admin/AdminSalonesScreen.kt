@@ -23,7 +23,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import mx.tec.sonrisas.ui.components.BottomBar
 import mx.tec.sonrisas.ui.components.EstadoVacio
-import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.*
 
@@ -35,7 +34,6 @@ fun AdminSalonesScreen(
     onCrearGrupo: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
-    FlagSecureDisable()
     Scaffold(
         modifier = modifier,
         containerColor = Fondo,

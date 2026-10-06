@@ -40,7 +40,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import mx.tec.sonrisas.R
-import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.theme.*
 
 @Composable
@@ -49,8 +48,6 @@ fun LoginScreen(
     errorMensaje: String? = null,
     onIniciarSesion: (correo: String, contrasena: String) -> Unit = { _, _ -> },
 ) {
-    FlagSecureEnable()
-
     var correo by remember { mutableStateOf("") }
     var contrasena by remember { mutableStateOf("") }
     var verContrasena by remember { mutableStateOf(false) }

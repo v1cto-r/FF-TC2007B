@@ -32,7 +32,6 @@ import mx.tec.sonrisas.ui.components.BottomBar
 import mx.tec.sonrisas.ui.components.EstadoCargando
 import mx.tec.sonrisas.ui.components.EstadoError
 import mx.tec.sonrisas.ui.components.EstadoVacio
-import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.components.TabsPadre
 import mx.tec.sonrisas.ui.components.TarjetaActividad
 import mx.tec.sonrisas.ui.components.TipoActividadUi
@@ -50,8 +49,6 @@ fun InicioPadreScreen(
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
-    FlagSecureDisable()
-
     Scaffold(
         modifier = modifier,
         containerColor = Fondo,

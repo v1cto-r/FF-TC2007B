@@ -29,7 +29,6 @@ import mx.tec.sonrisas.ui.components.AccionRapida
 import mx.tec.sonrisas.ui.components.BottomBar
 import mx.tec.sonrisas.ui.components.EstadoCargando
 import mx.tec.sonrisas.ui.components.EstadoError
-import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.components.ItemEvento
 import mx.tec.sonrisas.ui.components.TabsMaestra
 import mx.tec.sonrisas.ui.components.TopBarAtras
@@ -48,8 +47,6 @@ fun InicioMaestraScreen(
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
-    FlagSecureDisable()
-
     Scaffold(
         modifier = modifier,
         containerColor = Fondo,

@@ -33,7 +33,6 @@ import mx.tec.sonrisas.ui.components.CampoEntero
 import mx.tec.sonrisas.ui.components.CampoOpciones
 import mx.tec.sonrisas.ui.components.CampoTexto
 import mx.tec.sonrisas.ui.components.EstadoVacio
-import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.Coral
 import mx.tec.sonrisas.ui.theme.Fondo
@@ -48,7 +47,6 @@ fun StayFormScreen(
     onIrACheckIn: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    FlagSecureEnable()
     // Claves en `remember(stayExistente)`: los datos de hoy llegan de Room de forma
     // asíncrona (empiezan en null mientras carga), así que los campos deben
     // reinicializarse cuando ese valor cambie, no solo en la primera composición.

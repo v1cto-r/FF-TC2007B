@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.ItemPersona
 import mx.tec.sonrisas.ui.components.TituloSeccion
 import mx.tec.sonrisas.ui.components.TopBarAtras
@@ -30,7 +29,6 @@ fun AdminDetalleSalonScreen(
     onAtras: () -> Unit = {},
     onAgregarAlumnos: () -> Unit = {}
 ) {
-    FlagSecureEnable()
     Scaffold(modifier = modifier, containerColor = Fondo) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             val n = salon.alumnos.size
