@@ -1,12 +1,22 @@
 package mx.tec.sonrisas.ui.components
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.view.View
 import android.view.WindowManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
+
+private tailrec fun Context.findActivity(): Activity? {
+    return when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
+}
 
 /**
  * Habilita FLAG_SECURE en la ventana actual para bloquear capturas de pantalla,
@@ -18,13 +28,16 @@ import androidx.compose.ui.platform.LocalView
 @Composable
 fun FlagSecureEnable(view: View = LocalView.current) {
     DisposableEffect(view) {
-        val window = (view.context as? Activity)?.window
-        window?.setFlags(
-            WindowManager.LayoutParams.FLAG_SECURE,
+        val activity = view.context.findActivity()
+
+        activity?.window?.addFlags(
             WindowManager.LayoutParams.FLAG_SECURE
         )
+
         onDispose {
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            activity?.window?.clearFlags(
+                WindowManager.LayoutParams.FLAG_SECURE
+            )
         }
     }
 }
@@ -36,7 +49,10 @@ fun FlagSecureEnable(view: View = LocalView.current) {
 @Composable
 fun FlagSecureDisable(view: View = LocalView.current) {
     SideEffect {
-        val window = (view.context as? Activity)?.window
-        window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        val activity = view.context.findActivity()
+
+        activity?.window?.clearFlags(
+            WindowManager.LayoutParams.FLAG_SECURE
+        )
     }
 }
