@@ -25,6 +25,7 @@ import mx.tec.sonrisas.domain.CheckOutRecord
 import mx.tec.sonrisas.domain.Injury
 import mx.tec.sonrisas.ui.components.CampoBooleano
 import mx.tec.sonrisas.ui.components.CampoTexto
+import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.Coral
 import mx.tec.sonrisas.ui.theme.Fondo
@@ -36,6 +37,7 @@ fun CheckOutFormScreen(
     onGuardar: (CheckOutRecord) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    FlagSecureEnable()
     var pickedUpByName by remember { mutableStateOf("") }
     var releasedInGoodPhysicalCondition by remember { mutableStateOf(true) }
     var releasedClean by remember { mutableStateOf(true) }

@@ -27,6 +27,7 @@ import mx.tec.sonrisas.domain.Injury
 import mx.tec.sonrisas.ui.components.CampoBooleano
 import mx.tec.sonrisas.ui.components.CampoBooleanoOpcional
 import mx.tec.sonrisas.ui.components.CampoTexto
+import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.Coral
 import mx.tec.sonrisas.ui.theme.Fondo
@@ -39,6 +40,7 @@ fun CheckInFormScreen(
     checkInExistente: CheckInRecord? = null,
     modifier: Modifier = Modifier
 ) {
+    FlagSecureEnable()
     var droppedOffByName by remember { mutableStateOf(checkInExistente?.droppedOffByName ?: "") }
     var isSick by remember { mutableStateOf(checkInExistente?.isSick ?: false) }
     var medicamento by remember { mutableStateOf(checkInExistente?.medicationLeftWithPrescription) }

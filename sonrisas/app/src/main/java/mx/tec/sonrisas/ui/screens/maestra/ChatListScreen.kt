@@ -29,6 +29,7 @@ import mx.tec.sonrisas.ui.components.EstadoCargando
 import mx.tec.sonrisas.ui.components.EstadoError
 import mx.tec.sonrisas.ui.components.EstadoVacio
 import mx.tec.sonrisas.ui.components.TabsMaestra
+import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.components.chat.formatearHora
 import mx.tec.sonrisas.ui.state.ConversacionUi
@@ -43,6 +44,7 @@ fun ChatListScreen(
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
+    FlagSecureEnable()
     Scaffold(
         modifier = modifier,
         containerColor = Fondo,

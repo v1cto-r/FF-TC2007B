@@ -28,6 +28,7 @@ import mx.tec.sonrisas.ui.components.BottomBar
 import mx.tec.sonrisas.ui.components.EstadoCargando
 import mx.tec.sonrisas.ui.components.EstadoError
 import mx.tec.sonrisas.ui.components.EstadoVacio
+import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.ItemNino
 import mx.tec.sonrisas.ui.components.TabsMaestra
 import mx.tec.sonrisas.ui.components.TopBarAtras
@@ -43,6 +44,7 @@ fun NinosScreen(
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
+    FlagSecureEnable()
     var busqueda by remember { mutableStateOf("") }
 
     Scaffold(

@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import mx.tec.sonrisas.ui.components.CampoTexto
 import mx.tec.sonrisas.ui.components.EstadoVacio
+import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.Coral
 import mx.tec.sonrisas.ui.theme.Fondo
@@ -32,6 +33,8 @@ fun ActivityFormScreen(
     onIrACheckIn: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    FlagSecureEnable()
+
     var nombre by remember { mutableStateOf("") }
 
     Scaffold(modifier = modifier, containerColor = Fondo) { padding ->
