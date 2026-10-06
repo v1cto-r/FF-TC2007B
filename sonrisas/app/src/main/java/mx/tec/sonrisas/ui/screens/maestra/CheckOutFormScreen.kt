@@ -25,6 +25,7 @@ import mx.tec.sonrisas.domain.CheckOutRecord
 import mx.tec.sonrisas.domain.Injury
 import mx.tec.sonrisas.ui.components.CampoBooleano
 import mx.tec.sonrisas.ui.components.CampoTexto
+import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.Coral
 import mx.tec.sonrisas.ui.theme.Fondo
@@ -44,6 +45,7 @@ fun CheckOutFormScreen(
     var lesionParte by remember { mutableStateOf("") }
     var lesionDescripcion by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
+    FlagSecureDisable()
 
     Scaffold(modifier = modifier, containerColor = Fondo) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {

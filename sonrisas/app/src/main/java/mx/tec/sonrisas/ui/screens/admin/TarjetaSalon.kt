@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.theme.*
 
 @Composable
@@ -28,6 +29,7 @@ fun TarjetaSalon(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    FlagSecureDisable()
     Card(
         modifier = modifier
             .fillMaxWidth()

@@ -27,6 +27,7 @@ import mx.tec.sonrisas.domain.Injury
 import mx.tec.sonrisas.ui.components.CampoBooleano
 import mx.tec.sonrisas.ui.components.CampoBooleanoOpcional
 import mx.tec.sonrisas.ui.components.CampoTexto
+import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.Coral
 import mx.tec.sonrisas.ui.theme.Fondo
@@ -51,6 +52,7 @@ fun CheckInFormScreen(
     var lesionParte by remember { mutableStateOf(checkInExistente?.injury?.bodyPart ?: "") }
     var lesionDescripcion by remember { mutableStateOf(checkInExistente?.injury?.description ?: "") }
     var parentsNotes by remember { mutableStateOf(checkInExistente?.parentsNotes ?: "") }
+    FlagSecureDisable()
 
     LaunchedEffect(checkInExistente) {
         if (checkInExistente != null) {

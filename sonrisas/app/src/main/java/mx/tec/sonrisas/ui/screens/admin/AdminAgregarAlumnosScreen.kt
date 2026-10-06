@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import mx.tec.sonrisas.ui.components.EstadoVacio
+import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.components.ItemPersona
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.*
@@ -40,6 +41,7 @@ fun AdminAgregarAlumnosScreen(
     onAtras: () -> Unit = {},
     onAgregar: () -> Unit = {}
 ) {
+    FlagSecureDisable()
     var busqueda by remember { mutableStateOf("") }
     var seleccionados by remember { mutableStateOf(setOf<String>()) }
 

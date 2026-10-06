@@ -33,6 +33,8 @@ import mx.tec.sonrisas.ui.components.CampoEntero
 import mx.tec.sonrisas.ui.components.CampoOpciones
 import mx.tec.sonrisas.ui.components.CampoTexto
 import mx.tec.sonrisas.ui.components.EstadoVacio
+import mx.tec.sonrisas.ui.components.FlagSecureDisable
+import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.Coral
 import mx.tec.sonrisas.ui.theme.Fondo
@@ -73,6 +75,7 @@ fun StayFormScreen(
     var healthIssueDescription by remember(stayExistente) { mutableStateOf(stayExistente?.healthIssueDescription ?: "") }
     var careProvided by remember(stayExistente) { mutableStateOf(stayExistente?.careProvided ?: "") }
     var generalHealthNotes by remember(stayExistente) { mutableStateOf(stayExistente?.generalHealthNotes ?: "") }
+    FlagSecureDisable()
 
     Scaffold(modifier = modifier, containerColor = Fondo) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {

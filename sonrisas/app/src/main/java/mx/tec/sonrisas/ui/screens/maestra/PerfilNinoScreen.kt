@@ -58,6 +58,7 @@ fun PerfilNinoScreen(
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
+
     val primerNombre = if (estado is UiState.Exito) estado.datos.child.fullName.substringBefore(" ") else null
 
     Scaffold(
