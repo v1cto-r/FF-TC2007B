@@ -17,6 +17,7 @@ import mx.tec.sonrisas.ui.components.BottomBar
 import mx.tec.sonrisas.ui.components.TabsMaestra
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.components.chat.CampoMensaje
+import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.chat.ChatContenido
 import mx.tec.sonrisas.ui.state.UiState
 import mx.tec.sonrisas.ui.theme.*
@@ -34,6 +35,7 @@ fun ChatMaestraScreen(
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
+    FlagSecureEnable()
     var texto by remember { mutableStateOf("") }
 
     Scaffold(

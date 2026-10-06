@@ -37,6 +37,7 @@ import mx.tec.sonrisas.ui.components.ChipAsistencia
 import mx.tec.sonrisas.ui.components.EstadoCargando
 import mx.tec.sonrisas.ui.components.EstadoError
 import mx.tec.sonrisas.ui.components.EstadoVacio
+import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.ItemAccionRegistro
 import mx.tec.sonrisas.ui.components.TabsMaestra
 import mx.tec.sonrisas.ui.components.TopBarAtras
@@ -58,6 +59,8 @@ fun PerfilNinoScreen(
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
+    FlagSecureEnable()
+
     val primerNombre = if (estado is UiState.Exito) estado.datos.child.fullName.substringBefore(" ") else null
 
     Scaffold(
