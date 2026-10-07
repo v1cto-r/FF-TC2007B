@@ -37,22 +37,25 @@ fun CampoMensaje(
             .fillMaxWidth()
             .background(Fondo)
             .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Bottom
     ) {
         Row(
             modifier = Modifier
                 .weight(1f)
-                .height(40.dp)
+                .heightIn(min = 40.dp, max = 120.dp)
                 .background(Color.White, RoundedCornerShape(20.dp))
                 .border(1.dp, BordeCampo, RoundedCornerShape(20.dp))
-                .padding(start = 16.dp, end = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(start = 16.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.Bottom
         ) {
             BasicTextField(
                 value = valor,
                 onValueChange = onValorChange,
-                modifier = Modifier.weight(1f),
-                singleLine = true,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(bottom = 2.dp),
+                singleLine = false,
+                maxLines = 5,
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextoOscuro),
                 cursorBrush = SolidColor(Coral),
                 decorationBox = { campo ->
@@ -68,7 +71,10 @@ fun CampoMensaje(
                     }
                 }
             )
-            IconButton(onClick = onCamara, modifier = Modifier.size(32.dp)) {
+            IconButton(
+                onClick = onCamara,
+                modifier = Modifier.size(28.dp)
+            ) {
                 Icon(
                     imageVector = Icons.Outlined.CameraAlt,
                     contentDescription = "Adjuntar foto",

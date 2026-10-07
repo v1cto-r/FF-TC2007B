@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,6 +52,7 @@ fun BurbujaChat(
     val fondo = if (esMio) Coral else Color.White
     val colorTexto = if (esMio) Color.White else TextoOscuro
     val colorHora = if (esMio) Color.White.copy(alpha = 0.8f) else TextoGris
+    val colorBordeFijado = if (esMio) Amarillo else Coral
     val forma = RoundedCornerShape(
         topStart = 16.dp,
         topEnd = 16.dp,
@@ -72,10 +74,12 @@ fun BurbujaChat(
         val estiloHora = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp)
         val textMeasurer = rememberTextMeasurer()
         val density = LocalDensity.current
-        val relleno = remember(hora, estiloTexto, estiloHora, density) {
+        val relleno = remember(hora, message.isAviso, estiloTexto, estiloHora, density) {
             val anchoHora = textMeasurer.measure(hora, estiloHora).size.width
+            val anchoPin = if (message.isAviso) with(density) { 15.dp.roundToPx() } else 0
+            val anchoTotalMeta = anchoHora + anchoPin
             val anchoEspacio = textMeasurer.measure(" ", estiloTexto).size.width.coerceAtLeast(1)
-            " ".repeat(anchoHora / anchoEspacio + 4)
+            " ".repeat(anchoTotalMeta / anchoEspacio + 4)
         }
 
         Box {
@@ -84,8 +88,8 @@ fun BurbujaChat(
                     .widthIn(max = 260.dp)
                     .background(fondo, forma)
                     .border(
-                        width = if (message.isAviso) 1.5.dp else 0.dp,
-                        color = if (message.isAviso) Amarillo else Color.Transparent,
+                        width = if (message.isAviso) 2.dp else 0.dp,
+                        color = if (message.isAviso) colorBordeFijado else Color.Transparent,
                         shape = forma
                     )
                     .pointerInput(message.id) {
@@ -95,29 +99,31 @@ fun BurbujaChat(
                     }
                     .padding(12.dp)
             ) {
-                Column {
+                Text(
+                    text = message.content + relleno,
+                    style = estiloTexto,
+                    color = colorTexto
+                )
+
+                Row(
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     if (message.isAviso) {
                         Icon(
                             imageVector = Icons.Outlined.PushPin,
                             contentDescription = "Mensaje fijado",
                             tint = if (esMio) Amarillo else Coral,
-                            modifier = Modifier
-                                .size(14.dp)
-                                .padding(bottom = 2.dp)
+                            modifier = Modifier.size(12.dp)
                         )
+                        Spacer(Modifier.width(3.dp))
                     }
                     Text(
-                        text = message.content + relleno,
-                        style = estiloTexto,
-                        color = colorTexto
+                        text = hora,
+                        style = estiloHora,
+                        color = colorHora
                     )
                 }
-                Text(
-                    text = hora,
-                    modifier = Modifier.align(Alignment.BottomEnd),
-                    style = estiloHora,
-                    color = colorHora
-                )
             }
 
             DropdownMenu(
@@ -127,8 +133,16 @@ fun BurbujaChat(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            if (message.isAviso) "📌 Desfijar mensaje" else "📌 Fijar / Marcar como importante",
+                            text = if (message.isAviso) "Desfijar mensaje" else "Fijar mensaje",
                             style = MaterialTheme.typography.bodyMedium
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.PushPin,
+                            contentDescription = null,
+                            tint = Coral,
+                            modifier = Modifier.size(18.dp)
                         )
                     },
                     onClick = {
@@ -139,9 +153,17 @@ fun BurbujaChat(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            "🗑️ Eliminar mensaje",
+                            text = "Eliminar mensaje",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp)
                         )
                     },
                     onClick = {
