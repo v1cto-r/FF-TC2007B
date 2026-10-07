@@ -14,10 +14,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import java.time.LocalDateTime
 import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.ui.components.BottomBar
+import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.TabsMaestra
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.components.chat.CampoMensaje
-import mx.tec.sonrisas.ui.components.FlagSecureEnable
 import mx.tec.sonrisas.ui.components.chat.ChatContenido
 import mx.tec.sonrisas.ui.state.UiState
 import mx.tec.sonrisas.ui.theme.*
@@ -30,7 +30,9 @@ fun ChatMaestraScreen(
     titulo: String = "Chat",
     subtitulo: String? = null,
     onAtras: () -> Unit = {},
-    onEnviar: (String) -> Unit = {},
+    onEnviar: (texto: String) -> Unit = {},
+    onToggleImportante: (Message) -> Unit = {},
+    onEliminar: (Message) -> Unit = {},
     onCamara: () -> Unit = {},
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
@@ -55,7 +57,9 @@ fun ChatMaestraScreen(
                 currentUserId = currentUserId,
                 textoVacio = "Envía un mensaje para iniciar la conversación",
                 onReintentar = onReintentar,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                onToggleImportante = onToggleImportante,
+                onEliminar = onEliminar
             )
             CampoMensaje(
                 valor = texto,

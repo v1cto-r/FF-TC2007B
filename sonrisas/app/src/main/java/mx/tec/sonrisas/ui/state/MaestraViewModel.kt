@@ -159,12 +159,32 @@ class MaestraViewModel @Inject constructor(
         viewModelScope.launch {
             estadoMensajes = UiState.Cargando
             try {
-                chatRepository.observeMessages(chatId).collect { mensajes ->
+                chatRepository.observeMessagesForTeacher(chatId).collect { mensajes ->
                     estadoMensajes = if (mensajes.isEmpty()) UiState.Vacio else UiState.Exito(mensajes)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 estadoMensajes = UiState.Error("Error al cargar chat: ${e.message}")
+            }
+        }
+    }
+
+    fun toggleImportant(messageId: String) {
+        viewModelScope.launch {
+            try {
+                chatRepository.toggleImportant(messageId)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun deleteMessage(messageId: String) {
+        viewModelScope.launch {
+            try {
+                chatRepository.hideForParent(messageId)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -198,12 +218,21 @@ class MaestraViewModel @Inject constructor(
         }
     }
 
-    fun enviarMensaje(chatId: String, texto: String) {
+    fun enviarMensaje(chatId: String, texto: String, esAviso: Boolean = false) {
         viewModelScope.launch {
             try {
                 val autor = sesionRepository.sesion.first()?.usuario ?: "maestra"
-                chatRepository.send(Message(chatId = chatId, authorId = autor, content = texto, sentAt = LocalDateTime.now()))
+                chatRepository.send(
+                    Message(
+                        chatId = chatId,
+                        authorId = autor,
+                        content = texto,
+                        sentAt = LocalDateTime.now(),
+                        isAviso = esAviso
+                    )
+                )
             } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

@@ -13,6 +13,9 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE chatId = :chatId ORDER BY sentAt ASC")
     fun observeByChat(chatId: String): Flow<List<MessageEntity>>
 
+    @Query("SELECT * FROM messages WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): MessageEntity?
+
     @Query("SELECT * FROM messages WHERE synced = 0")
     suspend fun getPendingSync(): List<MessageEntity>
 

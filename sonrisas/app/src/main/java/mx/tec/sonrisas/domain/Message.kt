@@ -12,5 +12,6 @@ data class Message(
     // false = still only on this device, pending to be sent.
     val sent: Boolean = false,
     val synced: Boolean = false,
-    val isAviso: Boolean = false
+    val isAviso: Boolean = false,
+    val hiddenForParent: Boolean = false
 )

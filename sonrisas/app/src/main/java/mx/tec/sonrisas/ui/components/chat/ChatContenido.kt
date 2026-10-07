@@ -24,7 +24,9 @@ fun ChatContenido(
     textoVacio: String,
     onReintentar: () -> Unit,
     modifier: Modifier = Modifier,
-    avatarRes: Int? = null
+    avatarRes: Int? = null,
+    onToggleImportante: (Message) -> Unit = {},
+    onEliminar: (Message) -> Unit = {}
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when (estado) {
@@ -57,18 +59,13 @@ fun ChatContenido(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(mensajes) { mensaje ->
-                        if (mensaje.isAviso) {
-                            AvisoGeneral(
-                                texto = mensaje.content,
-                                hora = formatearHora(mensaje.sentAt)
-                            )
-                        } else {
-                            BurbujaChat(
-                                message = mensaje,
-                                esMio = mensaje.authorId == currentUserId,
-                                avatarRes = avatarRes
-                            )
-                        }
+                        BurbujaChat(
+                            message = mensaje,
+                            esMio = mensaje.authorId == currentUserId,
+                            avatarRes = avatarRes,
+                            onToggleImportante = onToggleImportante,
+                            onEliminar = onEliminar
+                        )
                     }
                 }
             }

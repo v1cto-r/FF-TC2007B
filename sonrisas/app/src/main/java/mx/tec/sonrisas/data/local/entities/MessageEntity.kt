@@ -14,5 +14,6 @@ data class MessageEntity(
     val sentAt: LocalDateTime,
     val sent: Boolean,
     val synced: Boolean,
-    val isAviso: Boolean
+    val isAviso: Boolean,
+    val hiddenForParent: Boolean = false
 )

@@ -147,6 +147,8 @@ fun SonrisasNavHost(
                 subtitulo = nino?.fullName,
                 onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(ninoId, texto) },
+                onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
+                onEliminar = { mensaje -> viewModel.deleteMessage(mensaje.id) },
                 onReintentar = { viewModel.cargarMensajes(ninoId) },
                 onTab = { indice ->
                     when (indice) {
@@ -281,6 +283,8 @@ fun SonrisasNavHost(
                 subtitulo = nino?.let { "Sobre ${it.fullName.substringBefore(" ")}" },
                 onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(texto) },
+                onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
+                onEliminar = { mensaje -> viewModel.deleteMessage(mensaje.id) },
                 onReintentar = { viewModel.cargarMensajes(ninoId) },
                 onTab = { indice ->
                     when (indice) {

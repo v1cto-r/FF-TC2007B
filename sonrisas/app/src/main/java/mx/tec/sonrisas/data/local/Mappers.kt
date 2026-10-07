@@ -224,7 +224,8 @@ fun MessageEntity.toDomain() = Message(
     sentAt = sentAt,
     sent = sent,
     synced = synced,
-    isAviso = isAviso
+    isAviso = isAviso,
+    hiddenForParent = hiddenForParent
 )
 
 fun Message.toEntity() = MessageEntity(
@@ -235,5 +236,6 @@ fun Message.toEntity() = MessageEntity(
     sentAt = sentAt,
     sent = sent,
     synced = synced,
-    isAviso = isAviso
+    isAviso = isAviso,
+    hiddenForParent = hiddenForParent
 )

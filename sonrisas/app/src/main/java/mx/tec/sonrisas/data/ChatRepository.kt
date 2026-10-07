@@ -1,5 +1,10 @@
 package mx.tec.sonrisas.data
 
+import android.os.Build
+import androidx.annotation.RequiresApi
+import java.time.DayOfWeek
+import java.time.LocalDateTime
+import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -11,24 +16,49 @@ import mx.tec.sonrisas.data.remote.MessageRemoteDataSource
 import mx.tec.sonrisas.domain.Message
 
 /**
- * Stores both historical messages and the ones sent without internet: they
- * all live in the same table, told apart by `sent` and `synced`. The future
- * sync worker uploads whatever is still unsynced.
+ * Almacena y gestiona los mensajes de chat.
+ *
+ * Reglas de visibilidad:
+ * 1. Para la Maestra: Los mensajes enviados por la maestra que NO fueron marcados como 'isAviso'
+ *    se vuelven invisibles en el lado de la maestra al finalizar la semana actual (permanecen en BD).
+ * 2. Para el Padre: Los mensajes de las maestras NO se borran solos (disponibles 24/7).
+ *    El padre puede eliminar/ocultar mensajes manualmente con pulsación larga ('hiddenForParent').
+ * 3. 'isAviso / Importante': Se puede fijar/marcar mediante pulsación larga (estilo WhatsApp)
+ *    y jamás se oculta en el lado de la maestra.
  */
 interface ChatRepository {
+    fun observeMessagesForTeacher(chatId: String): Flow<List<Message>>
+    fun observeMessagesForParent(chatId: String): Flow<List<Message>>
     fun observeMessages(chatId: String): Flow<List<Message>>
     suspend fun send(message: Message)
+    suspend fun toggleImportant(messageId: String)
+    suspend fun hideForParent(messageId: String)
 }
 
 @Singleton
 class ChatRepositoryImpl @Inject constructor(
     private val dao: MessageDao,
     private val remote: MessageRemoteDataSource,
-    private val networkMonitor: NetworkMonitor
+    private val networkMonitor: NetworkMonitor,
 ) : ChatRepository {
 
     override fun observeMessages(chatId: String): Flow<List<Message>> =
-        dao.observeByChat(chatId).map { rows -> rows.map { it.toDomain() } }
+        observeMessagesForTeacher(chatId)
+
+    override fun observeMessagesForTeacher(chatId: String): Flow<List<Message>> =
+        dao.observeByChat(chatId).map { rows ->
+            val domainMessages = rows.map { it.toDomain() }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                filtrarMensajesInvisiblesMaestra(chatId, domainMessages)
+            } else {
+                domainMessages
+            }
+        }
+
+    override fun observeMessagesForParent(chatId: String): Flow<List<Message>> =
+        dao.observeByChat(chatId).map { rows ->
+            rows.map { it.toDomain() }.filter { !it.hiddenForParent }
+        }
 
     override suspend fun send(message: Message) {
         if (networkMonitor.isOnline()) {
@@ -37,6 +67,42 @@ class ChatRepositoryImpl @Inject constructor(
         } else {
             // Stays in Room marked as pending; the worker uploads it later.
             dao.save(message.toEntity())
+        }
+    }
+
+    override suspend fun toggleImportant(messageId: String) {
+        val entity = dao.getById(messageId) ?: return
+        dao.save(entity.copy(isAviso = !entity.isAviso))
+    }
+
+    override suspend fun hideForParent(messageId: String) {
+        val entity = dao.getById(messageId) ?: return
+        dao.save(entity.copy(hiddenForParent = true))
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun filtrarMensajesInvisiblesMaestra(chatId: String, mensajes: List<Message>): List<Message> {
+        val esChatAdmin = chatId.startsWith("admin_", ignoreCase = true)
+        if (esChatAdmin) {
+            return mensajes
+        }
+
+        // Lunes a las 00:00:00 de la semana actual
+        val inicioSemanaActual = LocalDateTime.now()
+            .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+            .withHour(0).withMinute(0).withSecond(0).withNano(0)
+
+        return mensajes.filter { mensaje ->
+            val esDeMaestra = mensaje.authorId.contains("maestra", ignoreCase = true)
+            val esAvisoOImportante = mensaje.isAviso
+
+            if (esDeMaestra && !esAvisoOImportante) {
+                // En el lado de la maestra, los mensajes normales de semanas pasadas se vuelven invisibles
+                !mensaje.sentAt.isBefore(inicioSemanaActual)
+            } else {
+                // Mensajes de Padres, Admin o Importantes permanecen visibles
+                true
+            }
         }
     }
 }

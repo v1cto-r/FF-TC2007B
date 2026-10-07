@@ -113,7 +113,7 @@ class PadreViewModel @Inject constructor(
         viewModelScope.launch {
             estadoMensajes = UiState.Cargando
             try {
-                chatRepository.observeMessages(chatId).collect { mensajes ->
+                chatRepository.observeMessagesForParent(chatId).collect { mensajes ->
                     estadoMensajes = if (mensajes.isEmpty()) UiState.Vacio else UiState.Exito(mensajes)
                 }
             } catch (e: Exception) {
@@ -122,12 +122,41 @@ class PadreViewModel @Inject constructor(
         }
     }
 
-    fun enviarMensaje(texto: String) {
+    fun toggleImportant(messageId: String) {
+        viewModelScope.launch {
+            try {
+                chatRepository.toggleImportant(messageId)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun deleteMessage(messageId: String) {
+        viewModelScope.launch {
+            try {
+                chatRepository.hideForParent(messageId)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun enviarMensaje(texto: String, esAviso: Boolean = false) {
         viewModelScope.launch {
             try {
                 val autor = sesionRepository.sesion.first()?.usuario ?: "padre"
-                chatRepository.send(Message(chatId = chatIdActual, authorId = autor, content = texto, sentAt = LocalDateTime.now()))
+                chatRepository.send(
+                    Message(
+                        chatId = chatIdActual,
+                        authorId = autor,
+                        content = texto,
+                        sentAt = LocalDateTime.now(),
+                        isAviso = esAviso
+                    )
+                )
             } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

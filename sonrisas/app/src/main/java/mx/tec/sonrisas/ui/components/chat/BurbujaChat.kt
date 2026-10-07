@@ -1,15 +1,26 @@
 package mx.tec.sonrisas.ui.components.chat
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
@@ -31,8 +42,12 @@ fun BurbujaChat(
     message: Message,
     esMio: Boolean,
     modifier: Modifier = Modifier,
-    avatarRes: Int? = null
+    avatarRes: Int? = null,
+    onToggleImportante: ((Message) -> Unit)? = null,
+    onEliminar: ((Message) -> Unit)? = null
 ) {
+    var menuAbierto by remember { mutableStateOf(false) }
+
     val fondo = if (esMio) Coral else Color.White
     val colorTexto = if (esMio) Color.White else TextoOscuro
     val colorHora = if (esMio) Color.White.copy(alpha = 0.8f) else TextoGris
@@ -63,23 +78,78 @@ fun BurbujaChat(
             " ".repeat(anchoHora / anchoEspacio + 4)
         }
 
-        Box(
-            modifier = Modifier
-                .widthIn(max = 260.dp)
-                .background(fondo, forma)
-                .padding(12.dp)
-        ) {
-            Text(
-                text = message.content + relleno,
-                style = estiloTexto,
-                color = colorTexto
-            )
-            Text(
-                text = hora,
-                modifier = Modifier.align(Alignment.BottomEnd),
-                style = estiloHora,
-                color = colorHora
-            )
+        Box {
+            Box(
+                modifier = Modifier
+                    .widthIn(max = 260.dp)
+                    .background(fondo, forma)
+                    .border(
+                        width = if (message.isAviso) 1.5.dp else 0.dp,
+                        color = if (message.isAviso) Amarillo else Color.Transparent,
+                        shape = forma
+                    )
+                    .pointerInput(message.id) {
+                        detectTapGestures(
+                            onLongPress = { menuAbierto = true }
+                        )
+                    }
+                    .padding(12.dp)
+            ) {
+                Column {
+                    if (message.isAviso) {
+                        Icon(
+                            imageVector = Icons.Outlined.PushPin,
+                            contentDescription = "Mensaje fijado",
+                            tint = if (esMio) Amarillo else Coral,
+                            modifier = Modifier
+                                .size(14.dp)
+                                .padding(bottom = 2.dp)
+                        )
+                    }
+                    Text(
+                        text = message.content + relleno,
+                        style = estiloTexto,
+                        color = colorTexto
+                    )
+                }
+                Text(
+                    text = hora,
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                    style = estiloHora,
+                    color = colorHora
+                )
+            }
+
+            DropdownMenu(
+                expanded = menuAbierto,
+                onDismissRequest = { menuAbierto = false }
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            if (message.isAviso) "📌 Desfijar mensaje" else "📌 Fijar / Marcar como importante",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    },
+                    onClick = {
+                        menuAbierto = false
+                        onToggleImportante?.invoke(message)
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            "🗑️ Eliminar mensaje",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    onClick = {
+                        menuAbierto = false
+                        onEliminar?.invoke(message)
+                    }
+                )
+            }
         }
     }
 }
@@ -90,11 +160,11 @@ private fun BurbujaChatPreview() {
     SonrisasTheme {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             BurbujaChat(
-                Message(chatId = "1", authorId = "padre", content = "Hola Maestra Laura, muchas gracias por el aviso.", sentAt = LocalDateTime.now()),
+                Message(chatId = "1", authorId = "padre", content = "Hola Maestra Laura, aviso que hoy llega tarde.", sentAt = LocalDateTime.now(), isAviso = true),
                 esMio = false
             )
             BurbujaChat(
-                Message(chatId = "1", authorId = "maestra", content = "¡Muchas gracias por el reporte, maestra!", sentAt = LocalDateTime.now()),
+                Message(chatId = "1", authorId = "maestra", content = "Entendido, muchas gracias por avisar.", sentAt = LocalDateTime.now()),
                 esMio = true
             )
         }
