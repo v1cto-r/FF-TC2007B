@@ -55,13 +55,15 @@ private fun Injury.toEmbed() = InjuryEmbed(bodyPart = bodyPart, description = de
 private fun FeedingEmbed.toDomain() = Feeding(
     breakfast = AmountEnum.valueOf(breakfast),
     snack = AmountEnum.valueOf(snack),
-    lunch = AmountEnum.valueOf(lunch)
+    lunch = AmountEnum.valueOf(lunch),
+    afternoonSnack = AmountEnum.valueOf(afternoonSnack)
 )
 
 private fun Feeding.toEmbed() = FeedingEmbed(
     breakfast = breakfast.name,
     snack = snack.name,
-    lunch = lunch.name
+    lunch = lunch.name,
+    afternoonSnack = afternoonSnack.name
 )
 
 // --- CheckInRecord / Stay / CheckOutRecord ---
