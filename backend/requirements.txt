@@ -6,3 +6,5 @@ pyjwt
 pydantic-settings
 bcrypt
 pydantic
+boto3
+pyyaml

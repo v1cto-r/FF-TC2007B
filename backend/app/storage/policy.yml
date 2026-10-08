@@ -1,0 +1,47 @@
+# Archivo donde se ponen limites para interactuar con el storage S3
+
+# Primero el tipo de archivos y su tamaño
+kinds:
+  image:
+    content_types:
+      - image/jpeg
+      - image/png
+      - image/webp
+    max_bytes: 5242880
+  file:
+    content_types:
+      - application/pdf
+      - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+    max_bytes: 10485760
+
+# Que buckets existen, y que tipo de archivos
+buckets:
+  estancias: {kinds: [image]}   # estancia logos
+  images:    {kinds: [image]}
+  files:     {kinds: [file]}
+
+# Por rol, que acciones pueden tomar, LEAST PRIVILEGES
+# Si no necesitan subir información, no hay porque darles la oportunidad
+roles:
+  PADRE:
+    upload:
+      - {bucket: images, kind: image, scope: child}
+      - {bucket: files, kind: file, scope: child}
+    download: {images: [child], files: [child]}
+    # para rates por rol
+    # rate_limits: {upload: {per_minute: 5, per_day: 50}}
+  DOCENTE:
+    upload:
+      - {bucket: images, kind: image, scope: salon}
+    download: {images: [salon, child], files: [child]}
+  ADMIN:
+    upload:
+      - {bucket: estancias, kind: image, scope: estancia, object_name: logo}
+    download: {estancias: [estancia], images: [estancia, salon, child], files: [estancia, salon, child]}
+  ORG:
+    upload: []
+    download: {estancias: [any], images: [any], files: [any]}
+
+rate_limits:
+  upload:   {per_minute: 10, per_day: 200}
+  download: {per_minute: 300}
