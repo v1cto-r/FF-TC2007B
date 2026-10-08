@@ -22,7 +22,7 @@ import mx.tec.sonrisas.data.local.entities.NoticeEntity
         NoticeEntity::class,
         MessageEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
