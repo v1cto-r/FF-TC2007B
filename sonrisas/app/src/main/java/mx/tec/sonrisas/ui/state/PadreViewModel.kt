@@ -17,9 +17,11 @@ import mx.tec.sonrisas.data.ChatRepository
 import mx.tec.sonrisas.data.ChildRepository
 import mx.tec.sonrisas.data.DailyLogRepository
 import mx.tec.sonrisas.data.NoticeRepository
+import mx.tec.sonrisas.data.PickupAuthorizationRepository
 import mx.tec.sonrisas.data.SesionRepository
 import mx.tec.sonrisas.domain.Child
 import mx.tec.sonrisas.domain.Message
+import mx.tec.sonrisas.domain.PickupAuthorization
 import mx.tec.sonrisas.domain.etiqueta
 import mx.tec.sonrisas.ui.components.ActividadUi
 import mx.tec.sonrisas.ui.components.TipoActividadUi
@@ -30,6 +32,7 @@ class PadreViewModel @Inject constructor(
     private val dailyLogRepository: DailyLogRepository,
     private val noticeRepository: NoticeRepository,
     private val chatRepository: ChatRepository,
+    private val pickupAuthorizationRepository: PickupAuthorizationRepository,
     private val sesionRepository: SesionRepository
 ) : ViewModel() {
 
@@ -45,8 +48,14 @@ class PadreViewModel @Inject constructor(
     var ninoSeleccionadoIndex by mutableStateOf(0)
         private set
 
+    var autorizacionHoy by mutableStateOf<PickupAuthorization?>(null)
+        private set
+
     val ninoActualId: String?
         get() = ninos.getOrNull(ninoSeleccionadoIndex)?.id
+
+    val childActual: Child?
+        get() = ninos.getOrNull(ninoSeleccionadoIndex)
 
     private var chatIdActual: String = ""
 
@@ -64,6 +73,12 @@ class PadreViewModel @Inject constructor(
                         if (child == null) {
                             flowOf(emptyList())
                         } else {
+                            launch {
+                                pickupAuthorizationRepository.observeTodayByChild(child.id).collect { auth ->
+                                    autorizacionHoy = auth
+                                }
+                            }
+
                             dailyLogRepository.observeToday(child.id).flatMapLatest { log ->
                                 if (log == null) {
                                     flowOf(emptyList())
@@ -99,6 +114,30 @@ class PadreViewModel @Inject constructor(
                     }
             } catch (e: Exception) {
                 estadoActividades = UiState.Error("Error al cargar actividades")
+            }
+        }
+    }
+
+    fun cargarAutorizacionHoy(childId: String) {
+        viewModelScope.launch {
+            try {
+                pickupAuthorizationRepository.observeTodayByChild(childId).collect { auth ->
+                    autorizacionHoy = auth
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun guardarAutorizacionTercero(autorizacion: PickupAuthorization, onListo: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                pickupAuthorizationRepository.save(autorizacion)
+                autorizacionHoy = autorizacion
+                onListo()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

@@ -241,3 +241,31 @@ fun Message.toEntity() = MessageEntity(
     isAviso = isAviso,
     hiddenForParent = hiddenForParent
 )
+
+// --- PickupAuthorization ---
+
+fun mx.tec.sonrisas.data.local.entities.PickupAuthorizationEntity.toDomain() = mx.tec.sonrisas.domain.PickupAuthorization(
+    id = id,
+    childId = childId,
+    childName = childName,
+    date = date,
+    authorizedPersonName = authorizedPersonName,
+    relationship = relationship,
+    phone = phone,
+    identificationType = identificationType,
+    notes = notes,
+    registeredByParentName = registeredByParentName
+)
+
+fun mx.tec.sonrisas.domain.PickupAuthorization.toEntity() = mx.tec.sonrisas.data.local.entities.PickupAuthorizationEntity(
+    id = id,
+    childId = childId,
+    childName = childName,
+    date = date,
+    authorizedPersonName = authorizedPersonName,
+    relationship = relationship,
+    phone = phone,
+    identificationType = identificationType,
+    notes = notes,
+    registeredByParentName = registeredByParentName
+)

@@ -41,6 +41,10 @@ class SesionRepository @Inject constructor() {
         return false
     }
 
+    fun entrarConSesion(usuario: String, nombre: String, rol: Rol) {
+        _sesion.value = Sesion(usuario = usuario, nombre = nombre, rol = rol)
+    }
+
     fun salir() {
         _sesion.value = null
     }

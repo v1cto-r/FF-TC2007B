@@ -30,6 +30,9 @@ object Route {
 
     const val INICIO_PADRE = "inicio_padre"
 
+    const val PADRE_AUTORIZAR_TERCERO = "padre_autorizar_tercero/{ninoId}"
+    fun padreAutorizarTercero(ninoId: String): String = "padre_autorizar_tercero/${Uri.encode(ninoId)}"
+
     const val CHAT_PADRE = "chat_padre/{ninoId}"
     fun chatPadre(ninoId: String): String = "chat_padre/${Uri.encode(ninoId)}"
 }

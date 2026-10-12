@@ -1,5 +1,6 @@
 package mx.tec.sonrisas.ui.screens.padre
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,7 +9,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.HowToReg
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -26,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import mx.tec.sonrisas.domain.PickupAuthorization
 import mx.tec.sonrisas.ui.components.ActividadUi
 import mx.tec.sonrisas.ui.components.AvatarCircular
 import mx.tec.sonrisas.ui.components.BottomBar
@@ -46,7 +52,9 @@ fun InicioPadreScreen(
     nombrePadre: String = "María",
     ninos: List<String> = listOf("Sofía", "Mateo"),
     ninoSeleccionado: Int = 0,
+    autorizacionHoy: PickupAuthorization? = null,
     onSeleccionarNino: (Int) -> Unit = {},
+    onAutorizarTercero: () -> Unit = {},
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
@@ -84,6 +92,55 @@ fun InicioPadreScreen(
                 )
             }
 
+            // Tarjeta de Autorización a Tercero
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .clickable(onClick = onAutorizarTercero),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = if (autorizacionHoy != null) CoralSuave else Color.White),
+                border = if (autorizacionHoy != null) BorderStroke(1.dp, Coral) else null,
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.HowToReg,
+                        contentDescription = null,
+                        tint = Coral,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = if (autorizacionHoy != null) "Tercero Autorizado para Hoy" else "Autorizar entrega a tercero",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = TextoOscuro
+                        )
+                        Text(
+                            text = if (autorizacionHoy != null)
+                                "${autorizacionHoy.authorizedPersonName} (${autorizacionHoy.relationship})"
+                            else
+                                "Registra quién pasará por tu hijo/a hoy",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextoGris
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronRight,
+                        contentDescription = null,
+                        tint = Coral,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (estado) {
                     UiState.Cargando -> EstadoCargando()
@@ -104,7 +161,7 @@ fun InicioPadreScreen(
                     )
 
                     is UiState.Exito -> LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         item { TituloResumen() }

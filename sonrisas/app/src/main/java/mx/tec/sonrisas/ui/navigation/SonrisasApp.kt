@@ -27,8 +27,19 @@ fun SonrisasApp() {
             val loginViewModel: LoginViewModel = hiltViewModel()
             LoginScreen(
                 errorMensaje = loginViewModel.errorMensaje,
+                esBiometricoRegistrado = loginViewModel.esBiometricoRegistrado,
+                mostrarDialogoRegistroBiometrico = loginViewModel.mostrarDialogoRegistroBiometrico,
                 onIniciarSesion = { correo, contrasena ->
                     loginViewModel.iniciarSesion(correo, contrasena)
+                },
+                onIniciarBiometricoExitoso = {
+                    loginViewModel.iniciarSesionBiometricoExitoso()
+                },
+                onConfirmarRegistroBiometrico = {
+                    loginViewModel.confirmarRegistroBiometrico()
+                },
+                onOmitirRegistroBiometrico = {
+                    loginViewModel.omitirRegistroBiometrico()
                 }
             )
         }

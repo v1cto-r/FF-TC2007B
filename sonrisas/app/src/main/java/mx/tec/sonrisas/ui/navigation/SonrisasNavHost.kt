@@ -10,18 +10,26 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import mx.tec.sonrisas.domain.Rol
 import mx.tec.sonrisas.domain.Sesion
+import mx.tec.sonrisas.ui.screens.admin.AdminAgregarAlumnosScreen
+import mx.tec.sonrisas.ui.screens.admin.AdminCrearGrupoScreen
+import mx.tec.sonrisas.ui.screens.admin.AdminDetalleSalonScreen
+import mx.tec.sonrisas.ui.screens.admin.AdminInicioScreen
+import mx.tec.sonrisas.ui.screens.admin.AdminInscripcionScreen
+import mx.tec.sonrisas.ui.screens.admin.AdminMuestra
+import mx.tec.sonrisas.ui.screens.admin.AdminSalonesScreen
 import mx.tec.sonrisas.ui.screens.maestra.ActivityFormScreen
+import mx.tec.sonrisas.ui.screens.maestra.BroadcastFormScreen
 import mx.tec.sonrisas.ui.screens.maestra.ChatListScreen
 import mx.tec.sonrisas.ui.screens.maestra.ChatMaestraScreen
 import mx.tec.sonrisas.ui.screens.maestra.CheckInFormScreen
 import mx.tec.sonrisas.ui.screens.maestra.CheckOutFormScreen
-import mx.tec.sonrisas.ui.screens.maestra.BroadcastFormScreen
 import mx.tec.sonrisas.ui.screens.maestra.InicioMaestraScreen
 import mx.tec.sonrisas.ui.screens.maestra.NinosScreen
 import mx.tec.sonrisas.ui.screens.maestra.PerfilNinoScreen
 import mx.tec.sonrisas.ui.screens.maestra.StayFormScreen
 import mx.tec.sonrisas.ui.screens.padre.ChatPadreScreen
 import mx.tec.sonrisas.ui.screens.padre.InicioPadreScreen
+import mx.tec.sonrisas.ui.screens.padre.PadreAutorizarTerceroScreen
 import mx.tec.sonrisas.ui.state.ActivityViewModel
 import mx.tec.sonrisas.ui.state.CheckInViewModel
 import mx.tec.sonrisas.ui.state.CheckOutViewModel
@@ -36,12 +44,16 @@ fun SonrisasNavHost(
     onSalir: () -> Unit
 ) {
     val nav = rememberNavController()
-    val destinoInicial = if (sesion.rol == Rol.MAESTRA) Route.INICIO_MAESTRA else Route.INICIO_PADRE
+    val destinoInicial = when (sesion.rol) {
+        Rol.MAESTRA -> Route.INICIO_MAESTRA
+        Rol.PADRE -> Route.INICIO_PADRE
+    }
 
     NavHost(
         navController = nav,
         startDestination = destinoInicial
     ) {
+        // --- MAESTRA ---
         composable(Route.INICIO_MAESTRA) {
             val viewModel: MaestraViewModel = hiltViewModel()
             LaunchedEffect(Unit) { viewModel.cargarInicio() }
@@ -70,31 +82,15 @@ fun SonrisasNavHost(
 
             NinosScreen(
                 estado = viewModel.estadoNinos,
-                onNinoClick = { child -> nav.navigate(Route.perfilNino(child.id)) },
+                onNinoClick = { nino ->
+                    nav.navigate(Route.perfilNino(nino.id))
+                },
                 onReintentar = { viewModel.cargarNinos() },
                 onTab = { indice ->
                     when (indice) {
                         0 -> nav.navigate(Route.INICIO_MAESTRA) { launchSingleTop = true }
                         1 -> {}
                         2 -> nav.navigate(Route.CHAT_LISTA_MAESTRA) { launchSingleTop = true }
-                    }
-                }
-            )
-        }
-
-        composable(Route.CHAT_LISTA_MAESTRA) {
-            val viewModel: MaestraViewModel = hiltViewModel()
-            LaunchedEffect(Unit) { viewModel.cargarConversaciones() }
-
-            ChatListScreen(
-                estado = viewModel.estadoConversaciones,
-                onConversacionClick = { child -> nav.navigate(Route.chatMaestra(child.id)) },
-                onReintentar = { viewModel.cargarConversaciones() },
-                onTab = { indice ->
-                    when (indice) {
-                        0 -> nav.navigate(Route.INICIO_MAESTRA) { launchSingleTop = true }
-                        1 -> nav.navigate(Route.NINOS) { launchSingleTop = true }
-                        2 -> {}
                     }
                 }
             )
@@ -122,7 +118,25 @@ fun SonrisasNavHost(
                     when (indice) {
                         0 -> nav.navigate(Route.INICIO_MAESTRA) { launchSingleTop = true }
                         1 -> nav.navigate(Route.NINOS) { launchSingleTop = true }
-                        2 -> nav.navigate(Route.chatMaestra(ninoId)) { launchSingleTop = true }
+                        2 -> nav.navigate(Route.CHAT_LISTA_MAESTRA) { launchSingleTop = true }
+                    }
+                }
+            )
+        }
+
+        composable(Route.CHAT_LISTA_MAESTRA) {
+            val viewModel: MaestraViewModel = hiltViewModel()
+            LaunchedEffect(Unit) { viewModel.cargarConversaciones() }
+
+            ChatListScreen(
+                estado = viewModel.estadoConversaciones,
+                onConversacionClick = { child -> nav.navigate(Route.chatMaestra(child.id)) },
+                onReintentar = { viewModel.cargarConversaciones() },
+                onTab = { indice ->
+                    when (indice) {
+                        0 -> nav.navigate(Route.INICIO_MAESTRA) { launchSingleTop = true }
+                        1 -> nav.navigate(Route.NINOS) { launchSingleTop = true }
+                        2 -> {}
                     }
                 }
             )
@@ -135,8 +149,8 @@ fun SonrisasNavHost(
             val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
             val viewModel: MaestraViewModel = hiltViewModel()
             LaunchedEffect(ninoId) {
-                viewModel.cargarMensajes(ninoId)
                 viewModel.cargarPerfilNino(ninoId)
+                viewModel.cargarMensajes(ninoId)
             }
             val nino = (viewModel.estadoPerfilNino as? UiState.Exito)?.datos?.child
 
@@ -167,13 +181,12 @@ fun SonrisasNavHost(
             val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
             val viewModel: CheckInViewModel = hiltViewModel()
             LaunchedEffect(ninoId) { viewModel.cargar(ninoId) }
-            val existente = (viewModel.estado as? UiState.Exito)?.datos?.checkIn
 
             CheckInFormScreen(
                 nombreMaestra = sesion.nombre,
+                checkInExistente = (viewModel.estado as? UiState.Exito)?.datos?.checkIn,
                 onAtras = { nav.popBackStack() },
-                onGuardar = { checkIn -> viewModel.guardar(ninoId, checkIn) { nav.popBackStack() } },
-                checkInExistente = existente
+                onGuardar = { checkIn -> viewModel.guardar(ninoId, checkIn) { nav.popBackStack() } }
             )
         }
 
@@ -184,11 +197,10 @@ fun SonrisasNavHost(
             val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
             val viewModel: StayViewModel = hiltViewModel()
             LaunchedEffect(ninoId) { viewModel.cargar(ninoId) }
-            val estadoActual = viewModel.estado
 
             StayFormScreen(
-                stayExistente = (estadoActual as? UiState.Exito)?.datos?.stay,
-                hayIngreso = estadoActual is UiState.Exito,
+                stayExistente = (viewModel.estado as? UiState.Exito)?.datos?.stay,
+                hayIngreso = viewModel.hayIngreso,
                 onAtras = { nav.popBackStack() },
                 onGuardar = { stay -> viewModel.guardar(ninoId, stay) { nav.popBackStack() } },
                 onIrACheckIn = { nav.navigate(Route.checkIn(ninoId)) { popUpTo(Route.STAY) { inclusive = true } } }
@@ -204,7 +216,7 @@ fun SonrisasNavHost(
             LaunchedEffect(ninoId) { viewModel.cargar(ninoId) }
 
             ActivityFormScreen(
-                hayIngreso = viewModel.estado is UiState.Exito,
+                hayIngreso = viewModel.hayIngreso,
                 onAtras = { nav.popBackStack() },
                 onGuardar = { nombre -> viewModel.guardar(ninoId, nombre) { nav.popBackStack() } },
                 onIrACheckIn = { nav.navigate(Route.checkIn(ninoId)) { popUpTo(Route.ACTIVITY) { inclusive = true } } }
@@ -221,6 +233,7 @@ fun SonrisasNavHost(
 
             CheckOutFormScreen(
                 nombreMaestra = sesion.nombre,
+                autorizacionHoy = viewModel.autorizacionHoy,
                 onAtras = { nav.popBackStack() },
                 onGuardar = { checkOut -> viewModel.guardar(ninoId, checkOut) { nav.popBackStack() } }
             )
@@ -248,6 +261,7 @@ fun SonrisasNavHost(
             )
         }
 
+        // --- PADRE ---
         composable(Route.INICIO_PADRE) {
             val viewModel: PadreViewModel = hiltViewModel()
             LaunchedEffect(Unit) { viewModel.cargarInicio() }
@@ -257,12 +271,41 @@ fun SonrisasNavHost(
                 nombrePadre = sesion.nombre,
                 ninos = viewModel.ninos.map { it.fullName.substringBefore(" ") },
                 ninoSeleccionado = viewModel.ninoSeleccionadoIndex,
+                autorizacionHoy = viewModel.autorizacionHoy,
                 onSeleccionarNino = { viewModel.seleccionarNino(it) },
+                onAutorizarTercero = {
+                    viewModel.ninoActualId?.let { id ->
+                        nav.navigate(Route.padreAutorizarTercero(id))
+                    }
+                },
                 onReintentar = { viewModel.cargarInicio() },
                 onTab = { indice ->
                     when (indice) {
                         0 -> {}
                         1 -> viewModel.ninoActualId?.let { nav.navigate(Route.chatPadre(it)) { launchSingleTop = true } }
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Route.PADRE_AUTORIZAR_TERCERO,
+            arguments = listOf(navArgument("ninoId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
+            val viewModel: PadreViewModel = hiltViewModel()
+            LaunchedEffect(ninoId) { viewModel.cargarAutorizacionHoy(ninoId) }
+            val nino = viewModel.ninos.firstOrNull { it.id == ninoId }
+
+            PadreAutorizarTerceroScreen(
+                childId = ninoId,
+                childName = nino?.fullName ?: "Alumno/a",
+                parentName = sesion.nombre,
+                autorizacionExistente = viewModel.autorizacionHoy,
+                onAtras = { nav.popBackStack() },
+                onGuardar = { autorizacion ->
+                    viewModel.guardarAutorizacionTercero(autorizacion) {
+                        nav.popBackStack()
                     }
                 }
             )
