@@ -1,12 +1,13 @@
+import uuid
+
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
+from app.auth.access import Access, load_access
 from app.auth.permissions import action_allowed, role_actions
 from app.auth.token import TokenClaims, decode_session_token
 from app.database.connection import get_db
-from app.storage.scopes import load_scopes
-from app.storage.service import CurrentUser
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -19,19 +20,39 @@ def get_claims(token: str = Depends(oauth2_scheme)) -> TokenClaims:
         raise HTTPException(401, "Invalid token", headers={"WWW-Authenticate": "Bearer"})
 
 
+def _check(claims: TokenClaims, db: Session, action: str, allow_pending: bool) -> None:
+    if claims.pending and not allow_pending:
+        raise HTTPException(403, "Profile setup pending: change your password first")
+    if not action_allowed(action, role_actions(db, claims.role)):
+        raise HTTPException(403, "Not allowed")
+    # Who made every change in this request: read by the audit log when the session flushes
+    db.info["actor_id"] = uuid.UUID(claims.sub)
+
+
 def require_action(action: str, allow_pending: bool = False):
     """Dependency factory: `claims = Depends(require_action("child:read"))`."""
     def check(claims: TokenClaims = Depends(get_claims), db: Session = Depends(get_db)) -> TokenClaims:
-        if claims.pending and not allow_pending:
-            raise HTTPException(403, "Profile setup pending: change your password first")
-        if not action_allowed(action, role_actions(db, claims.role)):
-            raise HTTPException(403, "Not allowed")
+        _check(claims, db, action, allow_pending)
         return claims
+    check.action = action  # read by scripts/gen_docs.py
     return check
 
 
-def get_current_user(claims: TokenClaims = Depends(get_claims), db: Session = Depends(get_db)) -> CurrentUser:
-    """Used by the storage router, which does its own policy checks from the user's scopes."""
-    if claims.pending:
-        raise HTTPException(403, "Profile setup pending: change your password first")
-    return CurrentUser(id=claims.sub, role=claims.role, scopes=load_scopes(db, claims.sub, claims.role))
+def require_access(action: str):
+    """Like require_action, but also resolves what the user may reach: `access = Depends(require_access("child:read"))`."""
+    def check(claims: TokenClaims = Depends(get_claims), db: Session = Depends(get_db)) -> Access:
+        _check(claims, db, action, allow_pending=False)
+        return load_access(db, claims)
+    check.action = action  # read by scripts/gen_docs.py
+    return check
+
+
+def authenticated():
+    """Any logged-in user whose profile is set up (no specific action), e.g. editing your own profile."""
+    def check(claims: TokenClaims = Depends(get_claims), db: Session = Depends(get_db)) -> Access:
+        if claims.pending:
+            raise HTTPException(403, "Profile setup pending: change your password first")
+        db.info["actor_id"] = uuid.UUID(claims.sub)
+        return load_access(db, claims)
+    check.action = "any signed-in user"  # read by scripts/gen_docs.py
+    return check
