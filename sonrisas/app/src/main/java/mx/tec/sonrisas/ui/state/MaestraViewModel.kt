@@ -182,7 +182,7 @@ class MaestraViewModel @Inject constructor(
     fun deleteMessage(messageId: String) {
         viewModelScope.launch {
             try {
-                chatRepository.hideForParent(messageId)
+                chatRepository.hideForTeacher(messageId)
             } catch (e: Exception) {
                 e.printStackTrace()
             }

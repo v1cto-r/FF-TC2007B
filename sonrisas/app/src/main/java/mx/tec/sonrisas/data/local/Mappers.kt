@@ -227,7 +227,8 @@ fun MessageEntity.toDomain() = Message(
     sent = sent,
     synced = synced,
     isAviso = isAviso,
-    hiddenForParent = hiddenForParent
+    hiddenForParent = hiddenForParent,
+    hiddenForTeacher = hiddenForTeacher
 )
 
 fun Message.toEntity() = MessageEntity(
@@ -239,7 +240,8 @@ fun Message.toEntity() = MessageEntity(
     sent = sent,
     synced = synced,
     isAviso = isAviso,
-    hiddenForParent = hiddenForParent
+    hiddenForParent = hiddenForParent,
+    hiddenForTeacher = hiddenForTeacher
 )
 
 // --- PickupAuthorization ---
