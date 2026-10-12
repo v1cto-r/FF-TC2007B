@@ -20,10 +20,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import mx.tec.sonrisas.domain.PickupAuthorization
+import mx.tec.sonrisas.ui.components.CampoDropdown
 import mx.tec.sonrisas.ui.components.CampoTexto
 import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.*
+
+private val opcionesIdentificacion = listOf(
+    "INE / Credencial para Votar",
+    "Licencia de Conducir",
+    "Pasaporte",
+    "Cédula Profesional",
+    "Otra Identificación Oficial"
+)
 
 @Composable
 fun PadreAutorizarTerceroScreen(
@@ -40,7 +49,9 @@ fun PadreAutorizarTerceroScreen(
     var personaNombre by remember(autorizacionExistente) { mutableStateOf(autorizacionExistente?.authorizedPersonName ?: "") }
     var parentesco by remember(autorizacionExistente) { mutableStateOf(autorizacionExistente?.relationship ?: "") }
     var telefono by remember(autorizacionExistente) { mutableStateOf(autorizacionExistente?.phone ?: "") }
-    var identificacion by remember(autorizacionExistente) { mutableStateOf(autorizacionExistente?.identificationType ?: "INE") }
+    var identificacion by remember(autorizacionExistente) {
+        mutableStateOf(autorizacionExistente?.identificationType ?: opcionesIdentificacion.first())
+    }
     var observaciones by remember(autorizacionExistente) { mutableStateOf(autorizacionExistente?.notes ?: "") }
 
     Scaffold(modifier = modifier, containerColor = Fondo) { padding ->
@@ -83,10 +94,11 @@ fun PadreAutorizarTerceroScreen(
                     onValorChange = { telefono = it }
                 )
 
-                CampoTexto(
-                    etiqueta = "Tipo de identificación (ej. INE, Licencia)",
-                    valor = identificacion,
-                    onValorChange = { identificacion = it }
+                CampoDropdown(
+                    etiqueta = "Tipo de identificación",
+                    valorSeleccionado = identificacion,
+                    opciones = opcionesIdentificacion,
+                    onSeleccionar = { identificacion = it }
                 )
 
                 CampoTexto(
