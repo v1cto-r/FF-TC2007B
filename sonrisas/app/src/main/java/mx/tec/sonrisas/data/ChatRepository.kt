@@ -24,7 +24,9 @@ import mx.tec.sonrisas.domain.Message
  * 2. Para el Padre: Los mensajes de las maestras NO se borran solos (disponibles 24/7).
  *    El padre puede eliminar/ocultar mensajes manualmente con pulsación larga ('hiddenForParent').
  * 3. 'isAviso / Importante': Se puede fijar/marcar mediante pulsación larga (estilo WhatsApp)
- *    y jamás se oculta en el lado de la maestra.
+ *    y jamás se oculta en el lado de la maestra por el paso de la semana.
+ * 4. Eliminar mensaje = "eliminar para mí": cada rol oculta el mensaje solo de su lado
+ *    ('hiddenForParent' / 'hiddenForTeacher'). El mensaje permanece en BD y la otra persona lo sigue viendo.
  */
 interface ChatRepository {
     fun observeMessagesForTeacher(chatId: String): Flow<List<Message>>
@@ -33,6 +35,7 @@ interface ChatRepository {
     suspend fun send(message: Message)
     suspend fun toggleImportant(messageId: String)
     suspend fun hideForParent(messageId: String)
+    suspend fun hideForTeacher(messageId: String)
 }
 
 @Singleton
@@ -47,7 +50,7 @@ class ChatRepositoryImpl @Inject constructor(
 
     override fun observeMessagesForTeacher(chatId: String): Flow<List<Message>> =
         dao.observeByChat(chatId).map { rows ->
-            val domainMessages = rows.map { it.toDomain() }
+            val domainMessages = rows.map { it.toDomain() }.filter { !it.hiddenForTeacher }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 filtrarMensajesInvisiblesMaestra(chatId, domainMessages)
             } else {
@@ -78,6 +81,11 @@ class ChatRepositoryImpl @Inject constructor(
     override suspend fun hideForParent(messageId: String) {
         val entity = dao.getById(messageId) ?: return
         dao.save(entity.copy(hiddenForParent = true))
+    }
+
+    override suspend fun hideForTeacher(messageId: String) {
+        val entity = dao.getById(messageId) ?: return
+        dao.save(entity.copy(hiddenForTeacher = true))
     }
 
     @RequiresApi(Build.VERSION_CODES.O)

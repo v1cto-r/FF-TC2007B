@@ -13,5 +13,6 @@ data class Message(
     val sent: Boolean = false,
     val synced: Boolean = false,
     val isAviso: Boolean = false,
-    val hiddenForParent: Boolean = false
+    val hiddenForParent: Boolean = false,
+    val hiddenForTeacher: Boolean = false
 )
