@@ -9,4 +9,8 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 
 def get_db():
     with SessionLocal() as db:
-        yield db
+        try:
+            yield db
+        except Exception:
+            db.rollback()  # e.g. an IntegrityError mid-request: leave the session clean
+            raise
