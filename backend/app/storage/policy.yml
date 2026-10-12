@@ -1,6 +1,7 @@
-# Archivo donde se ponen limites para interactuar con el storage S3
+# Limits for talking to the S3 storage (RustFS). Who may upload / read what is decided in code
+# (app/storage/rules.py) from the database; this file only says WHAT is acceptable.
 
-# Primero el tipo de archivos y su tamaño
+# Kinds of file: allowed content types and the biggest size
 kinds:
   image:
     content_types:
@@ -14,34 +15,22 @@ kinds:
       - application/vnd.openxmlformats-officedocument.wordprocessingml.document
     max_bytes: 10485760
 
-# Que buckets existen, y que tipo de archivos
+# Which buckets exist and which kinds each one may hold
 buckets:
-  estancias: {kinds: [image]}   # estancia logos
+  estancias: {kinds: [image]}
   images:    {kinds: [image]}
-  files:     {kinds: [file]}
+  files:     {kinds: [image, file]}   # a document can be a scan or a photo too
 
-# Por rol, que acciones pueden tomar, LEAST PRIVILEGES
-# Si no necesitan subir información, no hay porque darles la oportunidad
-roles:
-  PADRE:
-    upload:
-      - {bucket: images, kind: image, scope: child}
-      - {bucket: files, kind: file, scope: child}
-    download: {images: [child], files: [child]}
-    # para rates por rol
-    # rate_limits: {upload: {per_minute: 5, per_day: 50}}
-  DOCENTE:
-    upload:
-      - {bucket: images, kind: image, scope: salon}
-    download: {images: [salon, child], files: [child]}
-  ADMIN:
-    upload:
-      - {bucket: estancias, kind: image, scope: estancia, object_name: logo}
-    download: {estancias: [estancia], images: [estancia, salon, child], files: [estancia, salon, child]}
-  ORG:
-    upload: []
-    download: {estancias: [any], images: [any], files: [any]}
+# Where each purpose is stored, and which kinds it accepts
+purposes:
+  ACTIVITY_IMAGE:     {bucket: images,    kinds: [image]}
+  MESSAGE_ATTACHMENT: {bucket: images,    kinds: [image]}
+  CHILD_PHOTO:        {bucket: images,    kinds: [image]}
+  USER_AVATAR:        {bucket: images,    kinds: [image]}
+  ESTANCIA_LOGO:      {bucket: estancias, kinds: [image]}
+  CHILD_DOCUMENT:     {bucket: files,     kinds: [image, file]}
 
+# Fixed windows, per user, counted in Postgres (see app/rate_limit.py)
 rate_limits:
   upload:   {per_minute: 10, per_day: 200}
   download: {per_minute: 300}

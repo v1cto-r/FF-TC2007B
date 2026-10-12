@@ -1,4 +1,4 @@
-from .errors import InvalidUpload, RateLimitExceeded, StorageForbidden
-from .service import CurrentUser, StorageService
+from .errors import InvalidUpload, ObjectMissing, StorageError
+from .service import StorageService
 
-__all__ = ["CurrentUser", "StorageService", "InvalidUpload", "RateLimitExceeded", "StorageForbidden"]
+__all__ = ["StorageService", "InvalidUpload", "ObjectMissing", "StorageError"]

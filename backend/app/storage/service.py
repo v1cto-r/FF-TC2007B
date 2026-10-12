@@ -1,7 +1,5 @@
-import mimetypes
-import uuid
-from collections.abc import Mapping
-from dataclasses import dataclass, field
+"""The S3 side only: presigned URLs, and looking at an uploaded object. No authorization here."""
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -11,50 +9,26 @@ from botocore.exceptions import ClientError
 
 from app.config import Settings
 
-from .errors import InvalidUpload, StorageForbidden
+from .magic import HEAD_BYTES
 from .policy import Policy
-from .rate_limit import RateLimiter
-
-_EXT = {
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-    "application/pdf": "pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-}
 
 
 @dataclass(frozen=True)
-class CurrentUser:
-    id: str
-    role: str
-    # scope type -> ids the user may act on, e.g. {"child": {...}, "salon": {...}, "estancia": {...}}
-    scopes: Mapping[str, frozenset[str]] = field(default_factory=dict)
-
-    def can(self, scope: str, scope_id: str) -> bool:
-        return scope_id in self.scopes.get(scope, ())
-
-
-@dataclass(frozen=True)
-class PresignedUpload:
+class SignedUrl:
     url: str
-    key: str
-    bucket: str
     headers: dict[str, str]
     expires_at: datetime
 
 
 @dataclass(frozen=True)
-class PresignedDownload:
-    url: str
-    expires_at: datetime
+class ObjectInfo:
+    size: int
+    content_type: str
 
 
 class StorageService:
-    def __init__(self, settings: Settings, policy: Policy, rate_limiter: RateLimiter,
-                 s3_client: Any = None, presign_client: Any = None):
-        self._policy = policy
-        self._limiter = rate_limiter
+    def __init__(self, settings: Settings, policy: Policy, s3_client: Any = None, presign_client: Any = None):
+        self.policy = policy
         cfg = Config(signature_version="s3v4", s3={"addressing_style": "path"})
 
         def make_client(endpoint: str):
@@ -69,62 +43,38 @@ class StorageService:
         self._presign = presign_client or make_client(settings.s3_public_endpoint)
 
     def ensure_buckets(self) -> None:
-        for bucket in self._policy.buckets:
+        for bucket in self.policy.buckets:
             try:
                 self._s3.head_bucket(Bucket=bucket)
             except ClientError:
                 self._s3.create_bucket(Bucket=bucket)
 
-    def create_upload(self, user: CurrentUser, bucket: str, kind: str, scope_id: str,
-                      content_type: str, size: int) -> PresignedUpload:
-        role = self._policy.roles.get(user.role)
-        rule = next((r for r in (role.upload if role else [])
-                     if r.bucket == bucket and r.kind == kind), None)
-        if rule is None:
-            raise StorageForbidden("Role cannot upload this kind to this bucket")
-
-        kind_policy = self._policy.kinds[kind]
-        if content_type not in kind_policy.content_types:
-            raise InvalidUpload(f"Content type not allowed: {content_type}")
-        if size <= 0 or size > kind_policy.max_bytes:
-            raise InvalidUpload(f"Size must be between 1 and {kind_policy.max_bytes} bytes")
-
-        ext = _EXT.get(content_type) or (mimetypes.guess_extension(content_type) or "").lstrip(".")
-        if not user.can(rule.scope, scope_id):
-            raise StorageForbidden(f"Not allowed on this {rule.scope}")
-        name = rule.object_name or uuid.uuid4().hex
-        key = f"{rule.scope}/{scope_id}/{name}.{ext}" if ext else f"{rule.scope}/{scope_id}/{name}"
-
-        # Counted only after authz/validation, so denied requests don't burn quota
-        self._limiter.check(user.id, "upload", self._policy.limits_for(user.role).upload)
-
-        expires = self._policy.upload_expires
+    def presign_put(self, bucket: str, key: str, content_type: str, size: int) -> SignedUrl:
+        expires = self.policy.upload_expires
         url = self._presign.generate_presigned_url(
             "put_object",
             Params={"Bucket": bucket, "Key": key, "ContentType": content_type, "ContentLength": size},
             ExpiresIn=expires,
         )
-        return PresignedUpload(
-            url=url, key=key, bucket=bucket,
-            headers={"Content-Type": content_type, "Content-Length": str(size)},
-            expires_at=datetime.now(timezone.utc) + timedelta(seconds=expires),
-        )
+        return SignedUrl(url, {"Content-Type": content_type, "Content-Length": str(size)},
+                         datetime.now(timezone.utc) + timedelta(seconds=expires))
 
-    def create_download(self, user: CurrentUser, bucket: str, key: str) -> PresignedDownload:
-        role = self._policy.roles.get(user.role)
-        if role is None or bucket not in role.download:
-            raise StorageForbidden("Role cannot read this bucket")
-        parts = key.split("/")
-        if len(parts) != 3 or not all(parts) or ".." in parts:
-            raise InvalidUpload("Invalid key")
-        scopes = role.download[bucket]
-        if "any" not in scopes and not (parts[0] in scopes and user.can(parts[0], parts[1])):
-            raise StorageForbidden("Not allowed to read this object")
-
-        self._limiter.check(user.id, "download", self._policy.limits_for(user.role).download)
-
-        expires = self._policy.download_expires
+    def presign_get(self, bucket: str, key: str) -> SignedUrl:
+        expires = self.policy.download_expires
         url = self._presign.generate_presigned_url(
-            "get_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=expires,
-        )
-        return PresignedDownload(url=url, expires_at=datetime.now(timezone.utc) + timedelta(seconds=expires))
+            "get_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=expires)
+        return SignedUrl(url, {}, datetime.now(timezone.utc) + timedelta(seconds=expires))
+
+    def head(self, bucket: str, key: str) -> ObjectInfo | None:
+        """Size and content type of the stored object, or None if it was never uploaded."""
+        try:
+            r = self._s3.head_object(Bucket=bucket, Key=key)
+        except ClientError as e:
+            if e.response.get("Error", {}).get("Code") in ("404", "NoSuchKey", "NotFound"):
+                return None
+            raise
+        return ObjectInfo(size=r["ContentLength"], content_type=r.get("ContentType", ""))
+
+    def read_head(self, bucket: str, key: str) -> bytes:
+        r = self._s3.get_object(Bucket=bucket, Key=key, Range=f"bytes=0-{HEAD_BYTES - 1}")
+        return r["Body"].read()

@@ -2,15 +2,9 @@ class StorageError(Exception):
     pass
 
 
-class StorageForbidden(StorageError):
-    pass
-
-
 class InvalidUpload(StorageError):
-    pass
+    """The requested type / size isn't acceptable, or the uploaded bytes don't match what was declared."""
 
 
-class RateLimitExceeded(StorageError):
-    def __init__(self, retry_after: int):
-        super().__init__("Rate limit exceeded")
-        self.retry_after = retry_after
+class ObjectMissing(StorageError):
+    """The client never uploaded the object."""
