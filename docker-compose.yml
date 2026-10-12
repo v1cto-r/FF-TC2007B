@@ -7,15 +7,18 @@ networks:
 services:
   ff_api:
     build:
-      context: ./api
+      context: ./backend
     container_name: FF_Api
     env_file: .env
     environment:
       DB_HOST: ff_postgres
-      S3_HOST: ff_rustfs
+      S3_HOST: rustfs
       S3_PORT: "9000"
     ports:
       - "5005:5005"
+    networks:
+      - default
+      - edge # nginx (hand_warmer) reaches it as FF_Api:5005
     restart: unless-stopped
     depends_on:
       - ff_postgres
@@ -37,6 +40,11 @@ services:
   ff_rustfs:
     image: rustfs/rustfs:latest
     container_name: FF_RustFS
+    networks:
+      default:
+        aliases:
+          - rustfs # botocore rejects hostnames with underscores (ff_rustfs)
+      edge: {} # nginx (hand_warmer) reaches it as FF_RustFS:9000
     ports:
       - "5003:9000" # S3 API Port
       - "5004:9001" # Web Console Port
@@ -50,6 +58,59 @@ services:
       RUSTFS_CONSOLE_ENABLE: "true"
       RUSTFS_CONSOLE_ADDRESS: ":9001"
     restart: unless-stopped
+
+  # --- Tests: `docker compose --profile test run --rm --build ff_api_test` -----------------------
+  # Throwaway Postgres and RustFS, separate from the real ones; nothing here is persisted.
+  ff_test_postgres:
+    profiles: [test]
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ff
+      POSTGRES_PASSWORD: ff
+      POSTGRES_DB: ff_test
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ff -d ff_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  ff_test_rustfs:
+    profiles: [test]
+    image: rustfs/rustfs:latest
+    networks:
+      default:
+        aliases:
+          - rustfs-test # botocore rejects hostnames with underscores
+    environment:
+      RUSTFS_ACCESS_KEY: test-access-key
+      RUSTFS_SECRET_KEY: test-secret-key
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ENABLE: "false"
+
+  ff_api_test:
+    profiles: [test]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+    environment:
+      POSTGRES_USER: ff
+      POSTGRES_PASSWORD: ff
+      POSTGRES_DB: ff_test
+      DB_HOST: ff_test_postgres
+      S3_HOST: rustfs-test
+      S3_PORT: "9000"
+      S3_PUBLIC_ENDPOINT: http://rustfs-test:9000
+      S3_ACCESS_KEY: test-access-key
+      S3_SECRET_KEY: test-secret-key
+      S3_INTEGRATION: "1" # also run the tests that talk to the real RustFS
+    depends_on:
+      ff_test_postgres:
+        condition: service_healthy
+      ff_test_rustfs:
+        condition: service_started
 
 volumes:
   rustfs_data:

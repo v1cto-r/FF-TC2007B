@@ -34,7 +34,6 @@ def require_action(action: str, allow_pending: bool = False):
     def check(claims: TokenClaims = Depends(get_claims), db: Session = Depends(get_db)) -> TokenClaims:
         _check(claims, db, action, allow_pending)
         return claims
-    check.action = action  # read by scripts/gen_docs.py
     return check
 
 
@@ -43,7 +42,6 @@ def require_access(action: str):
     def check(claims: TokenClaims = Depends(get_claims), db: Session = Depends(get_db)) -> Access:
         _check(claims, db, action, allow_pending=False)
         return load_access(db, claims)
-    check.action = action  # read by scripts/gen_docs.py
     return check
 
 
@@ -54,5 +52,4 @@ def authenticated():
             raise HTTPException(403, "Profile setup pending: change your password first")
         db.info["actor_id"] = uuid.UUID(claims.sub)
         return load_access(db, claims)
-    check.action = "any signed-in user"  # read by scripts/gen_docs.py
     return check

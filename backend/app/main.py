@@ -1,40 +1,73 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 
 from app import starter
+from app.auth.security import load_wordlist
 from app.config import settings
-from app.routers import storage as storage_router
+from app.database.connection import SessionLocal
+from app.rate_limit import rate_limit
+from app.routers import (
+    auth as auth_router, children as children_router, daily_logs as daily_logs_router,
+    estancias as estancias_router, files as files_router, messages as messages_router,
+    notices as notices_router, salones as salones_router, users as users_router,
+)
 from app.storage import StorageService
 from app.storage.policy import load_policy
-from app.storage.rate_limit import InMemoryRateLimiter
+from app.storage.rules import expire_pending
+
+log = logging.getLogger("uvicorn.error")
+
+
+def _expire_pending_uploads(ttl_seconds: int) -> None:
+    with SessionLocal() as db:
+        n = expire_pending(db, ttl_seconds)
+        if n:
+            log.info("storage: expired %d unconfirmed uploads", n)
+
 
 # Toda esta función corre cuando se inicia fastapi
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Creates the DB/tables if empty (and sample data when DEBUG/TEST is set). Blocking, so off the event loop.
     await asyncio.to_thread(starter.run)
-    app.state.storage = StorageService(settings, load_policy(settings), InMemoryRateLimiter())
+    load_wordlist()  # words for first-time passwords
+    app.state.storage = StorageService(settings, load_policy(settings))
     try:
         app.state.storage.ensure_buckets()
     except Exception as e:  # storage down shouldn't take the whole API down
-        logging.getLogger("uvicorn.error").warning("Could not ensure S3 buckets: %s", e)
+        log.warning("Could not ensure S3 buckets: %s", e)
+    await asyncio.to_thread(_expire_pending_uploads, app.state.storage.policy.upload_expires)
     yield
 
-app = FastAPI(title="ff_api", lifespan=lifespan)
+# Every endpoint gets this default limit (per user, or per IP when not logged in); routes can add stricter ones
+app = FastAPI(title="ff_api", lifespan=lifespan, dependencies=[Depends(rate_limit("global", 120, 60))])
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], #TODO: ** Cambiar a que solo la app la pueda mandar a llamar
     allow_credentials=True,
-    allow_methods=["POST", "GET", "PUT", "PATCH", "OPTIONS"],
+    allow_methods=["POST", "GET", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
-app.include_router(storage_router.router)
 
-@app.get("/health")
+@app.exception_handler(IntegrityError)
+async def integrity_error(request: Request, exc: IntegrityError):
+    """Two requests racing for the same unique value (email, salon name, log of the day...): the loser gets a 409."""
+    return JSONResponse(status_code=409, content={"detail": "Conflict: that record already exists or is in use"})
+
+
+ROUTERS = (auth_router, users_router, estancias_router, salones_router, children_router, daily_logs_router,
+           notices_router, messages_router, files_router)
+for r in ROUTERS:
+    app.include_router(r.router)
+
+@app.get("/health", tags=["health"])
 def health():
     return {"status": "ok"}

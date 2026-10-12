@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,12 +30,26 @@ class Settings(BaseSettings):
     storage_upload_expires: int = 300
     storage_download_expires: int = 900
 
-    secret_key: str
+    # Two different symmetric keys: a leaked session key can't forge refresh tokens
+    session_secret_key: str
+    refresh_secret_key: str
     jwt_algorithm: str = "HS256"
+    session_ttl_minutes: int = 5
+    refresh_ttl_days: int = 7
+
+    # Created on start if there is no ORG user yet. Must be changed on first login.
+    default_org_email: str = "admin"
+    default_org_password: str = "admin"
 
     # Either one makes the starter load sample data into an empty database
     debug: bool = False
     test: bool = False
+
+    @model_validator(mode="after")
+    def _keys_differ(self):
+        if self.session_secret_key == self.refresh_secret_key:
+            raise ValueError("SESSION_SECRET_KEY and REFRESH_SECRET_KEY must be different")
+        return self
 
     @property
     def s3_endpoint(self) -> str:

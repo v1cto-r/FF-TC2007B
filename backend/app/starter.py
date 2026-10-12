@@ -1,22 +1,30 @@
 """Runs once when the API starts: makes sure Postgres has the Sonrisas schema.
 
 1. Waits for Postgres, and creates the database itself if it doesn't exist.
-2. Creates every table (and enum) from `app.database.models` when any are missing.
-3. If the database has no users yet and DEBUG or TEST is set in .env, loads sample data.
+2. Brings the schema to the latest Alembic revision. A database that was created by the old
+   `create_all` (tables but no `alembic_version`) is stamped at the baseline first.
+3. Seeds the role -> actions table when it is empty.
+4. If the database has no users yet and DEBUG or TEST is set in .env, loads sample data.
+5. If there is no ORG user, creates the default one (DEFAULT_ORG_EMAIL / DEFAULT_ORG_PASSWORD).
 
 Safe to run on every start: it never touches a database that already has data.
 """
 import logging
+from pathlib import Path
 import time
 import uuid
 from datetime import date, time as dtime
 
 import bcrypt
+from alembic import command
+from alembic.config import Config as AlembicConfig
 from sqlalchemy import create_engine, inspect, select, text
 from sqlalchemy.engine import Engine, URL, make_url
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
+from app.auth.permissions import DEFAULT_ROLE_ACTIONS
+from app.auth.security import hash_password
 from app.config import Settings, settings
 from app.database import models as m
 
@@ -34,6 +42,7 @@ def run(cfg: Settings = settings) -> None:
     engine = create_engine(url)
     try:
         _ensure_tables(engine)
+        _seed_role_actions(engine)
         if _has_users(engine):
             log.info("starter: database already has data, nothing to do")
         elif cfg.debug or cfg.test:
@@ -41,6 +50,7 @@ def run(cfg: Settings = settings) -> None:
             log.info("starter: sample data loaded")
         else:
             log.info("starter: database is empty, DEBUG/TEST not set, skipping sample data")
+        _ensure_default_org(engine, cfg)
     finally:
         engine.dispose()
 
@@ -69,13 +79,46 @@ def _ensure_database(url: URL) -> None:
         admin.dispose()
 
 
+BASELINE_REVISION = "0001"
+ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
+
+
+def _alembic_config(connection) -> AlembicConfig:
+    cfg = AlembicConfig(str(ALEMBIC_INI))
+    cfg.set_main_option("script_location", str(ALEMBIC_INI.parent / "migrations"))
+    cfg.attributes["connection"] = connection
+    return cfg
+
+
 def _ensure_tables(engine: Engine) -> None:
-    existing = set(inspect(engine).get_table_names(schema=m.SCHEMA))
-    missing = set(m.Base.metadata.tables[t].name for t in m.Base.metadata.tables) - existing
-    if missing:
-        # checkfirst (default) skips tables that already exist
-        m.Base.metadata.create_all(engine)
-        log.info("starter: created tables: %s", ", ".join(sorted(missing)))
+    """Stamp pre-Alembic databases, then upgrade to head."""
+    tables = set(inspect(engine).get_table_names(schema=m.SCHEMA))
+    with engine.begin() as conn:
+        cfg = _alembic_config(conn)
+        if "users" in tables and "alembic_version" not in tables:
+            command.stamp(cfg, BASELINE_REVISION)
+            log.info("starter: existing database stamped at %s", BASELINE_REVISION)
+        command.upgrade(cfg, "head")
+
+
+def _seed_role_actions(engine: Engine) -> None:
+    with Session(engine) as db, db.begin():
+        if db.execute(select(m.RoleAction.id).limit(1)).first() is None:
+            db.add_all(m.RoleAction(role=role, action=a) for role, actions in DEFAULT_ROLE_ACTIONS.items() for a in actions)
+            log.info("starter: seeded role actions")
+
+
+def _ensure_default_org(engine: Engine, cfg: Settings) -> None:
+    """First-time access: an ORG user whose profile is pending, so the password must be changed on first login."""
+    with Session(engine) as db, db.begin():
+        if db.execute(select(m.User.id).where(m.User.role == m.UserRole.ORG).limit(1)).first():
+            return
+        user = m.User(id=uuid.uuid4(), email=cfg.default_org_email.strip().lower(), full_name="Organización",
+                      password_hash=hash_password(cfg.default_org_password), role=m.UserRole.ORG)
+        db.add(user)
+        db.flush()
+        db.add(m.UserProfile(user_id=user.id, pending=True))
+        log.info("starter: created default ORG user %s", user.email)
 
 
 def _has_users(engine: Engine) -> bool:
@@ -111,6 +154,8 @@ def _load_sample_data(engine: Engine) -> None:
         db.add(estancia)
         db.flush()
         maestra.estancia_id = estancia.id
+        for parent in (padre, *others.values()):
+            parent.estancia_id = estancia.id
 
         salon = m.Salon(id=uuid.uuid4(), estancia_id=estancia.id, name="Prescolar A",
                         group_type=m.GroupType.P, docente_id=maestra.id)
@@ -123,11 +168,10 @@ def _load_sample_data(engine: Engine) -> None:
         ]
         children = []
         for full_name, parent in roster:
-            child = m.Child(id=uuid.uuid4(), estancia_id=estancia.id, salon_id=salon.id, full_name=full_name)
+            child = m.Child(id=uuid.uuid4(), estancia_id=estancia.id, salon_id=salon.id, parent_id=parent.id,
+                            full_name=full_name)
             db.add(child)
             db.flush()
-            db.add(m.ChildParent(id=uuid.uuid4(), child_id=child.id, parent_id=parent.id,
-                                 relationship_label="Madre/Padre", is_primary=True))
             children.append(child)
 
         sofia = children[0]

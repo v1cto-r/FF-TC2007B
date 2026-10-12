@@ -8,3 +8,5 @@ bcrypt
 pydantic
 boto3
 pyyaml
+python-multipart
+alembic
