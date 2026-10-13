@@ -13,6 +13,9 @@ data class Message(
     val sent: Boolean = false,
     val synced: Boolean = false,
     val isAviso: Boolean = false,
-    val hiddenForParent: Boolean = false,
-    val hiddenForTeacher: Boolean = false
+    // Soft delete shared by both sides (mirrors status = DELETED in the API).
+    // The row stays in the database, it is just never shown.
+    val deleted: Boolean = false,
+    // true = deleted on this device but the server hasn't been told yet.
+    val deletePending: Boolean = false
 )

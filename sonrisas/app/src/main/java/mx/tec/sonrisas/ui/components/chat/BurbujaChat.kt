@@ -47,6 +47,7 @@ fun BurbujaChat(
     modifier: Modifier = Modifier,
     avatarRes: Int? = null,
     onToggleImportante: ((Message) -> Unit)? = null,
+    // null = this user can't delete (the API only lets the parent do it).
     onEliminar: ((Message) -> Unit)? = null
 ) {
     var menuAbierto by remember { mutableStateOf(false) }
@@ -153,32 +154,34 @@ fun BurbujaChat(
                         onToggleImportante?.invoke(message)
                     }
                 )
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = "Eliminar mensaje",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Delete,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    onClick = {
-                        menuAbierto = false
-                        confirmarEliminar = true
-                    }
-                )
+                if (onEliminar != null) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "Eliminar mensaje",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = {
+                            menuAbierto = false
+                            confirmarEliminar = true
+                        }
+                    )
+                }
             }
         }
     }
 
-    if (confirmarEliminar) {
+    if (confirmarEliminar && onEliminar != null) {
         AlertDialog(
             onDismissRequest = { confirmarEliminar = false },
             containerColor = Color.White,
@@ -192,9 +195,9 @@ fun BurbujaChat(
             text = {
                 Text(
                     text = if (message.isAviso) {
-                        "Este mensaje está fijado. Se quitará de tu chat, pero la otra persona lo seguirá viendo."
+                        "Este mensaje está fijado. Se eliminará para ambos y no se podrá deshacer."
                     } else {
-                        "Se quitará de tu chat, pero la otra persona lo seguirá viendo."
+                        "Se eliminará para ambos y no se podrá deshacer."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextoGris
@@ -204,7 +207,7 @@ fun BurbujaChat(
                 TextButton(
                     onClick = {
                         confirmarEliminar = false
-                        onEliminar?.invoke(message)
+                        onEliminar(message)
                     }
                 ) {
                     Text(
@@ -234,7 +237,8 @@ private fun BurbujaChatPreview() {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             BurbujaChat(
                 Message(chatId = "1", authorId = "padre", content = "Hola Maestra Laura, aviso que hoy llega tarde.", sentAt = LocalDateTime.now(), isAviso = true),
-                esMio = false
+                esMio = false,
+                onEliminar = {}
             )
             BurbujaChat(
                 Message(chatId = "1", authorId = "maestra", content = "Entendido, muchas gracias por avisar.", sentAt = LocalDateTime.now()),

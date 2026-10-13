@@ -174,7 +174,7 @@ class PadreViewModel @Inject constructor(
     fun deleteMessage(messageId: String) {
         viewModelScope.launch {
             try {
-                chatRepository.hideForParent(messageId)
+                chatRepository.deleteMessage(messageId)
             } catch (e: Exception) {
                 e.printStackTrace()
             }

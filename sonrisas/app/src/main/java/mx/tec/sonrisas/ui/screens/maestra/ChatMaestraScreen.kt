@@ -32,7 +32,7 @@ fun ChatMaestraScreen(
     onAtras: () -> Unit = {},
     onEnviar: (texto: String) -> Unit = {},
     onToggleImportante: (Message) -> Unit = {},
-    onEliminar: (Message) -> Unit = {},
+    onEliminar: ((Message) -> Unit)? = null,
     onCamara: () -> Unit = {},
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
@@ -59,7 +59,7 @@ fun ChatMaestraScreen(
                 onReintentar = onReintentar,
                 modifier = Modifier.weight(1f),
                 onToggleImportante = onToggleImportante,
-                onEliminar = onEliminar
+                // onEliminar = onEliminar
             )
             CampoMensaje(
                 valor = texto,

@@ -19,6 +19,9 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE synced = 0")
     suspend fun getPendingSync(): List<MessageEntity>
 
+    @Query("SELECT * FROM messages WHERE deletePending = 1")
+    suspend fun getPendingDeletes(): List<MessageEntity>
+
     @Upsert
     suspend fun save(message: MessageEntity)
 

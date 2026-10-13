@@ -216,7 +216,7 @@ fun NoticeEntity.toDomain() = Notice(id = id, name = name, description = descrip
 
 fun Notice.toEntity() = NoticeEntity(id = id, name = name, description = description, date = date)
 
-// --- Message ---
+/// --- Message ---
 
 fun MessageEntity.toDomain() = Message(
     id = id,
@@ -227,8 +227,8 @@ fun MessageEntity.toDomain() = Message(
     sent = sent,
     synced = synced,
     isAviso = isAviso,
-    hiddenForParent = hiddenForParent,
-    hiddenForTeacher = hiddenForTeacher
+    deleted = deleted,
+    deletePending = deletePending
 )
 
 fun Message.toEntity() = MessageEntity(
@@ -240,8 +240,8 @@ fun Message.toEntity() = MessageEntity(
     sent = sent,
     synced = synced,
     isAviso = isAviso,
-    hiddenForParent = hiddenForParent,
-    hiddenForTeacher = hiddenForTeacher
+    deleted = deleted,
+    deletePending = deletePending
 )
 
 // --- PickupAuthorization ---
