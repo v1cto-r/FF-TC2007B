@@ -10,13 +10,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import mx.tec.sonrisas.domain.Rol
 import mx.tec.sonrisas.domain.Sesion
-import mx.tec.sonrisas.ui.screens.admin.AdminAgregarAlumnosScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminCrearGrupoScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminDetalleSalonScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminInicioScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminInscripcionScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminMuestra
-import mx.tec.sonrisas.ui.screens.admin.AdminSalonesScreen
+import mx.tec.sonrisas.domain.WeeklySummary
 import mx.tec.sonrisas.ui.screens.maestra.ActivityFormScreen
 import mx.tec.sonrisas.ui.screens.maestra.BroadcastFormScreen
 import mx.tec.sonrisas.ui.screens.maestra.ChatListScreen
@@ -30,6 +24,7 @@ import mx.tec.sonrisas.ui.screens.maestra.StayFormScreen
 import mx.tec.sonrisas.ui.screens.padre.ChatPadreScreen
 import mx.tec.sonrisas.ui.screens.padre.InicioPadreScreen
 import mx.tec.sonrisas.ui.screens.padre.PadreAutorizarTerceroScreen
+import mx.tec.sonrisas.ui.screens.padre.PadreResumenSemanalScreen
 import mx.tec.sonrisas.ui.state.ActivityViewModel
 import mx.tec.sonrisas.ui.state.CheckInViewModel
 import mx.tec.sonrisas.ui.state.CheckOutViewModel
@@ -278,6 +273,11 @@ fun SonrisasNavHost(
                         nav.navigate(Route.padreAutorizarTercero(id))
                     }
                 },
+                onVerResumenSemanal = {
+                    viewModel.ninoActualId?.let { id ->
+                        nav.navigate(Route.resumenSemanalPadre(id))
+                    }
+                },
                 onReintentar = { viewModel.cargarInicio() },
                 onTab = { indice ->
                     when (indice) {
@@ -308,6 +308,22 @@ fun SonrisasNavHost(
                         nav.popBackStack()
                     }
                 }
+            )
+        }
+
+        composable(
+            route = Route.RESUMEN_SEMANAL_PADRE,
+            arguments = listOf(navArgument("ninoId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
+            val viewModel: PadreViewModel = hiltViewModel()
+            LaunchedEffect(ninoId) { viewModel.cargarResumenSemanal(ninoId) }
+
+            val resumen = viewModel.resumenSemanal ?: WeeklySummary(childId = ninoId, childName = "Alumno/a")
+
+            PadreResumenSemanalScreen(
+                resumen = resumen,
+                onCerrar = { nav.popBackStack() }
             )
         }
 
