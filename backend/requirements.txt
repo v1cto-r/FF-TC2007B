@@ -1,5 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 sqlalchemy
 psycopg2-binary
 pyjwt
@@ -10,3 +10,4 @@ boto3
 pyyaml
 python-multipart
 alembic
+firebase-admin

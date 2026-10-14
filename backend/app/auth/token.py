@@ -49,6 +49,11 @@ def decode_session_token(token: str) -> TokenClaims:
         raise ValueError("Invalid token")
 
 
+def session_token_expiry(token: str) -> float:
+    """Unix time at which a session token stops being valid (the token must already have been validated)."""
+    return float(_decode(token, settings.session_secret_key, "session")["exp"])
+
+
 def create_refresh_token(user_id: str) -> str:
     return _encode({"sub": user_id}, settings.refresh_secret_key, "refresh",
                    timedelta(days=settings.refresh_ttl_days))

@@ -8,7 +8,7 @@ Code: `backend/app/storage/` and `backend/app/routers/files.py`. Other tables re
 | Purpose | Who uploads | `target_id` | Bucket | Formats | Attached with |
 |---|---|---|---|---|---|
 | `ACTIVITY_IMAGE` | the **DOCENTE** of the child's salon | the child | `images` | jpeg, png, webp | `PUT /activities/{id}` (`image_file_ids`) |
-| `MESSAGE_ATTACHMENT` | the child's **PADRE** or **DOCENTE** | the child | `images` | jpeg, png, webp | `PUT /messages/{id}` (`attachment_file_id`) |
+| `MESSAGE_ATTACHMENT` | the child's **PADRE** or **DOCENTE** | the child | `images` | jpeg, png, webp | chat socket message (`attachment_file_id`), see [chat.md](chat.md) |
 | `CHILD_PHOTO` | the child's **PADRE** | the child | `images` | jpeg, png, webp | `PUT /children/{id}/photo` |
 | `USER_AVATAR` | the user, for **themself** | - | `images` | jpeg, png, webp | `PATCH /users/me` |
 | `ESTANCIA_LOGO` | the estancia's **ADMIN** | the estancia | `estancias` | jpeg, png, webp | `PUT /estancias/{id}` (`logo_file_id`) |

@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     session_ttl_minutes: int = 5
     refresh_ttl_days: int = 7
 
+    # The chat socket is closed after this many seconds without a frame (clients send a ping every ~30 s)
+    chat_idle_seconds: float = 90
+
+    # Firebase service-account key (JSON file) for push notifications. Unset = pushes are off.
+    firebase_credentials_path: str | None = None
+
     # Created on start if there is no ORG user yet. Must be changed on first login.
     default_org_email: str = "admin"
     default_org_password: str = "admin"

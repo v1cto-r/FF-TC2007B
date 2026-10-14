@@ -3,13 +3,13 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.auth.security import DUMMY_HASH, hash_password, verify_password
 from app.auth.token import TokenClaims, create_refresh_token, create_session_token, decode_refresh_token
 from app.config import settings
-from app.database.models import Estancia, RecordStatus, RefreshToken, User, UserProfile
+from app.database.models import DeviceToken, Estancia, RecordStatus, RefreshToken, User, UserProfile
 
 
 def _unauthorized(detail: str = "Invalid credentials") -> HTTPException:
@@ -48,6 +48,8 @@ def issue_tokens(db: Session, user: User, family_id: uuid.UUID | None = None) ->
 
 
 def revoke_user_tokens(db: Session, user_id: uuid.UUID) -> None:
+    """Signs the user out everywhere: refresh tokens revoked and push registrations removed."""
+    db.execute(delete(DeviceToken).where(DeviceToken.user_id == user_id))
     db.execute(update(RefreshToken).where(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
                .values(revoked_at=datetime.now(timezone.utc)))
     db.commit()

@@ -2,7 +2,8 @@
 import random
 import time
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException
+from starlette.requests import HTTPConnection  # a Request or a WebSocket handshake
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -19,7 +20,7 @@ RETURNING hits, expires_at
 """)
 
 
-def client_ip(request: Request) -> str:
+def client_ip(request: HTTPConnection) -> str:
     # Behind Cloudflare the socket peer is Cloudflare, the real client is in this header
     return request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "unknown")
 
@@ -35,7 +36,7 @@ def hit(db: Session, key: str, limit: int, window: int = 60) -> None:
         raise HTTPException(429, "Too many requests", headers={"Retry-After": str(max(1, int(expires - now) + 1))})
 
 
-def _identity(request: Request) -> str:
+def _identity(request: HTTPConnection) -> str:
     """The user id from a valid session token, otherwise the client IP."""
     auth = request.headers.get("authorization", "")
     if auth.lower().startswith("bearer "):
@@ -48,6 +49,6 @@ def _identity(request: Request) -> str:
 
 def rate_limit(name: str, limit: int, window: int = 60):
     """Dependency factory: `dependencies=[Depends(rate_limit("create-user", 20))]`. Per user, or per IP if not logged in."""
-    def check(request: Request, db: Session = Depends(get_db)) -> None:
+    def check(request: HTTPConnection, db: Session = Depends(get_db)) -> None:
         hit(db, f"{name}:{_identity(request)}", limit, window)
     return check

@@ -29,6 +29,12 @@ def _check(claims: TokenClaims, db: Session, action: str, allow_pending: bool) -
     db.info["actor_id"] = uuid.UUID(claims.sub)
 
 
+def authorize(db: Session, claims: TokenClaims, action: str) -> Access:
+    """The same checks as `require_access`, for code that has no request to hang dependencies on (WebSockets)."""
+    _check(claims, db, action, allow_pending=False)
+    return load_access(db, claims)
+
+
 def require_action(action: str, allow_pending: bool = False):
     """Dependency factory: `claims = Depends(require_action("child:read"))`."""
     def check(claims: TokenClaims = Depends(get_claims), db: Session = Depends(get_db)) -> TokenClaims:

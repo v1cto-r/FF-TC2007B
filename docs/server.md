@@ -62,3 +62,12 @@ Once in connect, on the section `Choose how to connect` look for `SSM Session Ma
 That will drop you inside a webview, with a terminal access. This will work the same as having normal terminal access to a computer. Same as ssh'ing into a ubuntu computer or smth.
 
 ---
+
+## WebSockets
+
+The live chat (`WS /ws/chat`, see [chat.md](chat.md)) needs the proxy to pass upgrade requests, and the API must run as a **single process**.
+
+## Firebase key
+
+Push notifications need the Firebase service-account key at `secrets/firebase.json` (git-ignored, mounted read-only into the API container) and
+`FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase.json` in `.env`. Setup in [push.md](push.md).

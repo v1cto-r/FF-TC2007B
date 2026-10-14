@@ -87,7 +87,7 @@ Rules in code that no grant can change:
 
 - `ORG` creates `ADMIN`s and estancias; `ADMIN` creates `DOCENTE`s and `PADRE`s, who join the admin's estancia. An `ADMIN` only manages the people of its own estancia (`can_manage_user`).
 - Only the `PADRE` of a child deletes messages in the child's chat (any message in it), sets the child's photo and manages their documents.
-- Only `PADRE` and `DOCENTE` send messages; nobody edits them.
+- Only `PADRE` and `DOCENTE` send messages (over the [chat socket](chat.md), which authenticates with the session token and re-checks access on every message); nobody edits them.
 - Only a `DOCENTE` uploads activity photos; only an `ADMIN` uploads the estancia logo and posts to a whole estancia.
 - Archiving or deleting a user blocks their login and refresh immediately and revokes their refresh tokens. Their current session token still works until it expires (5 minutes, the stateless-token tradeoff below).
 
@@ -107,11 +107,12 @@ Every refresh revokes the used token and issues a new one in the same *family* (
 
 Counters live in Postgres, table `rate_limits` (key, hits, expires_at), used like Redis: one atomic upsert per request, fixed windows. The starter makes it `UNLOGGED` (fast, wiped on a database crash, which only resets the counters).
 
-- **Every endpoint** has a default of 120 requests/minute (`dependencies=` on the `FastAPI` app in `main.py`).
+- **Every endpoint** (including the chat socket's handshake) has a default of 120 requests/minute (`dependencies=` on the `FastAPI` app in `main.py`).
 - A route can add its own limit: `dependencies=[Depends(rate_limit("name", 20, 60))]`.
 - The bucket is the **user id** from a valid session token, otherwise the **client IP** (`CF-Connecting-IP`, since the API is behind Cloudflare).
 - `/auth/login` also limits per **email + IP** pair (5/minute), so someone attacking one account from a shared network only blocks themselves.
 - Over the limit: `429` with `Retry-After`.
+- Chat messages sent over the socket: 60/minute per user, answered with an `error` frame (`status` 429).
 
 ## Decisions and why
 

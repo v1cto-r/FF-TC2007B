@@ -1,6 +1,7 @@
 """Notices and chat messages."""
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel
 
@@ -39,3 +40,9 @@ class MessageOut(RecordOut):
     sent_at: datetime
     is_aviso: bool
     attachment_file_id: uuid.UUID | None
+
+
+class MessageFrame(MessageIn):
+    """What a client sends over the chat socket: a message with its id (the idempotency key for retries)."""
+    type: Literal["message"]
+    id: uuid.UUID

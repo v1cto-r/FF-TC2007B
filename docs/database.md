@@ -261,7 +261,7 @@ erDiagram
   USERS ||--o| ESTANCIAS : "admin_user_id"
 ```
 
-Notes on the diagram: `rate_limits`, `refresh_tokens`, `role_actions` and `user_profiles` are bookkeeping for auth.
+Notes on the diagram: `rate_limits`, `refresh_tokens`, `device_tokens` (FCM push registrations), `role_actions` and `user_profiles` are bookkeeping for auth.
 `ACTIVITY_IMAGES`, `MESSAGES`, `USERS`, `ESTANCIAS` and `CHILDREN` point at `FILES` for their images; `FILES` points back
 at the user, estancia and child it belongs to (those foreign keys are added after the tables exist, because the
 references go in a circle).

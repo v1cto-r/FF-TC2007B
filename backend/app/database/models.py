@@ -401,6 +401,18 @@ class RefreshToken(Entity, Base):
   revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class DeviceToken(Entity, Base):
+  """An app installation's FCM registration token, used to push a notification when the user has no chat socket open.
+  Not a Record (no audit): it is a credential, not business data, and is deleted for real on logout."""
+
+  __tablename__ = 'device_tokens'
+
+  user_id: Mapped[uuid.UUID] = _uuid_fk(f'{SCHEMA}.users.id', ondelete='CASCADE', index=True)
+  token: Mapped[str] = mapped_column(String(512), unique=True, nullable=False)
+  platform: Mapped[str] = mapped_column(String(20), nullable=False, default='ANDROID')
+  last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
+
+
 class RoleAction(Entity, Base):
   """An action ("child:read", "child:*", "*") a role may perform."""
 
