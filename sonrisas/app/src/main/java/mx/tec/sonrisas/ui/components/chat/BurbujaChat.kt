@@ -8,11 +8,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,9 +47,11 @@ fun BurbujaChat(
     modifier: Modifier = Modifier,
     avatarRes: Int? = null,
     onToggleImportante: ((Message) -> Unit)? = null,
+    // null = this user can't delete (the API only lets the parent do it).
     onEliminar: ((Message) -> Unit)? = null
 ) {
     var menuAbierto by remember { mutableStateOf(false) }
+    var confirmarEliminar by remember { mutableStateOf(false) }
 
     val fondo = if (esMio) Coral else Color.White
     val colorTexto = if (esMio) Color.White else TextoOscuro
@@ -78,8 +82,8 @@ fun BurbujaChat(
             val anchoHora = textMeasurer.measure(hora, estiloHora).size.width
             val anchoPin = if (message.isAviso) with(density) { 15.dp.roundToPx() } else 0
             val anchoTotalMeta = anchoHora + anchoPin
-            val anchoEspacio = textMeasurer.measure(" ", estiloTexto).size.width.coerceAtLeast(1)
-            " ".repeat(anchoTotalMeta / anchoEspacio + 4)
+            val anchoEspacio = textMeasurer.measure(" ", estiloTexto).size.width.coerceAtLeast(1)
+            " ".repeat(anchoTotalMeta / anchoEspacio + 4)
         }
 
         Box {
@@ -150,29 +154,79 @@ fun BurbujaChat(
                         onToggleImportante?.invoke(message)
                     }
                 )
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = "Eliminar mensaje",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Delete,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    onClick = {
-                        menuAbierto = false
-                        onEliminar?.invoke(message)
-                    }
-                )
+                if (onEliminar != null) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "Eliminar mensaje",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = {
+                            menuAbierto = false
+                            confirmarEliminar = true
+                        }
+                    )
+                }
             }
         }
+    }
+
+    if (confirmarEliminar && onEliminar != null) {
+        AlertDialog(
+            onDismissRequest = { confirmarEliminar = false },
+            containerColor = Color.White,
+            title = {
+                Text(
+                    text = "¿Eliminar mensaje?",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextoOscuro
+                )
+            },
+            text = {
+                Text(
+                    text = if (message.isAviso) {
+                        "Este mensaje está fijado. Se eliminará para ambos y no se podrá deshacer."
+                    } else {
+                        "Se eliminará para ambos y no se podrá deshacer."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextoGris
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmarEliminar = false
+                        onEliminar(message)
+                    }
+                ) {
+                    Text(
+                        text = "Eliminar",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmarEliminar = false }) {
+                    Text(
+                        text = "Cancelar",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = TextoGris
+                    )
+                }
+            }
+        )
     }
 }
 
@@ -183,7 +237,8 @@ private fun BurbujaChatPreview() {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             BurbujaChat(
                 Message(chatId = "1", authorId = "padre", content = "Hola Maestra Laura, aviso que hoy llega tarde.", sentAt = LocalDateTime.now(), isAviso = true),
-                esMio = false
+                esMio = false,
+                onEliminar = {}
             )
             BurbujaChat(
                 Message(chatId = "1", authorId = "maestra", content = "Entendido, muchas gracias por avisar.", sentAt = LocalDateTime.now()),

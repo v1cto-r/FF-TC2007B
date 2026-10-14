@@ -157,7 +157,7 @@ fun SonrisasNavHost(
                 onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(ninoId, texto) },
                 onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
-                onEliminar = { mensaje -> viewModel.deleteMessage(mensaje.id) },
+
                 onReintentar = { viewModel.cargarMensajes(ninoId) },
                 onTab = { indice ->
                     when (indice) {

@@ -179,16 +179,6 @@ class MaestraViewModel @Inject constructor(
         }
     }
 
-    fun deleteMessage(messageId: String) {
-        viewModelScope.launch {
-            try {
-                chatRepository.hideForParent(messageId)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
     fun cargarConversaciones() {
         viewModelScope.launch {
             estadoConversaciones = UiState.Cargando

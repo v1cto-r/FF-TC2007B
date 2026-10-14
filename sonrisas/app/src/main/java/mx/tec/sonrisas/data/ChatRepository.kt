@@ -22,9 +22,11 @@ import mx.tec.sonrisas.domain.Message
  * 1. Para la Maestra: Los mensajes enviados por la maestra que NO fueron marcados como 'isAviso'
  *    se vuelven invisibles en el lado de la maestra al finalizar la semana actual (permanecen en BD).
  * 2. Para el Padre: Los mensajes de las maestras NO se borran solos (disponibles 24/7).
- *    El padre puede eliminar/ocultar mensajes manualmente con pulsación larga ('hiddenForParent').
  * 3. 'isAviso / Importante': Se puede fijar/marcar mediante pulsación larga (estilo WhatsApp)
- *    y jamás se oculta en el lado de la maestra.
+ *    y jamás se oculta en el lado de la maestra por el paso de la semana.
+ * 4. Eliminar mensaje: solo el padre puede hacerlo (regla de la API). Es un soft delete
+ *    compartido: el mensaje se marca como 'deleted' y desaparece para AMBOS lados, pero
+ *    permanece en BD. Si no hay conexión queda 'deletePending' hasta avisar al servidor.
  */
 interface ChatRepository {
     fun observeMessagesForTeacher(chatId: String): Flow<List<Message>>
@@ -32,7 +34,7 @@ interface ChatRepository {
     fun observeMessages(chatId: String): Flow<List<Message>>
     suspend fun send(message: Message)
     suspend fun toggleImportant(messageId: String)
-    suspend fun hideForParent(messageId: String)
+    suspend fun deleteMessage(messageId: String)
 }
 
 @Singleton
@@ -47,7 +49,7 @@ class ChatRepositoryImpl @Inject constructor(
 
     override fun observeMessagesForTeacher(chatId: String): Flow<List<Message>> =
         dao.observeByChat(chatId).map { rows ->
-            val domainMessages = rows.map { it.toDomain() }
+            val domainMessages = rows.map { it.toDomain() }.filter { !it.deleted }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 filtrarMensajesInvisiblesMaestra(chatId, domainMessages)
             } else {
@@ -57,7 +59,7 @@ class ChatRepositoryImpl @Inject constructor(
 
     override fun observeMessagesForParent(chatId: String): Flow<List<Message>> =
         dao.observeByChat(chatId).map { rows ->
-            rows.map { it.toDomain() }.filter { !it.hiddenForParent }
+            rows.map { it.toDomain() }.filter { !it.deleted }
         }
 
     override suspend fun send(message: Message) {
@@ -75,9 +77,15 @@ class ChatRepositoryImpl @Inject constructor(
         dao.save(entity.copy(isAviso = !entity.isAviso))
     }
 
-    override suspend fun hideForParent(messageId: String) {
+    override suspend fun deleteMessage(messageId: String) {
         val entity = dao.getById(messageId) ?: return
-        dao.save(entity.copy(hiddenForParent = true))
+        if (networkMonitor.isOnline()) {
+            remote.delete(messageId)
+            dao.save(entity.copy(deleted = true, deletePending = false))
+        } else {
+            // Hidden right away on this device; the server is told later.
+            dao.save(entity.copy(deleted = true, deletePending = true))
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
