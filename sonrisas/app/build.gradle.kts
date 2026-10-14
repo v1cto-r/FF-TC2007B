@@ -12,7 +12,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "mx.tec.sonrisas"
+        applicationId = "mx.tec.sonrisasff"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
