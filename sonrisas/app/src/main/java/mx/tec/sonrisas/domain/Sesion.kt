@@ -6,7 +6,9 @@ enum class Rol {
 }
 
 data class Sesion(
+    val id: String,
     val usuario: String,
     val nombre: String,
-    val rol: Rol
+    val rol: Rol,
+    val pendiente: Boolean = false
 )

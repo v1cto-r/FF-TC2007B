@@ -73,7 +73,12 @@ fun BurbujaChat(
             AvatarCircular(tamano = 24.dp, imagenRes = avatarRes)
             Spacer(Modifier.width(8.dp))
         }
-        val hora = formatearHora(message.sentAt)
+        val estadoEnvio = when {
+            !esMio || message.sent -> null
+            message.sendError != null -> "No enviado"
+            else -> "Enviando…"
+        }
+        val hora = listOfNotNull(estadoEnvio, formatearHora(message.sentAt)).joinToString(" · ")
         val estiloTexto = MaterialTheme.typography.bodyMedium
         val estiloHora = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp)
         val textMeasurer = rememberTextMeasurer()
@@ -103,11 +108,18 @@ fun BurbujaChat(
                     }
                     .padding(12.dp)
             ) {
-                Text(
-                    text = message.content + relleno,
-                    style = estiloTexto,
-                    color = colorTexto
-                )
+                Column {
+                    message.attachmentFileId?.let { FotoMensaje(it) }
+                    if (message.content.isNotEmpty() || message.attachmentFileId == null) {
+                        Text(
+                            text = message.content + relleno,
+                            style = estiloTexto,
+                            color = colorTexto
+                        )
+                    } else {
+                        Spacer(Modifier.height(16.dp))
+                    }
+                }
 
                 Row(
                     modifier = Modifier.align(Alignment.BottomEnd),

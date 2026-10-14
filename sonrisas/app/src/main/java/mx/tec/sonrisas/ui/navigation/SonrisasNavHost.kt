@@ -1,5 +1,7 @@
 package mx.tec.sonrisas.ui.navigation
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -148,14 +150,18 @@ fun SonrisasNavHost(
                 viewModel.cargarMensajes(ninoId)
             }
             val nino = (viewModel.estadoPerfilNino as? UiState.Exito)?.datos?.child
+            val elegirFoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+                uri?.let { viewModel.enviarFoto(ninoId, it) }
+            }
 
             ChatMaestraScreen(
                 estado = viewModel.estadoMensajes,
-                currentUserId = sesion.usuario,
+                currentUserId = sesion.id,
                 titulo = if (nino != null) "${nino.parentName} - ${nino.fullName.substringBefore(" ")}" else "Chat",
                 subtitulo = nino?.fullName,
                 onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(ninoId, texto) },
+                onCamara = { elegirFoto.launch("image/*") },
                 onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
 
                 onReintentar = { viewModel.cargarMensajes(ninoId) },
@@ -335,13 +341,17 @@ fun SonrisasNavHost(
             val viewModel: PadreViewModel = hiltViewModel()
             LaunchedEffect(ninoId) { viewModel.cargarMensajes(ninoId) }
             val nino = viewModel.ninos.firstOrNull { it.id == ninoId }
+            val elegirFoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+                uri?.let { viewModel.enviarFoto(it) }
+            }
 
             ChatPadreScreen(
                 estado = viewModel.estadoMensajes,
-                currentUserId = sesion.usuario,
+                currentUserId = sesion.id,
                 subtitulo = nino?.let { "Sobre ${it.fullName.substringBefore(" ")}" },
                 onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(texto) },
+                onCamara = { elegirFoto.launch("image/*") },
                 onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
                 onEliminar = { mensaje -> viewModel.deleteMessage(mensaje.id) },
                 onReintentar = { viewModel.cargarMensajes(ninoId) },

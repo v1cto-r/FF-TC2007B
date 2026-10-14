@@ -19,6 +19,7 @@ interface ChildRepository {
     fun observeById(id: String): Flow<Child?>
     suspend fun save(child: Child)
     suspend fun delete(child: Child)
+    suspend fun refreshFromServer(parentName: String)
 }
 
 @Singleton
@@ -40,5 +41,11 @@ class ChildRepositoryImpl @Inject constructor(
 
     override suspend fun delete(child: Child) {
         if (networkMonitor.isOnline()) remote.delete(child) else dao.delete(child.toEntity())
+    }
+
+    override suspend fun refreshFromServer(parentName: String) {
+        val children = remote.fetchAll(parentName)
+        dao.clear()
+        children.forEach { dao.save(it.toEntity()) }
     }
 }

@@ -47,7 +47,7 @@ class ActivityViewModel @Inject constructor(
         viewModelScope.launch {
             val log = dailyLogRepository.observeToday(childId).first() ?: return@launch
             dailyLogRepository.saveActivity(ActivityRecord(dailyLogId = log.id, name = nombre))
-            val autor = sesionRepository.sesion.first()?.usuario ?: "maestra"
+            val autor = sesionRepository.sesion.first()?.id ?: "maestra"
             chatRepository.send(
                 Message(
                     chatId = childId,

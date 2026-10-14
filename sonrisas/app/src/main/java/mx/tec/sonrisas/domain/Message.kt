@@ -17,5 +17,8 @@ data class Message(
     // The row stays in the database, it is just never shown.
     val deleted: Boolean = false,
     // true = deleted on this device but the server hasn't been told yet.
-    val deletePending: Boolean = false
+    val deletePending: Boolean = false,
+    val createdAtMs: Long? = null,
+    val attachmentFileId: String? = null,
+    val sendError: String? = null
 )
