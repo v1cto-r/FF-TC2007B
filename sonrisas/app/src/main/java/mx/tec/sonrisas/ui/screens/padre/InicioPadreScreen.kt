@@ -55,7 +55,6 @@ fun InicioPadreScreen(
     autorizacionHoy: PickupAuthorization? = null,
     onSeleccionarNino: (Int) -> Unit = {},
     onAutorizarTercero: () -> Unit = {},
-    onVerResumenSemanal: () -> Unit = {},
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
@@ -91,47 +90,6 @@ fun InicioPadreScreen(
                     seleccionado = ninoSeleccionado,
                     onSeleccionar = onSeleccionarNino
                 )
-            }
-
-            // Banner de Sonrisas Wrapped / Resumen Semanal
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                    .clickable(onClick = onVerResumenSemanal),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Coral),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "✨",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            text = "¡Sonrisas Wrapped de la Semana!",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "Descubre el resumen interactivo de tu hijo/a 🚀",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Outlined.ChevronRight,
-                        contentDescription = "Ver Resumen",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
             }
 
             // Tarjeta de Autorización a Tercero

@@ -29,6 +29,7 @@ object Route {
     const val AVISO_MASIVO = "aviso_masivo"
 
     const val INICIO_PADRE = "inicio_padre"
+    const val BITACORA_PADRE = "bitacora_padre"
 
     const val PADRE_AUTORIZAR_TERCERO = "padre_autorizar_tercero/{ninoId}"
     fun padreAutorizarTercero(ninoId: String): String = "padre_autorizar_tercero/${Uri.encode(ninoId)}"

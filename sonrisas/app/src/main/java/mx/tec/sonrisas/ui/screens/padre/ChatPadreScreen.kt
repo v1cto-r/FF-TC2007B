@@ -43,7 +43,7 @@ fun ChatPadreScreen(
     Scaffold(
         modifier = modifier,
         containerColor = Fondo,
-        bottomBar = { BottomBar(tabs = TabsPadre, seleccionado = 1, onSeleccionar = onTab) }
+        bottomBar = { BottomBar(tabs = TabsPadre, seleccionado = 2, onSeleccionar = onTab) }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             TopBarAtras(

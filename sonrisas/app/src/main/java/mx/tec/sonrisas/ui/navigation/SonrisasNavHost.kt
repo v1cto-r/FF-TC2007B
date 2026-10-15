@@ -24,6 +24,7 @@ import mx.tec.sonrisas.ui.screens.maestra.StayFormScreen
 import mx.tec.sonrisas.ui.screens.padre.ChatPadreScreen
 import mx.tec.sonrisas.ui.screens.padre.InicioPadreScreen
 import mx.tec.sonrisas.ui.screens.padre.PadreAutorizarTerceroScreen
+import mx.tec.sonrisas.ui.screens.padre.PadreBitacoraScreen
 import mx.tec.sonrisas.ui.screens.padre.PadreResumenSemanalScreen
 import mx.tec.sonrisas.ui.state.ActivityViewModel
 import mx.tec.sonrisas.ui.state.CheckInViewModel
@@ -157,7 +158,7 @@ fun SonrisasNavHost(
                 onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(ninoId, texto) },
                 onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
-
+                onEliminar = { mensaje -> viewModel.deleteMessage(mensaje.id) },
                 onReintentar = { viewModel.cargarMensajes(ninoId) },
                 onTab = { indice ->
                     when (indice) {
@@ -273,16 +274,48 @@ fun SonrisasNavHost(
                         nav.navigate(Route.padreAutorizarTercero(id))
                     }
                 },
-                onVerResumenSemanal = {
-                    viewModel.ninoActualId?.let { id ->
-                        nav.navigate(Route.resumenSemanalPadre(id))
-                    }
-                },
                 onReintentar = { viewModel.cargarInicio() },
                 onTab = { indice ->
                     when (indice) {
                         0 -> {}
-                        1 -> viewModel.ninoActualId?.let { nav.navigate(Route.chatPadre(it)) { launchSingleTop = true } }
+                        1 -> nav.navigate(Route.BITACORA_PADRE) { launchSingleTop = true }
+                        2 -> viewModel.ninoActualId?.let { nav.navigate(Route.chatPadre(it)) { launchSingleTop = true } }
+                    }
+                }
+            )
+        }
+
+        composable(Route.BITACORA_PADRE) {
+            val viewModel: PadreViewModel = hiltViewModel()
+            LaunchedEffect(Unit) {
+                viewModel.cargarInicio()
+            }
+            LaunchedEffect(viewModel.ninoActualId) {
+                viewModel.ninoActualId?.let { viewModel.cargarResumenSemanal(it) }
+            }
+
+            val ninoId = viewModel.ninoActualId ?: ""
+            val ninoNombre = viewModel.ninos.getOrNull(viewModel.ninoSeleccionadoIndex)?.fullName ?: "Alumno/a"
+            val resumen = viewModel.resumenSemanal ?: WeeklySummary(childId = ninoId, childName = ninoNombre)
+
+            PadreBitacoraScreen(
+                resumen = resumen,
+                ninos = viewModel.ninos.map { it.fullName.substringBefore(" ") },
+                ninoSeleccionado = viewModel.ninoSeleccionadoIndex,
+                onSeleccionarNino = {
+                    viewModel.seleccionarNino(it)
+                    viewModel.ninos.getOrNull(it)?.id?.let { id -> viewModel.cargarResumenSemanal(id) }
+                },
+                onTab = { indice ->
+                    when (indice) {
+                        0 -> nav.navigate(Route.INICIO_PADRE) { launchSingleTop = true }
+                        1 -> {}
+                        2 -> {
+                            val targetId = viewModel.ninoActualId ?: viewModel.ninos.firstOrNull()?.id ?: ""
+                            if (targetId.isNotBlank()) {
+                                nav.navigate(Route.chatPadre(targetId)) { launchSingleTop = true }
+                            }
+                        }
                     }
                 }
             )
@@ -348,7 +381,8 @@ fun SonrisasNavHost(
                 onTab = { indice ->
                     when (indice) {
                         0 -> nav.navigate(Route.INICIO_PADRE) { launchSingleTop = true }
-                        1 -> {}
+                        1 -> nav.navigate(Route.BITACORA_PADRE) { launchSingleTop = true }
+                        2 -> {}
                     }
                 }
             )
