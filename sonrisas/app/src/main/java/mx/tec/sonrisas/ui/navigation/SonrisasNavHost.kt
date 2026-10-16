@@ -1,7 +1,5 @@
 package mx.tec.sonrisas.ui.navigation
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -150,10 +148,6 @@ fun SonrisasNavHost(
                 viewModel.cargarMensajes(ninoId)
             }
             val nino = (viewModel.estadoPerfilNino as? UiState.Exito)?.datos?.child
-            val elegirFoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-                uri?.let { viewModel.enviarFoto(ninoId, it) }
-            }
-
             ChatMaestraScreen(
                 estado = viewModel.estadoMensajes,
                 currentUserId = sesion.id,
@@ -161,9 +155,8 @@ fun SonrisasNavHost(
                 subtitulo = nino?.fullName,
                 onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(ninoId, texto) },
-                onCamara = { elegirFoto.launch("image/*") },
+                onEnviarFoto = { uri -> viewModel.enviarFoto(ninoId, uri) },
                 onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
-
                 onReintentar = { viewModel.cargarMensajes(ninoId) },
                 onTab = { indice ->
                     when (indice) {
@@ -341,24 +334,21 @@ fun SonrisasNavHost(
             val viewModel: PadreViewModel = hiltViewModel()
             LaunchedEffect(ninoId) { viewModel.cargarMensajes(ninoId) }
             val nino = viewModel.ninos.firstOrNull { it.id == ninoId }
-            val elegirFoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-                uri?.let { viewModel.enviarFoto(it) }
-            }
-
             ChatPadreScreen(
                 estado = viewModel.estadoMensajes,
                 currentUserId = sesion.id,
                 subtitulo = nino?.let { "Sobre ${it.fullName.substringBefore(" ")}" },
                 onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(texto) },
-                onCamara = { elegirFoto.launch("image/*") },
+                onEnviarFoto = { uri -> viewModel.enviarFoto(uri) },
                 onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
                 onEliminar = { mensaje -> viewModel.deleteMessage(mensaje.id) },
                 onReintentar = { viewModel.cargarMensajes(ninoId) },
                 onTab = { indice ->
                     when (indice) {
                         0 -> nav.navigate(Route.INICIO_PADRE) { launchSingleTop = true }
-                        1 -> {}
+                        1 -> nav.navigate(Route.BITACORA_PADRE) { launchSingleTop = true }
+                        2 -> {}
                     }
                 }
             )

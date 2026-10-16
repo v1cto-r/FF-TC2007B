@@ -33,6 +33,8 @@ object Route {
     const val PADRE_AUTORIZAR_TERCERO = "padre_autorizar_tercero/{ninoId}"
     fun padreAutorizarTercero(ninoId: String): String = "padre_autorizar_tercero/${Uri.encode(ninoId)}"
 
+    const val BITACORA_PADRE = "bitacora_padre"
+
     const val RESUMEN_SEMANAL_PADRE = "resumen_semanal_padre/{ninoId}"
     fun resumenSemanalPadre(ninoId: String): String = "resumen_semanal_padre/${Uri.encode(ninoId)}"
 
