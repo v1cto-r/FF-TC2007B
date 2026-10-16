@@ -1,7 +1,11 @@
 package mx.tec.sonrisas.ui.screens.padre
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -11,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import java.time.LocalDateTime
 import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.ui.components.BottomBar
@@ -39,13 +44,25 @@ fun ChatPadreScreen(
 ) {
     FlagSecureEnable()
     var texto by remember { mutableStateOf("") }
+    val esTecladoVisible = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > 0.dp
 
     Scaffold(
         modifier = modifier,
         containerColor = Fondo,
-        bottomBar = { BottomBar(tabs = TabsPadre, seleccionado = 1, onSeleccionar = onTab) }
+        bottomBar = {
+            if (!esTecladoVisible) {
+                BottomBar(tabs = TabsPadre, seleccionado = 2, onSeleccionar = onTab)
+            }
+        }
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    top = padding.calculateTopPadding(),
+                    bottom = if (esTecladoVisible) 0.dp else padding.calculateBottomPadding()
+                )
+        ) {
             TopBarAtras(
                 titulo = titulo,
                 subtitulo = subtitulo,
@@ -70,7 +87,8 @@ fun ChatPadreScreen(
                         texto = ""
                     }
                 },
-                onCamara = onCamara
+                onCamara = onCamara,
+                modifier = Modifier.imePadding()
             )
         }
     }
