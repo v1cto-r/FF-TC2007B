@@ -15,6 +15,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,7 +25,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import mx.tec.sonrisas.ui.components.AccionRapida
 import mx.tec.sonrisas.ui.components.BottomBar
-import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.components.TituloSeccion
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.*
@@ -37,9 +37,9 @@ fun AdminInicioScreen(
     onCrearGrupo: () -> Unit = {},
     onInscripcion: () -> Unit = {},
     onSalonClick: (SalonUi) -> Unit = {},
-    onTab: (Int) -> Unit = {}
+    onTab: (Int) -> Unit = {},
+    onSalir: (() -> Unit)? = null
 ) {
-    FlagSecureDisable()
     val salonesSinMaestra = salones.filter { it.maestro == null }
 
     Scaffold(
@@ -139,6 +139,22 @@ fun AdminInicioScreen(
                         }
                     }
                 }
+
+                // Cerrar sesión
+                if (onSalir != null) {
+                    Spacer(Modifier.height(24.dp))
+                    TextButton(
+                        onClick = onSalir,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Text(
+                            text = "Cerrar sesión",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Coral
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
             }
         }
     }
@@ -170,7 +186,8 @@ private fun AdminInicioPreview() {
     SonrisasTheme {
         AdminInicioScreen(
             salones = AdminMuestra.salones,
-            alumnosSinSalon = AdminMuestra.alumnosSinSalon.size
+            alumnosSinSalon = AdminMuestra.alumnosSinSalon.size,
+            onSalir = {}
         )
     }
 }

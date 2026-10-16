@@ -150,6 +150,16 @@ fun LoginScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoOscuro
                     )
+                    Text(
+                        text = "• Admin: admin@sonrisas.edu.mx (o 'admin') / 123",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoOscuro
+                    )
+                    Text(
+                        text = "• Organizador: org@sonrisas.edu.mx (o 'org') / 123",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoOscuro
+                    )
                 }
             }
         }

@@ -2,7 +2,9 @@ package mx.tec.sonrisas.domain
 
 enum class Rol {
     MAESTRA,
-    PADRE
+    PADRE,
+    ADMIN,
+    ORG
 }
 
 data class Sesion(

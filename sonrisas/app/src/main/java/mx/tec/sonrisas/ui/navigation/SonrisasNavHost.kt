@@ -43,12 +43,18 @@ fun SonrisasNavHost(
     val destinoInicial = when (sesion.rol) {
         Rol.MAESTRA -> Route.INICIO_MAESTRA
         Rol.PADRE -> Route.INICIO_PADRE
+        Rol.ADMIN -> Route.ADMIN_INICIO
+        Rol.ORG -> Route.ORG_INICIO
     }
 
     NavHost(
         navController = nav,
         startDestination = destinoInicial
     ) {
+        // --- ADMIN y ORGANIZACIÓN (cada uno en su archivo) ---
+        adminGraph(nav = nav, onSalir = onSalir)
+        orgGraph(nav = nav, nombre = sesion.nombre, onSalir = onSalir)
+
         // --- MAESTRA ---
         composable(Route.INICIO_MAESTRA) {
             val viewModel: MaestraViewModel = hiltViewModel()

@@ -25,6 +25,12 @@ class SesionRepository @Inject constructor() {
             (correoLimpio == "padre@sonrisas.edu.mx" || correoLimpio == "padre") && passwordLimpia.isNotEmpty() -> {
                 Sesion(usuario = "padre@sonrisas.edu.mx", nombre = "María López", rol = Rol.PADRE)
             }
+            (correoLimpio == "admin@sonrisas.edu.mx" || correoLimpio == "admin") && passwordLimpia.isNotEmpty() -> {
+                Sesion(usuario = "admin@sonrisas.edu.mx", nombre = "Administrador", rol = Rol.ADMIN)
+            }
+            (correoLimpio == "org@sonrisas.edu.mx" || correoLimpio == "org" || correoLimpio == "organizador") && passwordLimpia.isNotEmpty() -> {
+                Sesion(usuario = "org@sonrisas.edu.mx", nombre = "Sofía", rol = Rol.ORG)
+            }
             correoLimpio.contains("maestra") && passwordLimpia.isNotEmpty() -> {
                 Sesion(usuario = correoLimpio, nombre = "Maestra Laura", rol = Rol.MAESTRA)
             }

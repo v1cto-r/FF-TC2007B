@@ -14,6 +14,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,7 +36,8 @@ fun OrgInicioScreen(
     nombre: String = "Sofía",
     onEnviarAviso: () -> Unit = {},
     onNuevaInstancia: () -> Unit = {},
-    onTab: (Int) -> Unit = {}
+    onTab: (Int) -> Unit = {},
+    onSalir: (() -> Unit)? = null
 ) {
     FlagSecureDisable()
     val activas = instancias.count { it.activa }
@@ -112,6 +114,22 @@ fun OrgInicioScreen(
                         modifier = Modifier.weight(1f)
                     )
                 }
+
+                // Cerrar sesión
+                if (onSalir != null) {
+                    Spacer(Modifier.height(24.dp))
+                    TextButton(
+                        onClick = onSalir,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Text(
+                            text = "Cerrar sesión",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Coral
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
             }
         }
     }
@@ -120,7 +138,7 @@ fun OrgInicioScreen(
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun OrgInicioPreview() {
-    SonrisasTheme { OrgInicioScreen(instancias = OrgMuestra.instancias) }
+    SonrisasTheme { OrgInicioScreen(instancias = OrgMuestra.instancias, onSalir = {}) }
 }
 
 @Preview(showBackground = true, showSystemUi = true)
