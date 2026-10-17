@@ -1,11 +1,14 @@
 package mx.tec.sonrisas.ui.state
 
+import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDateTime
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -42,7 +45,8 @@ class MaestraViewModel @Inject constructor(
     private val dailyLogRepository: DailyLogRepository,
     private val noticeRepository: NoticeRepository,
     private val chatRepository: ChatRepository,
-    private val sesionRepository: SesionRepository
+    private val sesionRepository: SesionRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     var estadoNinos by mutableStateOf<UiState<List<NinoConEstado>>>(UiState.Cargando)
@@ -169,20 +173,28 @@ class MaestraViewModel @Inject constructor(
         }
     }
 
-    fun toggleImportant(messageId: String) {
+    fun enviarFoto(chatId: String, uri: Uri) {
         viewModelScope.launch {
             try {
-                chatRepository.toggleImportant(messageId)
+                val autor = sesionRepository.sesion.first()?.usuario ?: "maestra"
+                chatRepository.send(
+                    Message(
+                        chatId = chatId,
+                        authorId = autor,
+                        content = "📷 Foto adjunta",
+                        sentAt = LocalDateTime.now()
+                    )
+                )
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
     }
 
-    fun deleteMessage(messageId: String) {
+    fun toggleImportant(messageId: String) {
         viewModelScope.launch {
             try {
-                chatRepository.deleteMessage(messageId)
+                chatRepository.toggleImportant(messageId)
             } catch (e: Exception) {
                 e.printStackTrace()
             }

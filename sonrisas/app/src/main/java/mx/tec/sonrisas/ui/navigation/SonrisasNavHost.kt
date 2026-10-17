@@ -8,6 +8,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import mx.tec.sonrisas.domain.Child
+import mx.tec.sonrisas.domain.GroupEnum
 import mx.tec.sonrisas.domain.Rol
 import mx.tec.sonrisas.domain.Sesion
 import mx.tec.sonrisas.domain.WeeklySummary
@@ -25,6 +27,7 @@ import mx.tec.sonrisas.ui.screens.padre.ChatPadreScreen
 import mx.tec.sonrisas.ui.screens.padre.InicioPadreScreen
 import mx.tec.sonrisas.ui.screens.padre.PadreAutorizarTerceroScreen
 import mx.tec.sonrisas.ui.screens.padre.PadreBitacoraScreen
+import mx.tec.sonrisas.ui.screens.padre.PadrePerfilNinoScreen
 import mx.tec.sonrisas.ui.screens.padre.PadreResumenSemanalScreen
 import mx.tec.sonrisas.ui.state.ActivityViewModel
 import mx.tec.sonrisas.ui.state.CheckInViewModel
@@ -43,18 +46,13 @@ fun SonrisasNavHost(
     val destinoInicial = when (sesion.rol) {
         Rol.MAESTRA -> Route.INICIO_MAESTRA
         Rol.PADRE -> Route.INICIO_PADRE
-        Rol.ADMIN -> Route.ADMIN_INICIO
-        Rol.ORG -> Route.ORG_INICIO
+        else -> Route.INICIO_PADRE
     }
 
     NavHost(
         navController = nav,
         startDestination = destinoInicial
     ) {
-        // --- ADMIN y ORGANIZACIÓN (cada uno en su archivo) ---
-        adminGraph(nav = nav, onSalir = onSalir)
-        orgGraph(nav = nav, nombre = sesion.nombre, onSalir = onSalir)
-
         // --- MAESTRA ---
         composable(Route.INICIO_MAESTRA) {
             val viewModel: MaestraViewModel = hiltViewModel()
@@ -163,8 +161,8 @@ fun SonrisasNavHost(
                 subtitulo = nino?.fullName,
                 onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(ninoId, texto) },
+                onEnviarFoto = { uri -> viewModel.enviarFoto(ninoId, uri) },
                 onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
-                onEliminar = { mensaje -> viewModel.deleteMessage(mensaje.id) },
                 onReintentar = { viewModel.cargarMensajes(ninoId) },
                 onTab = { indice ->
                     when (indice) {
@@ -275,6 +273,11 @@ fun SonrisasNavHost(
                 ninoSeleccionado = viewModel.ninoSeleccionadoIndex,
                 autorizacionHoy = viewModel.autorizacionHoy,
                 onSeleccionarNino = { viewModel.seleccionarNino(it) },
+                onAbrirPerfilNino = { indice ->
+                    viewModel.ninos.getOrNull(indice)?.id?.let { id ->
+                        nav.navigate(Route.padrePerfilNino(id))
+                    }
+                },
                 onAutorizarTercero = {
                     viewModel.ninoActualId?.let { id ->
                         nav.navigate(Route.padreAutorizarTercero(id))
@@ -311,6 +314,11 @@ fun SonrisasNavHost(
                 onSeleccionarNino = {
                     viewModel.seleccionarNino(it)
                     viewModel.ninos.getOrNull(it)?.id?.let { id -> viewModel.cargarResumenSemanal(id) }
+                },
+                onAbrirPerfilNino = { indice ->
+                    viewModel.ninos.getOrNull(indice)?.id?.let { id ->
+                        nav.navigate(Route.padrePerfilNino(id))
+                    }
                 },
                 onTab = { indice ->
                     when (indice) {
@@ -351,6 +359,24 @@ fun SonrisasNavHost(
         }
 
         composable(
+            route = Route.PADRE_PERFIL_NINO,
+            arguments = listOf(navArgument("ninoId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
+            val viewModel: PadreViewModel = hiltViewModel()
+            LaunchedEffect(Unit) { viewModel.cargarInicio() }
+            val nino = viewModel.ninos.firstOrNull { it.id == ninoId } ?: Child(id = ninoId, fullName = "Alumno", daycareCenter = "Estancia Mariposa", group = GroupEnum.P, parentName = sesion.nombre)
+
+            PadrePerfilNinoScreen(
+                child = nino,
+                onAtras = { nav.popBackStack() },
+                onSolicitarCambio = { mensaje ->
+                    viewModel.enviarMensaje(mensaje)
+                }
+            )
+        }
+
+        composable(
             route = Route.RESUMEN_SEMANAL_PADRE,
             arguments = listOf(navArgument("ninoId") { type = NavType.StringType })
         ) { backStackEntry ->
@@ -381,6 +407,7 @@ fun SonrisasNavHost(
                 subtitulo = nino?.let { "Sobre ${it.fullName.substringBefore(" ")}" },
                 onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(texto) },
+                onEnviarFoto = { uri -> viewModel.enviarFoto(uri) },
                 onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
                 onEliminar = { mensaje -> viewModel.deleteMessage(mensaje.id) },
                 onReintentar = { viewModel.cargarMensajes(ninoId) },

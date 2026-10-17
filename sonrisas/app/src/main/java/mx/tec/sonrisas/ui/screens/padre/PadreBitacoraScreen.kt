@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Extension
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Nightlight
 import androidx.compose.material.icons.outlined.Refresh
@@ -22,6 +23,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -50,6 +52,7 @@ fun PadreBitacoraScreen(
     ninos: List<String>,
     ninoSeleccionado: Int,
     onSeleccionarNino: (Int) -> Unit,
+    onAbrirPerfilNino: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
     onTab: (Int) -> Unit = {}
 ) {
@@ -116,7 +119,8 @@ fun PadreBitacoraScreen(
                 SelectorNinoHeader(
                     ninos = ninos,
                     seleccionado = ninoSeleccionado,
-                    onSeleccionar = onSeleccionarNino
+                    onSeleccionar = onSeleccionarNino,
+                    onAbrirPerfil = { onAbrirPerfilNino(it) }
                 )
             }
 
@@ -243,7 +247,7 @@ fun PadreBitacoraScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Outlined.Nightlight, contentDescription = null, tint = Coral, modifier = Modifier.size(24.dp))
                                 Spacer(Modifier.width(10.dp))
-                                Text("Descanso y Ánimo", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextoOscuro)
+                                Text("Descanso y Estado de Ánimo", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextoOscuro)
                             }
                             Spacer(Modifier.height(10.dp))
                             Text(
@@ -304,22 +308,30 @@ fun PadreBitacoraScreen(
     }
 }
 
-// Selector "Hoy: [avatar] Sofía v" idéntico al Inicio
+// Selector con comportamiento inteligente idéntico al de Inicio
 @Composable
 private fun SelectorNinoHeader(
     ninos: List<String>,
     seleccionado: Int,
-    onSeleccionar: (Int) -> Unit
+    onSeleccionar: (Int) -> Unit,
+    onAbrirPerfil: (Int) -> Unit = {}
 ) {
     var abierto by remember { mutableStateOf(false) }
     val forma = RoundedCornerShape(50)
+    val soloUnHijo = ninos.size <= 1
 
     Box {
         Row(
             modifier = Modifier
                 .background(Color.White, forma)
                 .border(1.dp, BordeCampo, forma)
-                .clickable { abierto = true }
+                .clickable {
+                    if (soloUnHijo) {
+                        onAbrirPerfil(0)
+                    } else {
+                        abierto = true
+                    }
+                }
                 .padding(start = 10.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -337,24 +349,57 @@ private fun SelectorNinoHeader(
                 fontWeight = FontWeight.SemiBold,
                 color = TextoOscuro
             )
-            Icon(
-                imageVector = Icons.Outlined.KeyboardArrowDown,
-                contentDescription = "Cambiar alumno",
-                tint = TextoGris,
-                modifier = Modifier.size(18.dp)
-            )
+            if (!soloUnHijo) {
+                Spacer(Modifier.width(2.dp))
+                Icon(
+                    imageVector = Icons.Outlined.KeyboardArrowDown,
+                    contentDescription = "Cambiar niño",
+                    tint = TextoGris,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
 
-        DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
-            ninos.forEachIndexed { indice, nombre ->
-                DropdownMenuItem(
-                    text = { Text(nombre, style = MaterialTheme.typography.bodyMedium, color = TextoOscuro) },
-                    leadingIcon = { AvatarCircular(tamano = 24.dp) },
-                    onClick = {
-                        onSeleccionar(indice)
-                        abierto = false
-                    }
-                )
+        if (!soloUnHijo) {
+            DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
+                ninos.forEachIndexed { indice, nombre ->
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = nombre,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextoOscuro,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = {
+                                        abierto = false
+                                        onAbrirPerfil(indice)
+                                    },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Info,
+                                        contentDescription = "Ver perfil",
+                                        tint = Coral,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        },
+                        leadingIcon = { AvatarCircular(tamano = 24.dp) },
+                        onClick = {
+                            onSeleccionar(indice)
+                            abierto = false
+                        }
+                    )
+                }
             }
         }
     }

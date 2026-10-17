@@ -11,12 +11,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.HowToReg
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -54,6 +56,7 @@ fun InicioPadreScreen(
     ninoSeleccionado: Int = 0,
     autorizacionHoy: PickupAuthorization? = null,
     onSeleccionarNino: (Int) -> Unit = {},
+    onAbrirPerfilNino: (Int) -> Unit = {},
     onAutorizarTercero: () -> Unit = {},
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
@@ -88,7 +91,8 @@ fun InicioPadreScreen(
                 SelectorNinoHoy(
                     ninos = ninos,
                     seleccionado = ninoSeleccionado,
-                    onSeleccionar = onSeleccionarNino
+                    onSeleccionar = onSeleccionarNino,
+                    onAbrirPerfil = { onAbrirPerfilNino(it) }
                 )
             }
 
@@ -185,22 +189,32 @@ private fun TituloResumen() {
     )
 }
 
-// Selector "Hoy: [avatar] Sofía v" usado solo en esta pantalla
+// Selector con comportamiento inteligente:
+// 1 hijo -> Al hacer clic abre su perfil directamente.
+// 2+ hijos -> Abre el menú desplegable. El ícono ℹ️ abre el perfil de ese hijo específicamente.
 @Composable
 private fun SelectorNinoHoy(
     ninos: List<String>,
     seleccionado: Int,
-    onSeleccionar: (Int) -> Unit
+    onSeleccionar: (Int) -> Unit,
+    onAbrirPerfil: (Int) -> Unit = {}
 ) {
     var abierto by remember { mutableStateOf(false) }
     val forma = RoundedCornerShape(50)
+    val soloUnHijo = ninos.size <= 1
 
     Box {
         Row(
             modifier = Modifier
                 .background(Color.White, forma)
                 .border(1.dp, BordeCampo, forma)
-                .clickable { abierto = true }
+                .clickable {
+                    if (soloUnHijo) {
+                        onAbrirPerfil(0)
+                    } else {
+                        abierto = true
+                    }
+                }
                 .padding(start = 10.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -218,24 +232,57 @@ private fun SelectorNinoHoy(
                 fontWeight = FontWeight.SemiBold,
                 color = TextoOscuro
             )
-            Icon(
-                imageVector = Icons.Outlined.KeyboardArrowDown,
-                contentDescription = "Cambiar niño",
-                tint = TextoGris,
-                modifier = Modifier.size(18.dp)
-            )
+            if (!soloUnHijo) {
+                Spacer(Modifier.width(2.dp))
+                Icon(
+                    imageVector = Icons.Outlined.KeyboardArrowDown,
+                    contentDescription = "Cambiar niño",
+                    tint = TextoGris,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
 
-        DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
-            ninos.forEachIndexed { indice, nombre ->
-                DropdownMenuItem(
-                    text = { Text(nombre, style = MaterialTheme.typography.bodyMedium, color = TextoOscuro) },
-                    leadingIcon = { AvatarCircular(tamano = 24.dp) },
-                    onClick = {
-                        onSeleccionar(indice)
-                        abierto = false
-                    }
-                )
+        if (!soloUnHijo) {
+            DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
+                ninos.forEachIndexed { indice, nombre ->
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = nombre,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextoOscuro,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = {
+                                        abierto = false
+                                        onAbrirPerfil(indice)
+                                    },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Info,
+                                        contentDescription = "Ver perfil",
+                                        tint = Coral,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        },
+                        leadingIcon = { AvatarCircular(tamano = 24.dp) },
+                        onClick = {
+                            onSeleccionar(indice)
+                            abierto = false
+                        }
+                    )
+                }
             }
         }
     }

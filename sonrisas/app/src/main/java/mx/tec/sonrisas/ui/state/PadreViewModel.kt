@@ -1,5 +1,6 @@
 package mx.tec.sonrisas.ui.state
 
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -237,6 +238,24 @@ class PadreViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 estadoMensajes = UiState.Error("Error al cargar chat")
+            }
+        }
+    }
+
+    fun enviarFoto(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val autor = sesionRepository.sesion.first()?.usuario ?: "padre"
+                chatRepository.send(
+                    Message(
+                        chatId = chatIdActual,
+                        authorId = autor,
+                        content = "📷 Foto adjunta",
+                        sentAt = LocalDateTime.now()
+                    )
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

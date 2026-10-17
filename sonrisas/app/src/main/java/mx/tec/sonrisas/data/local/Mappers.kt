@@ -35,7 +35,12 @@ fun ChildEntity.toDomain() = Child(
     fullName = fullName,
     daycareCenter = daycareCenter,
     group = GroupEnum.valueOf(group),
-    parentName = parentName
+    parentName = parentName,
+    birthdate = birthdate,
+    gender = gender,
+    allergies = allergies,
+    bloodType = bloodType,
+    emergencyContactPhone = emergencyContactPhone
 )
 
 fun Child.toEntity() = ChildEntity(
@@ -43,7 +48,12 @@ fun Child.toEntity() = ChildEntity(
     fullName = fullName,
     daycareCenter = daycareCenter,
     group = group.name,
-    parentName = parentName
+    parentName = parentName,
+    birthdate = birthdate,
+    gender = gender,
+    allergies = allergies,
+    bloodType = bloodType,
+    emergencyContactPhone = emergencyContactPhone
 )
 
 // --- Injury / Feeding ---
