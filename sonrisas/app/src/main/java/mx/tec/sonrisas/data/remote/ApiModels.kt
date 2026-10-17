@@ -15,6 +15,9 @@ data class TokenPairDto(
 )
 
 @Serializable
+data class DeviceBody(val token: String, val platform: String = "ANDROID")
+
+@Serializable
 data class RefreshBody(@SerialName("refresh_token") val refreshToken: String)
 
 @Serializable

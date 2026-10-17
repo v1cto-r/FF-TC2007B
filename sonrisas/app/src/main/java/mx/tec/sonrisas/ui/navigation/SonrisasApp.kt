@@ -18,7 +18,7 @@ import mx.tec.sonrisas.ui.state.SesionViewModel
  * Con sesión activa, levanta SonrisasNavHost con la navegación completa.
  */
 @Composable
-fun SonrisasApp() {
+fun SonrisasApp(chatPendiente: String? = null, onChatAbierto: () -> Unit = {}) {
     val sesionViewModel: SesionViewModel = hiltViewModel()
     val estado by sesionViewModel.estado.collectAsStateWithLifecycle()
 
@@ -58,6 +58,8 @@ fun SonrisasApp() {
         } else {
             SonrisasNavHost(
                 sesion = actual.sesion,
+                chatPendiente = chatPendiente,
+                onChatAbierto = onChatAbierto,
                 onSalir = sesionViewModel::salir
             )
         }

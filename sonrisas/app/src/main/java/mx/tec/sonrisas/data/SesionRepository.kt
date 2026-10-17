@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import mx.tec.sonrisas.data.chat.ChatSocket
 import mx.tec.sonrisas.data.local.dao.ChildDao
 import mx.tec.sonrisas.data.local.dao.MessageDao
+import mx.tec.sonrisas.data.push.PushRepository
 import mx.tec.sonrisas.data.remote.ApiClient
 import mx.tec.sonrisas.data.remote.MeDto
 import mx.tec.sonrisas.domain.Rol
@@ -23,7 +24,8 @@ class SesionRepository @Inject constructor(
     private val childRepository: ChildRepository,
     private val socket: ChatSocket,
     private val messageDao: MessageDao,
-    private val childDao: ChildDao
+    private val childDao: ChildDao,
+    private val push: PushRepository
 ) {
     private val _sesion = MutableStateFlow<Sesion?>(null)
     val sesion: StateFlow<Sesion?> = _sesion.asStateFlow()
@@ -57,6 +59,7 @@ class SesionRepository @Inject constructor(
     suspend fun salir() {
         socket.disconnect()
         _sesion.value = null
+        push.unregister()
         auth.logout()
         messageDao.clear()
         childDao.clear()
@@ -79,6 +82,7 @@ class SesionRepository @Inject constructor(
             } catch (e: IOException) {
             }
             socket.connect()
+            push.register()
         }
         _sesion.value = sesion
     }
