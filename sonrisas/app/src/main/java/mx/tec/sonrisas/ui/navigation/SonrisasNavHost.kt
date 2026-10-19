@@ -165,7 +165,7 @@ fun SonrisasNavHost(
             val nino = (viewModel.estadoPerfilNino as? UiState.Exito)?.datos?.child
             ChatMaestraScreen(
                 estado = viewModel.estadoMensajes,
-                currentUserId = sesion.id,
+                currentUserId = sesion.usuario,
                 titulo = if (nino != null) "${nino.parentName} - ${nino.fullName.substringBefore(" ")}" else "Chat",
                 subtitulo = nino?.fullName,
                 onAtras = { nav.popBackStack() },
@@ -411,7 +411,7 @@ fun SonrisasNavHost(
             val nino = viewModel.ninos.firstOrNull { it.id == ninoId }
             ChatPadreScreen(
                 estado = viewModel.estadoMensajes,
-                currentUserId = sesion.id,
+                currentUserId = sesion.usuario,
                 subtitulo = nino?.let { "Sobre ${it.fullName.substringBefore(" ")}" },
                 onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(texto) },
