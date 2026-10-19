@@ -1,5 +1,7 @@
 import uuid
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -12,7 +14,7 @@ from app.database.models import (
     Child, ChildDocument, DailyLog, Estancia, File, FilePurpose, Message, RecordStatus, Salon, User, UserRole,
 )
 from app.schemas.common import Detail
-from app.schemas.org import ChildIn, ChildOut, ChildPhotoIn
+from app.schemas.org import ChildIn, ChildOut, ChildPhotoIn, ChildProfileIn
 from app.storage.rules import load_attachable, release
 
 router = APIRouter(prefix="/children", tags=["children"])
@@ -76,6 +78,27 @@ def put_child(child_id: uuid.UUID, body: ChildIn, response: Response,
                 or parent.estancia_id != child.estancia_id):
             raise HTTPException(422, "parent_id must be an active PADRE of this estancia")
     child.salon_id, child.parent_id, child.full_name = body.salon_id, body.parent_id, body.full_name
+    if "birth_date" in body.model_fields_set:  # left out = keep what the parent sent
+        child.birth_date = body.birth_date
+    if "allergies" in body.model_fields_set:
+        child.allergies = ",".join(body.allergies or []) or None
+    db.commit()
+    return child
+
+
+@router.patch("/{child_id}/profile", response_model=ChildOut, responses=ERRORS)
+def complete_child_profile(child_id: uuid.UUID, body: ChildProfileIn,
+                           access: Access = Depends(require_access("child:read")), db: Session = Depends(get_db)):
+    """The child's parent fills in what the admin couldn't: birth date and allergies. Sending it marks the profile
+    completed; it can be sent again to correct it. The name, salon and parent stay with the ADMIN."""
+    if access.role != "PADRE":
+        raise HTTPException(403, "Only the child's parent completes their profile")
+    child = _visible_or_404(db, access, child_id)
+    lifecycle.ensure_writable(child)
+    child.birth_date = body.birth_date
+    child.allergies = ",".join(body.allergies) or None
+    if child.profile_completed_at is None:
+        child.profile_completed_at = datetime.now(timezone.utc)
     db.commit()
     return child
 

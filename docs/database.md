@@ -80,6 +80,9 @@ erDiagram
     uuid salon_id FK
     uuid parent_id FK
     string full_name
+    date birth_date "null only for children enrolled before it existed"
+    string allergies "comma separated, max 1000 chars"
+    timestamptz profile_completed_at "set when the parent sends the profile"
     uuid photo_file_id FK
     enum status "ARCHIVED|DELETED"
     uuid id PK

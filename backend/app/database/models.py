@@ -199,6 +199,9 @@ class Child(Record, Base):
   salon_id: Mapped[uuid.UUID | None] = _uuid_fk(f'{SCHEMA}.salones.id', nullable=True, ondelete='SET NULL', index=True)
   parent_id: Mapped[uuid.UUID | None] = _uuid_fk(f'{SCHEMA}.users.id', nullable=True, ondelete='SET NULL', index=True)
   full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+  birth_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)  # null only for children enrolled before it existed
+  allergies: Mapped[str | None] = mapped_column(String(1000), nullable=True)  # comma separated, see schemas/org.py
+  profile_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # set when the parent sends the profile
   photo_file_id: Mapped[uuid.UUID | None] = _file_fk(name='fk_children_photo_file_id')
 
   estancia: Mapped[Estancia] = relationship(back_populates="children")

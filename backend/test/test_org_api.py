@@ -141,24 +141,76 @@ def test_admin_enrols_and_links_a_child(client, world, auth):
     h = auth(world.admin1)
     cid = uuid.uuid4()
     r = put(client, f"/children/{cid}", h, estancia_id=str(world.e1.id), salon_id=str(world.s2.id),
-            parent_id=str(world.p2.id), full_name="Nuevo Niño")
+            parent_id=str(world.p2.id), full_name="Nuevo Niño", birth_date="2022-05-01")
     assert r.status_code == 201 and r.json()["parent_id"] == str(world.p2.id)
     # a parent can have several children, the new one shows up for them
     assert str(cid) in {c["id"] for c in client.get("/children", headers=auth(world.p2)).json()}
     r = put(client, f"/children/{cid}", h, estancia_id=str(world.e1.id), salon_id=str(world.s1.id),
-            parent_id=str(world.p2.id), full_name="Nuevo Niño")
+            parent_id=str(world.p2.id), full_name="Nuevo Niño", birth_date="2022-05-01")
     assert r.status_code == 200 and r.json()["salon_id"] == str(world.s1.id)  # moved between salones
 
 
 def test_child_validation(client, world, auth):
     h = auth(world.admin1)
-    base = dict(estancia_id=str(world.e1.id), full_name="x")
+    base = dict(estancia_id=str(world.e1.id), full_name="x", birth_date="2022-05-01")
     new = lambda: f"/children/{uuid.uuid4()}"
     assert put(client, new(), h, **base, parent_id=str(world.p3.id)).status_code == 422     # parent of another estancia
     assert put(client, new(), h, **base, parent_id=str(world.d1.id)).status_code == 422     # not a PADRE
     assert put(client, new(), h, **base, salon_id=str(world.s3.id)).status_code == 422      # salon of another estancia
-    assert put(client, new(), h, estancia_id=str(world.e2.id), full_name="x").status_code == 404
-    assert put(client, f"/children/{world.c1.id}", h, estancia_id=str(world.e2.id), full_name="x").status_code == 422
+    assert put(client, new(), h, estancia_id=str(world.e2.id), full_name="x", birth_date="2022-05-01").status_code == 404
+    assert put(client, f"/children/{world.c1.id}", h, estancia_id=str(world.e2.id), full_name="x", birth_date="2022-05-01").status_code == 422
+
+
+def test_child_birth_date_and_allergies(client, world, auth):
+    h = auth(world.admin1)
+    cid = uuid.uuid4()
+    base = dict(estancia_id=str(world.e1.id), full_name="Alérgico")
+    r = put(client, f"/children/{cid}", h, **base)    # name only: the parent fills in the rest
+    assert r.status_code == 201 and r.json()["birth_date"] is None and r.json()["allergies"] == []
+    assert r.json()["profile_completed_at"] is None
+
+    r = put(client, f"/children/{cid}", h, **base, birth_date="2022-05-01", allergies=[" Peanuts ", "Lactose", "", "Peanuts"])
+    assert r.json()["birth_date"] == "2022-05-01" and r.json()["allergies"] == ["Peanuts", "Lactose"]  # trimmed, deduped
+    assert client.get(f"/children/{cid}", headers=auth(world.org)).json()["allergies"] == ["Peanuts", "Lactose"]
+
+    assert put(client, f"/children/{uuid.uuid4()}", h, **base, birth_date="2999-01-01").status_code == 422
+    assert put(client, f"/children/{uuid.uuid4()}", h, **base, allergies=["a,b"]).status_code == 422
+    assert put(client, f"/children/{uuid.uuid4()}", h, **base, allergies=[f"{i:03}" + "x" * 97 for i in range(11)]).status_code == 422
+
+
+def test_parent_completes_the_profile_and_admin_edits_keep_it(client, world, auth):
+    h, cid = auth(world.admin1), uuid.uuid4()
+    base = dict(estancia_id=str(world.e1.id), full_name="Pendiente", parent_id=str(world.p2.id))
+    assert put(client, f"/children/{cid}", h, **base).status_code == 201
+    pending = [c for c in client.get("/children", headers=auth(world.p2)).json() if c["profile_completed_at"] is None]
+    assert str(cid) in {c["id"] for c in pending}                       # what the parent's app shows as pending
+
+    url = f"/children/{cid}/profile"
+    r = client.patch(url, headers=auth(world.p2), json={"birth_date": "2022-05-01", "allergies": ["Nuts", "Nuts", " Egg"]})
+    assert r.status_code == 200
+    assert r.json()["birth_date"] == "2022-05-01" and r.json()["allergies"] == ["Nuts", "Egg"]
+    first = r.json()["profile_completed_at"]
+    assert first is not None and r.json()["full_name"] == "Pendiente"
+    # sending again corrects the data but keeps the first completion time
+    r = client.patch(url, headers=auth(world.p2), json={"birth_date": "2022-06-01"})
+    assert r.json()["allergies"] == [] and r.json()["profile_completed_at"] == first
+
+    # an admin edit that leaves the profile fields out doesn't wipe them
+    r = put(client, f"/children/{cid}", h, **{**base, "salon_id": str(world.s2.id)})
+    assert r.json()["birth_date"] == "2022-06-01" and r.json()["salon_id"] == str(world.s2.id)
+
+
+def test_child_profile_rules(client, world, auth):
+    url = lambda c: f"/children/{c.id}/profile"
+    body = {"birth_date": "2022-05-01"}
+    for who in (world.d1, world.admin1, world.org):
+        assert client.patch(url(world.c1), headers=auth(who), json=body).status_code == 403   # only the parent
+    assert client.patch(url(world.c3), headers=auth(world.p1), json=body).status_code == 404   # another family
+    assert client.patch(url(world.c1), headers=auth(world.p1), json={}).status_code == 422      # birth_date is required
+    assert client.patch(url(world.c1), headers=auth(world.p1), json={"birth_date": "2999-01-01"}).status_code == 422
+    # the parent can't use it to change anything else
+    r = client.patch(url(world.c1), headers=auth(world.p1), json={**body, "full_name": "Hacked", "salon_id": str(world.s2.id)})
+    assert r.status_code == 200 and r.json()["full_name"] == "c1" and r.json()["salon_id"] == str(world.s1.id)
 
 
 def test_child_visibility_per_role(client, world, auth):
@@ -174,7 +226,7 @@ def test_child_visibility_per_role(client, world, auth):
 
 
 def test_only_admin_writes_children(client, world, auth):
-    body = dict(estancia_id=str(world.e1.id), full_name="x")
+    body = dict(estancia_id=str(world.e1.id), full_name="x", birth_date="2022-05-01")
     for who in (world.d1, world.p1, world.org):
         assert put(client, f"/children/{uuid.uuid4()}", auth(who), **body).status_code == 403
         assert client.delete(f"/children/{world.c1.id}", headers=auth(who)).status_code == 403

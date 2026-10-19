@@ -6,6 +6,7 @@ Revisions live in `backend/migrations/versions/`; the API runs `alembic upgrade 
 |---|---|
 | `0001_baseline` | The schema exactly as `create_all` made it before Alembic. |
 | `0002_soft_delete_audit_files` | `status` on the domain tables and the delete-blocking triggers, partial unique indexes, `ON DELETE RESTRICT`, `audit_log`, `files` and `child_documents`, `children.parent_id` replacing `child_parents`, new `role_actions`. Moves existing data (parents, photo keys) across. |
+| `0004_child_birth_data` | `children.birth_date`, `children.allergies` and `children.profile_completed_at`. Existing children keep `birth_date` null. |
 
 ## Databases created before Alembic
 
