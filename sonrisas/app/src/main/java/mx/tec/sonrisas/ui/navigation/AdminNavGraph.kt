@@ -3,6 +3,7 @@ package mx.tec.sonrisas.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
@@ -11,30 +12,18 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import mx.tec.sonrisas.data.RolApi
-import mx.tec.sonrisas.ui.screens.admin.AdminAgregarAlumnosScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminAgregarNinoScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminAsignarMaestraScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminAvisosScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminCredencialDialog
-import mx.tec.sonrisas.ui.screens.admin.AdminCrearGrupoScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminCrearUsuarioScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminDetallePadreScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminDetalleSalonScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminInicioScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminInscripcionScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminNuevoAvisoScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminPadresScreen
-import mx.tec.sonrisas.ui.screens.admin.AdminSalonesScreen
-import mx.tec.sonrisas.ui.screens.admin.ConEstado
+import mx.tec.sonrisas.ui.screens.admin.*
 import mx.tec.sonrisas.ui.state.AdminViewModel
+import mx.tec.sonrisas.ui.state.UiState
 
-/** Pestañas de la barra inferior: 0 = Inicio, 1 = Salones, 2 = Padres, 3 = Avisos. */
+/** Pestañas de la barra inferior: 0 = Inicio, 1 = Salones, 2 = Padres, 3 = Avisos, 4 = Chat. */
 private fun NavHostController.irATabAdmin(indice: Int) {
     val destino = when (indice) {
         0 -> Route.ADMIN_INICIO
         1 -> Route.ADMIN_SALONES
         2 -> Route.ADMIN_PADRES
-        else -> Route.ADMIN_AVISOS
+        3 -> Route.ADMIN_AVISOS
+        else -> Route.ADMIN_CHAT_LIST
     }
     navigate(destino) {
         popUpTo(Route.ADMIN_INICIO)
@@ -42,7 +31,6 @@ private fun NavHostController.irATabAdmin(indice: Int) {
     }
 }
 
-/** Un solo AdminViewModel para todo el flujo del admin, atado a la pantalla de Inicio. */
 @Composable
 private fun NavBackStackEntry.adminViewModel(nav: NavHostController): AdminViewModel {
     val raiz = remember(this) { nav.getBackStackEntry(Route.ADMIN_INICIO) }
@@ -102,10 +90,74 @@ fun NavGraphBuilder.adminGraph(
         ConEstado(estado = vm.estado, onReintentar = vm::cargar) { datos ->
             AdminAvisosScreen(
                 avisos = datos.avisos,
-                onNuevoAviso = { nav.navigate(Route.ADMIN_NUEVO_AVISO) },
                 onTab = { indice -> nav.irATabAdmin(indice) }
             )
         }
+    }
+
+    // --- Chat Admin ---
+
+    composable(Route.ADMIN_CHAT_LIST) {
+        AdminChatListScreen(
+            onChatOrg = { nav.navigate(Route.ADMIN_CHAT_ORG) },
+            onChatProfesores = { nav.navigate(Route.ADMIN_CHAT_TEACHERS) },
+            onTab = { indice -> nav.irATabAdmin(indice) }
+        )
+    }
+
+    composable(Route.ADMIN_CHAT_ORG) { entry ->
+        val vm = entry.adminViewModel(nav)
+        val context = LocalContext.current
+        val chatId = "admin_org"
+        LaunchedEffect(Unit) { vm.cargarMensajes(chatId) }
+        AdminChatScreen(
+            estado = vm.estadoMensajes,
+            currentUserId = "admin",
+            titulo = "Chat con Organización",
+            subtitulo = "Comunicación institucional",
+            onAtras = { nav.popBackStack() },
+            onEnviar = { texto -> vm.enviarMensaje(chatId, texto) },
+            onEnviarFoto = { uri -> vm.enviarFoto(chatId, uri, context) },
+            onToggleImportante = { msg -> vm.toggleImportant(msg.id) },
+            onEliminar = { msg -> vm.eliminarMensaje(msg) },
+            onReintentar = { vm.cargarMensajes(chatId) }
+        )
+    }
+
+    composable(Route.ADMIN_CHAT_TEACHERS) { entry ->
+        val vm = entry.adminViewModel(nav)
+        ConEstado(estado = vm.estado, onReintentar = vm::cargar) { datos ->
+            AdminChatTeacherListScreen(
+                maestros = datos.maestros,
+                onMaestroClick = { maestro -> nav.navigate(Route.adminChatTeacher(maestro.id)) },
+                onAtras = { nav.popBackStack() }
+            )
+        }
+    }
+
+    composable(
+        route = Route.ADMIN_CHAT_TEACHER,
+        arguments = listOf(navArgument("teacherId") { type = NavType.StringType })
+    ) { entry ->
+        val teacherId = entry.arguments?.getString("teacherId").orEmpty()
+        val vm = entry.adminViewModel(nav)
+        val context = LocalContext.current
+        val chatId = "admin_teacher_$teacherId"
+        LaunchedEffect(teacherId) { vm.cargarMensajes(chatId) }
+        val maestroNombre = (vm.estado as? UiState.Exito)?.datos?.maestros?.firstOrNull { it.id == teacherId }?.nombre ?: "Profesor/a"
+
+        AdminChatScreen(
+            estado = vm.estadoMensajes,
+            currentUserId = "admin",
+            titulo = maestroNombre,
+            subtitulo = "Chat con docente",
+            onAtras = { nav.popBackStack() },
+            onEnviar = { texto -> vm.enviarMensaje(chatId, texto) },
+            onEnviarFoto = { uri -> vm.enviarFoto(chatId, uri, context) },
+            onToggleImportante = { msg -> vm.toggleImportant(msg.id) },
+            onEliminar = { msg -> vm.eliminarMensaje(msg) },
+            onReintentar = { vm.cargarMensajes(chatId) }
+        )
     }
 
     // --- Salones ---
@@ -282,24 +334,6 @@ fun NavGraphBuilder.adminGraph(
                 errorMensaje = vm.errorMensaje,
                 onAtras = { nav.popBackStack() },
                 onGuardar = { nombre, salonId -> vm.agregarNino(padreId, nombre, salonId) { nav.popBackStack() } }
-            )
-        }
-    }
-
-    // --- Avisos ---
-
-    composable(Route.ADMIN_NUEVO_AVISO) { entry ->
-        val vm = entry.adminViewModel(nav)
-        LaunchedEffect(Unit) { vm.limpiarError() }
-        ConEstado(estado = vm.estado, onReintentar = vm::cargar) { datos ->
-            AdminNuevoAvisoScreen(
-                salones = datos.salones,
-                guardando = vm.guardando,
-                errorMensaje = vm.errorMensaje,
-                onAtras = { nav.popBackStack() },
-                onEnviar = { titulo, mensaje, salonId ->
-                    vm.enviarAviso(titulo, mensaje, salonId) { nav.popBackStack() }
-                }
             )
         }
     }

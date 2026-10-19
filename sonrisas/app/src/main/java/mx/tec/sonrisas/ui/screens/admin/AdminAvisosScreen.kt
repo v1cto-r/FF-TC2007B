@@ -5,12 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -32,23 +28,13 @@ import mx.tec.sonrisas.ui.theme.*
 fun AdminAvisosScreen(
     avisos: List<AvisoUi>,
     modifier: Modifier = Modifier,
-    onNuevoAviso: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
     FlagSecureDisable()
     Scaffold(
         modifier = modifier,
         containerColor = Fondo,
-        bottomBar = { BottomBar(tabs = TabsAdmin, seleccionado = 3, onSeleccionar = onTab) },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onNuevoAviso,
-                containerColor = Coral,
-                contentColor = Color.White,
-                icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
-                text = { Text("Nuevo aviso", style = MaterialTheme.typography.labelLarge) }
-            )
-        }
+        bottomBar = { BottomBar(tabs = TabsAdmin, seleccionado = 3, onSeleccionar = onTab) }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             TopBarAtras(titulo = "Avisos", subtitulo = "Comunicados de la estancia", mostrarAvatar = true)
@@ -56,7 +42,7 @@ fun AdminAvisosScreen(
             if (avisos.isEmpty()) {
                 EstadoVacio(
                     titulo = "Sin avisos",
-                    subtitulo = "Publica el primero con el botón de abajo",
+                    subtitulo = "No hay comunicados publicados",
                     modifier = Modifier.padding(16.dp)
                 )
                 return@Column
@@ -119,10 +105,4 @@ private fun TarjetaAviso(aviso: AvisoUi, modifier: Modifier = Modifier) {
 @Composable
 private fun AdminAvisosPreview() {
     SonrisasTheme { AdminAvisosScreen(avisos = AdminMuestra.avisos) }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun AdminAvisosVacioPreview() {
-    SonrisasTheme { AdminAvisosScreen(avisos = emptyList()) }
 }

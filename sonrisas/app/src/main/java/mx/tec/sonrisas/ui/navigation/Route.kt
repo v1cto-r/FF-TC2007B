@@ -60,7 +60,6 @@ object Route {
 
     const val ADMIN_PADRES = "admin_padres"
     const val ADMIN_AVISOS = "admin_avisos"
-    const val ADMIN_NUEVO_AVISO = "admin_nuevo_aviso"
     const val ADMIN_CREAR_MAESTRA = "admin_crear_maestra"
     const val ADMIN_CREAR_PADRE = "admin_crear_padre"
 
@@ -69,6 +68,13 @@ object Route {
 
     const val ADMIN_AGREGAR_NINO = "admin_agregar_nino/{padreId}"
     fun adminAgregarNino(padreId: String): String = "admin_agregar_nino/${Uri.encode(padreId)}"
+
+    // --- ADMIN CHAT ---
+    const val ADMIN_CHAT_LIST = "admin_chat_list"
+    const val ADMIN_CHAT_ORG = "admin_chat_org"
+    const val ADMIN_CHAT_TEACHERS = "admin_chat_teachers"
+    const val ADMIN_CHAT_TEACHER = "admin_chat_teacher/{teacherId}"
+    fun adminChatTeacher(teacherId: String): String = "admin_chat_teacher/${Uri.encode(teacherId)}"
 
 
     // --- ORGANIZACIÓN ---
@@ -86,4 +92,6 @@ object Route {
 
     const val ORG_REASIGNAR_ADMIN = "org_reasignar_admin/{instanciaId}"
     fun orgReasignarAdmin(instanciaId: String): String = "org_reasignar_admin/${Uri.encode(instanciaId)}"
+
+    const val ORG_CHAT_ADMIN = "org_chat_admin"
 }

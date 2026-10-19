@@ -1,5 +1,7 @@
 package mx.tec.sonrisas.ui.state
 
+import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -7,16 +9,21 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import mx.tec.sonrisas.data.AdminRepository
 import mx.tec.sonrisas.data.AdminSnapshot
+import mx.tec.sonrisas.data.ChatRepository
 import mx.tec.sonrisas.data.GROUP_TYPE_POR_DEFECTO
 import mx.tec.sonrisas.data.RolApi
+import mx.tec.sonrisas.data.SesionRepository
 import mx.tec.sonrisas.data.remote.AdminChildDto
 import mx.tec.sonrisas.data.remote.ApiException
 import mx.tec.sonrisas.data.remote.UserDto
+import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.ui.screens.admin.AdminDatos
 import mx.tec.sonrisas.ui.screens.admin.AlumnoUi
 import mx.tec.sonrisas.ui.screens.admin.AvisoUi
@@ -27,7 +34,9 @@ import mx.tec.sonrisas.ui.screens.admin.SalonUi
 
 @HiltViewModel
 class AdminViewModel @Inject constructor(
-    private val repo: AdminRepository
+    private val repo: AdminRepository,
+    private val chatRepository: ChatRepository,
+    private val sesionRepository: dagger.Lazy<SesionRepository>
 ) : ViewModel() {
 
     var estado by mutableStateOf<UiState<AdminDatos>>(UiState.Cargando)
@@ -39,13 +48,14 @@ class AdminViewModel @Inject constructor(
     var errorMensaje by mutableStateOf<String?>(null)
         private set
 
-    /** Se llena al crear una cuenta; la pantalla lo muestra y luego llama a [descartarCredencial]. */
     var credencial by mutableStateOf<CredencialUi?>(null)
+        private set
+
+    var estadoMensajes by mutableStateOf<UiState<List<Message>>>(UiState.Cargando)
         private set
 
     private var snapshot: AdminSnapshot? = null
 
-    /** Carga los datos. Si ya hay datos en pantalla, se actualizan sin mostrar el spinner. */
     fun cargar() {
         viewModelScope.launch {
             if (estado !is UiState.Exito) estado = UiState.Cargando
@@ -67,7 +77,6 @@ class AdminViewModel @Inject constructor(
 
     // --- Grupos ---
 
-    /** Crea el salón con su maestra y mueve a él a los alumnos elegidos. */
     fun crearGrupo(nombre: String, maestroId: String?, alumnoIds: Set<String>, onListo: () -> Unit) =
         ejecutar(onListo) {
             val snap = requerir()
@@ -76,7 +85,6 @@ class AdminViewModel @Inject constructor(
             moverNinos(snap, alumnoIds, salonId)
         }
 
-    /** Asigna (o cambia) la maestra de un salón. maestroId = null la quita. */
     fun asignarMaestra(salonId: String, maestroId: String?, onListo: () -> Unit) =
         ejecutar(onListo) {
             val snap = requerir()
@@ -92,47 +100,96 @@ class AdminViewModel @Inject constructor(
 
     // --- Cuentas y niños ---
 
-    /** Crea una maestra (DOCENTE) o un padre (PADRE) y deja lista su contraseña temporal. */
     fun crearUsuario(nombre: String, apellido: String, correo: String, rol: String) = ejecutar {
         val completo = nombreCompleto(nombre, apellido)
         val creado = repo.crearUsuario(correo, completo, rol)
         credencial = CredencialUi(completo, creado.email, creado.temporaryPassword)
     }
 
-    /** Inscripción: crea al padre o tutor y a su alumno, ya vinculados. */
     fun inscribir(nombreTutor: String, apellidoTutor: String, correo: String, nombreAlumno: String) = ejecutar {
         val snap = requerir()
         val completo = nombreCompleto(nombreTutor, apellidoTutor)
         val creado = repo.crearUsuario(correo, completo, RolApi.PADRE)
-        // Se muestra aunque falle lo siguiente: la contraseña no se puede volver a consultar.
         credencial = CredencialUi(completo, creado.email, creado.temporaryPassword)
         repo.guardarNino(UUID.randomUUID().toString(), snap.estanciaId, nombreAlumno, null, creado.id)
     }
 
-    /** Agrega un niño a un padre ya existente, con salón opcional. */
     fun agregarNino(padreId: String, nombreNino: String, salonId: String?, onListo: () -> Unit) =
         ejecutar(onListo) {
             val snap = requerir()
             repo.guardarNino(UUID.randomUUID().toString(), snap.estanciaId, nombreNino, salonId, padreId)
         }
 
-    // --- Avisos ---
+    // --- Chat ---
 
-    /** salonId = null publica el aviso en toda la estancia. */
-    fun enviarAviso(titulo: String, mensaje: String, salonId: String?, onListo: () -> Unit) =
-        ejecutar(onListo) {
-            val snap = requerir()
-            // BACKEND: la API no permite dirigir un aviso "solo a maestros". Lo ven las maestras
-            // y también los padres de la estancia o del salón elegido.
-            repo.guardarAviso(
-                id = UUID.randomUUID().toString(),
-                estanciaId = snap.estanciaId,
-                salonId = salonId,
-                titulo = titulo,
-                descripcion = mensaje,
-                fecha = LocalDate.now().toString()
-            )
+    fun cargarMensajes(chatId: String) {
+        viewModelScope.launch {
+            estadoMensajes = UiState.Cargando
+            try {
+                val yo = sesionRepository.get().sesion.first()?.id.orEmpty()
+                launch {
+                    try { chatRepository.refresh(chatId) } catch (e: Exception) {}
+                }
+                chatRepository.observeMessagesForTeacher(chatId, yo).collect { mensajes ->
+                    estadoMensajes = if (mensajes.isEmpty()) UiState.Vacio else UiState.Exito(mensajes)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                estadoMensajes = UiState.Error("Error al cargar chat: ${e.message}")
+            }
         }
+    }
+
+    fun enviarMensaje(chatId: String, texto: String) {
+        viewModelScope.launch {
+            try {
+                val autor = sesionRepository.get().sesion.first()?.id ?: "admin"
+                chatRepository.send(
+                    Message(
+                        chatId = chatId,
+                        authorId = autor,
+                        content = texto,
+                        sentAt = LocalDateTime.now(),
+                        isAviso = false
+                    )
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun enviarFoto(chatId: String, uri: Uri, context: Context) {
+        viewModelScope.launch {
+            val foto = context.leerFoto(uri) ?: return@launch
+            val autor = sesionRepository.get().sesion.first()?.id.orEmpty()
+            try {
+                chatRepository.sendPhoto(chatId, autor, foto.first, foto.second)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun toggleImportant(messageId: String) {
+        viewModelScope.launch {
+            try {
+                chatRepository.toggleImportant(messageId)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun eliminarMensaje(message: Message) {
+        viewModelScope.launch {
+            try {
+                chatRepository.deleteMessage(message.id)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     // --- Internos ---
 
@@ -153,7 +210,6 @@ class AdminViewModel @Inject constructor(
 
     private fun nombreCompleto(nombre: String, apellido: String) = "${nombre.trim()} ${apellido.trim()}".trim()
 
-    /** Corre la acción, vuelve a leer la API y avisa con [onListo] solo si todo salió bien. */
     private fun ejecutar(onListo: () -> Unit = {}, bloque: suspend () -> Unit) {
         viewModelScope.launch {
             guardando = true

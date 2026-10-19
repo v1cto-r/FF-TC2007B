@@ -54,8 +54,7 @@ class SesionRepository @Inject constructor(
 
     fun alPrimerPlano() {
         val actual = _sesion.value ?: return
-        // BACKEND: el admin no usa el socket del chat (el chat de la API es solo padre-docente por niño)
-        if (!actual.pendiente && actual.rol != Rol.ADMIN) socket.reconnectNow()
+        if (!actual.pendiente) socket.reconnectNow()
     }
 
     suspend fun salir() {
@@ -69,24 +68,25 @@ class SesionRepository @Inject constructor(
 
     private suspend fun abrirSesion() {
         val me = auth.authed { api.get<MeDto>("/auth/me", it) }
-        val rol = when (me.role) {
+        val rol = when (me.role?.uppercase()) {
             "DOCENTE" -> Rol.MAESTRA
             "PADRE" -> Rol.PADRE
             "ADMIN" -> Rol.ADMIN
+            "ORG", "ORGANIZACION", "ORGANIZATION" -> Rol.ORG
             else -> {
-                // ORG todavía no tiene sus pantallas conectadas a la API
                 auth.logout()
                 throw RolNoSoportadoException()
             }
         }
         val sesion = Sesion(me.sub, me.email, me.fullName, rol, me.pending)
-        if (!me.pending && rol != Rol.ADMIN) {
+        if (!me.pending) {
             try {
-                childRepository.refreshFromServer(parentName = if (rol == Rol.PADRE) me.fullName else "")
+                if (rol == Rol.PADRE || rol == Rol.MAESTRA) {
+                    childRepository.refreshFromServer(parentName = if (rol == Rol.PADRE) me.fullName else "")
+                }
             } catch (e: IOException) {
             }
             socket.connect()
-            // BACKEND: el admin no registra push (no hay notificaciones definidas para ese rol)
             push.register()
         }
         _sesion.value = sesion

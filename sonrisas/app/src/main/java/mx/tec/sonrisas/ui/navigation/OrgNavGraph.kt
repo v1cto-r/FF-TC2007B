@@ -1,26 +1,24 @@
 package mx.tec.sonrisas.ui.navigation
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import mx.tec.sonrisas.ui.screens.organizacion.OrgAvisosScreen
-import mx.tec.sonrisas.ui.screens.organizacion.OrgDetalleInstanciaScreen
-import mx.tec.sonrisas.ui.screens.organizacion.OrgInicioScreen
-import mx.tec.sonrisas.ui.screens.organizacion.OrgInstanciasScreen
-import mx.tec.sonrisas.ui.screens.organizacion.OrgMuestra
-import mx.tec.sonrisas.ui.screens.organizacion.OrgNuevaInstanciaScreen
-import mx.tec.sonrisas.ui.screens.organizacion.OrgNuevoAvisoScreen
-import mx.tec.sonrisas.ui.screens.organizacion.OrgReasignarAdminScreen
+import mx.tec.sonrisas.ui.screens.organizacion.*
+import mx.tec.sonrisas.ui.state.AdminViewModel
 
-/** Pestañas de la barra inferior: 0 = Inicio, 1 = Instancias, 2 = Avisos. */
+/** Pestañas de la barra inferior: 0 = Inicio, 1 = Instancias, 2 = Avisos, 3 = Chat. */
 private fun NavHostController.irATabOrg(indice: Int) {
     val destino = when (indice) {
         0 -> Route.ORG_INICIO
         1 -> Route.ORG_INSTANCIAS
-        else -> Route.ORG_AVISOS
+        2 -> Route.ORG_AVISOS
+        else -> Route.ORG_CHAT_ADMIN
     }
     navigate(destino) {
         popUpTo(Route.ORG_INICIO)
@@ -57,6 +55,23 @@ fun NavGraphBuilder.orgGraph(
         OrgAvisosScreen(
             avisos = OrgMuestra.avisos,
             onNuevoAviso = { nav.navigate(Route.ORG_NUEVO_AVISO) },
+            onTab = { indice -> nav.irATabOrg(indice) }
+        )
+    }
+
+    composable(Route.ORG_CHAT_ADMIN) {
+        val vm: AdminViewModel = hiltViewModel()
+        val context = LocalContext.current
+        val chatId = "admin_org"
+        LaunchedEffect(Unit) { vm.cargarMensajes(chatId) }
+        OrgChatScreen(
+            estado = vm.estadoMensajes,
+            currentUserId = "org",
+            onEnviar = { texto -> vm.enviarMensaje(chatId, texto) },
+            onEnviarFoto = { uri -> vm.enviarFoto(chatId, uri, context) },
+            onToggleImportante = { msg -> vm.toggleImportant(msg.id) },
+            onEliminar = { msg -> vm.eliminarMensaje(msg) },
+            onReintentar = { vm.cargarMensajes(chatId) },
             onTab = { indice -> nav.irATabOrg(indice) }
         )
     }
