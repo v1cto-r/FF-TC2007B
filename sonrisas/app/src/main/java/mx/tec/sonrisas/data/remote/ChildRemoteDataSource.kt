@@ -9,18 +9,31 @@ interface ChildRemoteDataSource {
     suspend fun fetchAll(parentName: String): List<Child>
     suspend fun save(child: Child)
     suspend fun delete(child: Child)
+    suspend fun submitProfile(childId: String, birthDate: String, allergies: List<String>): ChildDto
 }
 
-// NetworkMonitor.isOnline() always returns false.
-// save/delete: TODO, never called while NetworkMonitor.isOnline() is false
 class ChildRemoteDataSourceImpl @Inject constructor(
     private val api: ApiClient,
     private val auth: AuthRepository
 ) : ChildRemoteDataSource {
     override suspend fun fetchAll(parentName: String): List<Child> =
-        auth.authed { api.get<List<ChildDto>>("/children", it) }.map {
-            Child(id = it.id, fullName = it.fullName, daycareCenter = "Estancia Mariposa", group = GroupEnum.P, parentName = parentName)
+        auth.authed { api.get<List<ChildDto>>("/children", it) }.map { dto ->
+            Child(
+                id = dto.id,
+                fullName = dto.fullName,
+                daycareCenter = "Estancia Mariposa",
+                group = GroupEnum.P,
+                parentName = parentName,
+                birthdate = dto.birthDate ?: "Sin fecha registrada",
+                allergies = if (dto.allergies.isNotEmpty()) dto.allergies.joinToString(", ") else "Sin alergias registradas",
+                profileCompletedAt = dto.profileCompletedAt
+            )
         }
+
+    override suspend fun submitProfile(childId: String, birthDate: String, allergies: List<String>): ChildDto {
+        val body = ChildProfilePatchBody(birthDate = birthDate, allergies = allergies)
+        return auth.authed { api.patch<ChildProfilePatchBody, ChildDto>("/children/$childId/profile", body, it) }
+    }
 
     override suspend fun save(child: Child): Unit = TODO("Pending: API integration")
     override suspend fun delete(child: Child): Unit = TODO("Pending: API integration")

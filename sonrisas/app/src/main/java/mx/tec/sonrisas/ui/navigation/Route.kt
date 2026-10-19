@@ -30,6 +30,9 @@ object Route {
 
     const val INICIO_PADRE = "inicio_padre"
     const val BITACORA_PADRE = "bitacora_padre"
+    const val CAMBIAR_CONTRASENA = "cambiar_contrasena"
+    const val ONBOARDING_HIJO = "onboarding_hijo/{ninoId}"
+    fun onboardingHijo(ninoId: String): String = "onboarding_hijo/${Uri.encode(ninoId)}"
 
     const val PADRE_AUTORIZAR_TERCERO = "padre_autorizar_tercero/{ninoId}"
     fun padreAutorizarTercero(ninoId: String): String = "padre_autorizar_tercero/${Uri.encode(ninoId)}"

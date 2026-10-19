@@ -14,5 +14,6 @@ data class ChildEntity(
     val gender: String = "Femenino",
     val allergies: String? = "Sin alergias conocidas",
     val bloodType: String? = "O+",
-    val emergencyContactPhone: String? = "555-123-4567"
+    val emergencyContactPhone: String? = "555-123-4567",
+    val profileCompletedAt: String? = "2026-01-01T00:00:00Z"
 )

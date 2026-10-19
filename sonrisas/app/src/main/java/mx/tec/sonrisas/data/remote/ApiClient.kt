@@ -6,12 +6,12 @@ import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 import mx.tec.sonrisas.BuildConfig
 import okhttp3.Call
 import okhttp3.Callback
@@ -56,6 +56,12 @@ class ApiClient @Inject constructor(
     suspend inline fun <reified B, reified T> post(path: String, body: B, token: String? = null): T =
         json.decodeFromString(send("POST", path, token, jsonBody(body)))
 
+    suspend inline fun <reified B, reified T> put(path: String, body: B, token: String? = null): T =
+        json.decodeFromString(send("PUT", path, token, jsonBody(body)))
+
+    suspend inline fun <reified B, reified T> patch(path: String, body: B, token: String? = null): T =
+        json.decodeFromString(send("PATCH", path, token, jsonBody(body)))
+
     suspend fun delete(path: String, token: String?) {
         send("DELETE", path, token)
     }
@@ -67,7 +73,12 @@ class ApiClient @Inject constructor(
         json.encodeToString(body).toRequestBody(jsonType)
 
     private fun detailOf(text: String): String? = runCatching {
-        (json.parseToJsonElement(text) as? JsonObject)?.get("detail")?.jsonPrimitive?.contentOrNull
+        val element = (json.parseToJsonElement(text) as? JsonObject)?.get("detail")
+        when {
+            element == null -> null
+            element is kotlinx.serialization.json.JsonPrimitive -> element.contentOrNull
+            else -> element.toString()
+        }
     }.getOrNull()
 }
 
