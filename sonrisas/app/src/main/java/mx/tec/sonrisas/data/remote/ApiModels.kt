@@ -38,7 +38,31 @@ data class MeDto(
 @Serializable
 data class ChildDto(
     val id: String,
-    @SerialName("full_name") val fullName: String
+    @SerialName("full_name") val fullName: String,
+    @SerialName("profile_completed_at") val profileCompletedAt: String? = null,
+    @SerialName("birth_date") val birthDate: String? = null,
+    val allergies: List<String> = emptyList()
+)
+
+@Serializable
+data class ChildProfilePatchBody(
+    @SerialName("birth_date") val birthDate: String,
+    val allergies: List<String> = emptyList()
+)
+
+@Serializable
+data class DocumentInBody(
+    @SerialName("child_id") val childId: String,
+    @SerialName("file_id") val fileId: String,
+    val title: String
+)
+
+@Serializable
+data class DocumentOutDto(
+    val id: String,
+    @SerialName("child_id") val childId: String,
+    @SerialName("file_id") val fileId: String,
+    val title: String
 )
 
 @Serializable
@@ -59,7 +83,8 @@ data class FileCreateBody(
     val purpose: String,
     @SerialName("target_id") val targetId: String,
     @SerialName("content_type") val contentType: String,
-    val size: Int
+    val size: Int,
+    @SerialName("original_name") val originalName: String? = null
 )
 
 @Serializable

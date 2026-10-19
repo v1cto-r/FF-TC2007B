@@ -41,7 +41,8 @@ fun ChildEntity.toDomain() = Child(
     gender = gender,
     allergies = allergies,
     bloodType = bloodType,
-    emergencyContactPhone = emergencyContactPhone
+    emergencyContactPhone = emergencyContactPhone,
+    profileCompletedAt = profileCompletedAt
 )
 
 fun Child.toEntity() = ChildEntity(
@@ -54,7 +55,8 @@ fun Child.toEntity() = ChildEntity(
     gender = gender,
     allergies = allergies,
     bloodType = bloodType,
-    emergencyContactPhone = emergencyContactPhone
+    emergencyContactPhone = emergencyContactPhone,
+    profileCompletedAt = profileCompletedAt
 )
 
 // --- Injury / Feeding ---

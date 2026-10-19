@@ -14,14 +14,11 @@ import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Nightlight
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Restaurant
-import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -58,38 +55,12 @@ fun PadreBitacoraScreen(
 ) {
     FlagSecureDisable()
 
-    var esSimulacionDomingo by remember { mutableStateOf(false) }
+    val esDomingoOSinDatos = resumen.daysAttended == 0 && resumen.totalActivitiesCompleted == 0
 
     Scaffold(
         modifier = modifier,
         containerColor = Fondo,
-        bottomBar = { BottomBar(tabs = TabsPadre, seleccionado = 1, onSeleccionar = onTab) },
-        floatingActionButton = {
-            // Botón de prueba para simular el reinicio de domingo
-            FloatingActionButton(
-                onClick = { esSimulacionDomingo = !esSimulacionDomingo },
-                containerColor = if (esSimulacionDomingo) Coral else TextoOscuro,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = if (esSimulacionDomingo) Icons.Outlined.Refresh else Icons.Outlined.Science,
-                        contentDescription = "Simular reinicio",
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = if (esSimulacionDomingo) "Restablecer Datos" else "Simular Domingo (Reiniciar)",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
+        bottomBar = { BottomBar(tabs = TabsPadre, seleccionado = 1, onSeleccionar = onTab) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -132,10 +103,10 @@ fun PadreBitacoraScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                if (esSimulacionDomingo) {
+                if (esDomingoOSinDatos) {
                     EstadoVacio(
                         titulo = "Sin registros acumulados esta semana",
-                        subtitulo = "La bitácora semanal se reinició hoy domingo. Los registros comenzarán a acumularse nuevamente a partir del lunes.",
+                        subtitulo = "La bitácora semanal se reinició el domingo. Los registros comenzarán a acumularse nuevamente a partir del lunes.",
                         modifier = Modifier.padding(24.dp)
                     )
                 } else {
