@@ -19,7 +19,9 @@ private const val CALIDAD_JPEG = 80
 
 suspend fun Context.leerFoto(uri: Uri): Pair<String, ByteArray>? = withContext(Dispatchers.IO) {
     val medidas = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, medidas) } ?: return@withContext null
+    // With inJustDecodeBounds, decodeStream always returns null and only fills in medidas
+    contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, medidas) }
+    if (medidas.outWidth <= 0 || medidas.outHeight <= 0) return@withContext null
     var reduccion = 1
     while (maxOf(medidas.outWidth, medidas.outHeight) / (reduccion * 2) >= LADO_MAXIMO) reduccion *= 2
 
