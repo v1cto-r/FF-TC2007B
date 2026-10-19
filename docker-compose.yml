@@ -96,6 +96,9 @@ services:
       - grafana_data:/var/lib/grafana # dashboards, users and settings made in the UI live here and survive restarts
     ports:
       - "5006:3000"
+    networks:
+      - default # reaches ff_prometheus
+      - edge # nginx (hand_warmer) reaches it as FF_Grafana:3000
     restart: unless-stopped
     depends_on:
       - ff_prometheus
