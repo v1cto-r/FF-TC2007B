@@ -40,6 +40,8 @@ import mx.tec.sonrisas.ui.state.UiState
 @Composable
 fun SonrisasNavHost(
     sesion: Sesion,
+    chatPendiente: String?,
+    onChatAbierto: () -> Unit,
     onSalir: () -> Unit
 ) {
     val nav = rememberNavController()
@@ -47,6 +49,14 @@ fun SonrisasNavHost(
         Rol.MAESTRA -> Route.INICIO_MAESTRA
         Rol.PADRE -> Route.INICIO_PADRE
         else -> Route.INICIO_PADRE
+    }
+
+    // A tapped push notification opens that child's chat: the teacher's or the parent's, depending on who is logged in.
+    LaunchedEffect(chatPendiente) {
+        chatPendiente?.let {
+            nav.navigate(if (sesion.rol == Rol.MAESTRA) Route.chatMaestra(it) else Route.chatPadre(it))
+            onChatAbierto()
+        }
     }
 
     NavHost(
@@ -153,10 +163,9 @@ fun SonrisasNavHost(
                 viewModel.cargarMensajes(ninoId)
             }
             val nino = (viewModel.estadoPerfilNino as? UiState.Exito)?.datos?.child
-
             ChatMaestraScreen(
                 estado = viewModel.estadoMensajes,
-                currentUserId = sesion.usuario,
+                currentUserId = sesion.id,
                 titulo = if (nino != null) "${nino.parentName} - ${nino.fullName.substringBefore(" ")}" else "Chat",
                 subtitulo = nino?.fullName,
                 onAtras = { nav.popBackStack() },
@@ -400,10 +409,9 @@ fun SonrisasNavHost(
             val viewModel: PadreViewModel = hiltViewModel()
             LaunchedEffect(ninoId) { viewModel.cargarMensajes(ninoId) }
             val nino = viewModel.ninos.firstOrNull { it.id == ninoId }
-
             ChatPadreScreen(
                 estado = viewModel.estadoMensajes,
-                currentUserId = sesion.usuario,
+                currentUserId = sesion.id,
                 subtitulo = nino?.let { "Sobre ${it.fullName.substringBefore(" ")}" },
                 onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(texto) },

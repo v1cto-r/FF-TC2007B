@@ -1,5 +1,6 @@
 package mx.tec.sonrisas.data.local
 
+import mx.tec.sonrisas.data.local.dao.MessageDao
 import mx.tec.sonrisas.data.local.entities.ActivityRecordEntity
 import mx.tec.sonrisas.data.local.entities.CheckInEmbed
 import mx.tec.sonrisas.data.local.entities.CheckOutEmbed
@@ -238,7 +239,10 @@ fun MessageEntity.toDomain() = Message(
     synced = synced,
     isAviso = isAviso,
     deleted = deleted,
-    deletePending = deletePending
+    deletePending = deletePending,
+    createdAtMs = createdAtMs,
+    attachmentFileId = attachmentFileId,
+    sendError = sendError
 )
 
 fun Message.toEntity() = MessageEntity(
@@ -251,7 +255,10 @@ fun Message.toEntity() = MessageEntity(
     synced = synced,
     isAviso = isAviso,
     deleted = deleted,
-    deletePending = deletePending
+    deletePending = deletePending,
+    createdAtMs = createdAtMs,
+    attachmentFileId = attachmentFileId,
+    sendError = sendError
 )
 
 // --- PickupAuthorization ---
@@ -281,3 +288,10 @@ fun mx.tec.sonrisas.domain.PickupAuthorization.toEntity() = mx.tec.sonrisas.data
     notes = notes,
     registeredByParentName = registeredByParentName
 )
+
+suspend fun MessageDao.saveFromServer(messages: List<Message>) {
+    messages.forEach { incoming ->
+        val local = getById(incoming.id)
+        save(incoming.copy(deleted = local?.deleted ?: false, deletePending = local?.deletePending ?: false).toEntity())
+    }
+}

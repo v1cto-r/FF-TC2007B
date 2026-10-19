@@ -5,7 +5,9 @@ import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import mx.tec.sonrisas.ui.components.EstadoCargando
+import mx.tec.sonrisas.ui.screens.login.CambiarContrasenaScreen
 import mx.tec.sonrisas.ui.screens.login.LoginScreen
+import mx.tec.sonrisas.ui.state.CambiarContrasenaViewModel
 import mx.tec.sonrisas.ui.state.LoginViewModel
 import mx.tec.sonrisas.ui.state.SesionEstado
 import mx.tec.sonrisas.ui.state.SesionViewModel
@@ -16,7 +18,7 @@ import mx.tec.sonrisas.ui.state.SesionViewModel
  * Con sesión activa, levanta SonrisasNavHost con la navegación completa.
  */
 @Composable
-fun SonrisasApp() {
+fun SonrisasApp(chatPendiente: String? = null, onChatAbierto: () -> Unit = {}) {
     val sesionViewModel: SesionViewModel = hiltViewModel()
     val estado by sesionViewModel.estado.collectAsStateWithLifecycle()
 
@@ -27,6 +29,7 @@ fun SonrisasApp() {
             val loginViewModel: LoginViewModel = hiltViewModel()
             LoginScreen(
                 errorMensaje = loginViewModel.errorMensaje,
+                cargando = loginViewModel.cargando,
                 esBiometricoRegistrado = loginViewModel.esBiometricoRegistrado,
                 mostrarDialogoRegistroBiometrico = loginViewModel.mostrarDialogoRegistroBiometrico,
                 onIniciarSesion = { correo, contrasena ->
@@ -44,9 +47,21 @@ fun SonrisasApp() {
             )
         }
 
-        is SesionEstado.Activa -> SonrisasNavHost(
-            sesion = actual.sesion,
-            onSalir = sesionViewModel::salir
-        )
+        is SesionEstado.Activa -> if (actual.sesion.pendiente) {
+            val cambioViewModel: CambiarContrasenaViewModel = hiltViewModel()
+            CambiarContrasenaScreen(
+                errorMensaje = cambioViewModel.error,
+                guardando = cambioViewModel.guardando,
+                onGuardar = cambioViewModel::guardar,
+                onSalir = sesionViewModel::salir
+            )
+        } else {
+            SonrisasNavHost(
+                sesion = actual.sesion,
+                chatPendiente = chatPendiente,
+                onChatAbierto = onChatAbierto,
+                onSalir = sesionViewModel::salir
+            )
+        }
     }
 }

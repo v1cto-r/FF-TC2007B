@@ -47,8 +47,9 @@ fun ChatContenido(
             is UiState.Exito -> {
                 val mensajes = estado.datos
                 val lista = rememberLazyListState()
+                val keyboardPadding = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
 
-                LaunchedEffect(mensajes.size) {
+                LaunchedEffect(mensajes.size, keyboardPadding) {
                     if (mensajes.isNotEmpty()) lista.animateScrollToItem(mensajes.lastIndex)
                 }
 

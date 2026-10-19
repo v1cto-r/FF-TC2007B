@@ -4,12 +4,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import mx.tec.sonrisas.data.BiometricStorageManager
 import mx.tec.sonrisas.data.SesionRepository
-import mx.tec.sonrisas.domain.Rol
 import mx.tec.sonrisas.domain.Sesion
 
 @HiltViewModel
@@ -19,6 +19,9 @@ class LoginViewModel @Inject constructor(
 ) : ViewModel() {
 
     var errorMensaje by mutableStateOf<String?>(null)
+        private set
+
+    var cargando by mutableStateOf(false)
         private set
 
     var mostrarDialogoRegistroBiometrico by mutableStateOf(false)
@@ -33,24 +36,23 @@ class LoginViewModel @Inject constructor(
     val usuarioGuardadoBiometrico: String?
         get() = biometricStorageManager.getUsuarioGuardado()
 
-    fun iniciarSesion(correo: String, contrasena: String): Boolean {
-        val exito = repository.entrar(correo, contrasena)
-        if (!exito) {
-            errorMensaje = "Credenciales incorrectas. Ingresa un usuario y contraseña válidos."
-            return false
-        }
-
-        errorMensaje = null
-        val sesionActual = (repository.sesion as? StateFlow<Sesion?>)?.value
-
-        if (sesionActual != null) {
-            if (!biometricStorageManager.isBiometricRegistered()) {
-                sesionPendienteParaBiometria = sesionActual
-                mostrarDialogoRegistroBiometrico = true
-                return true
+    fun iniciarSesion(correo: String, contrasena: String) {
+        viewModelScope.launch {
+            cargando = true
+            errorMensaje = null
+            try {
+                repository.entrar(correo, contrasena)
+                val sesion = repository.sesion.value
+                if (sesion != null && !sesion.pendiente && !biometricStorageManager.isBiometricRegistered()) {
+                    sesionPendienteParaBiometria = sesion
+                    mostrarDialogoRegistroBiometrico = true
+                }
+            } catch (e: Exception) {
+                errorMensaje = mensajeDeError(e)
+            } finally {
+                cargando = false
             }
         }
-        return true
     }
 
     fun confirmarRegistroBiometrico() {
@@ -72,11 +74,14 @@ class LoginViewModel @Inject constructor(
     }
 
     fun iniciarSesionBiometricoExitoso() {
-        val usuario = biometricStorageManager.getUsuarioGuardado() ?: "maestra@sonrisas.edu.mx"
-        val nombre = biometricStorageManager.getNombreGuardado() ?: "Maestra Laura"
-        val rol = biometricStorageManager.getRolGuardado() ?: Rol.MAESTRA
-
-        repository.entrarConSesion(usuario = usuario, nombre = nombre, rol = rol)
+        viewModelScope.launch {
+            cargando = true
+            if (!repository.restaurar()) {
+                errorMensaje = "Tu sesión venció. Inicia sesión con tu contraseña."
+                biometricStorageManager.cancelarBiometrico()
+            }
+            cargando = false
+        }
     }
 
     fun cancelarRegistroBiometricoExistente() {

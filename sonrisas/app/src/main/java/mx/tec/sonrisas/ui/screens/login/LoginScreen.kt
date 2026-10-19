@@ -55,6 +55,7 @@ import mx.tec.sonrisas.ui.theme.*
 fun LoginScreen(
     modifier: Modifier = Modifier,
     errorMensaje: String? = null,
+    cargando: Boolean = false,
     esBiometricoRegistrado: Boolean = false,
     mostrarDialogoRegistroBiometrico: Boolean = false,
     onIniciarSesion: (correo: String, contrasena: String) -> Unit = { _, _ -> },
@@ -116,53 +117,6 @@ fun LoginScreen(
         )
 
         Spacer(Modifier.height(20.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = CoralSuave)
-        ) {
-            Row(
-                modifier = Modifier.padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Info,
-                    contentDescription = null,
-                    tint = Coral,
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(Modifier.width(10.dp))
-                Column {
-                    Text(
-                        text = "Usuarios para pruebas:",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = TextoOscuro
-                    )
-                    Text(
-                        text = "• Maestra: maestra@sonrisas.edu.mx (o 'maestra') / 123",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextoOscuro
-                    )
-                    Text(
-                        text = "• Padre: padre@sonrisas.edu.mx (o 'padre') / 123",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextoOscuro
-                    )
-                    Text(
-                        text = "• Admin: admin@sonrisas.edu.mx (o 'admin') / 123",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextoOscuro
-                    )
-                    Text(
-                        text = "• Organizador: org@sonrisas.edu.mx (o 'org') / 123",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextoOscuro
-                    )
-                }
-            }
-        }
 
         Spacer(Modifier.height(24.dp))
 
@@ -237,13 +191,14 @@ fun LoginScreen(
         ) {
             Button(
                 onClick = { onIniciarSesion(correo, contrasena) },
+                enabled = !cargando && correo.isNotBlank() && contrasena.isNotEmpty(),
                 modifier = Modifier
                     .weight(1f)
                     .height(48.dp),
                 shape = forma,
                 colors = ButtonDefaults.buttonColors(containerColor = Coral, contentColor = Color.White)
             ) {
-                Text("Iniciar Sesión", style = MaterialTheme.typography.labelLarge)
+                Text(if (cargando) "Entrando..." else "Iniciar Sesión", style = MaterialTheme.typography.labelLarge)
             }
 
             if (biometriaDisponible && activity != null) {

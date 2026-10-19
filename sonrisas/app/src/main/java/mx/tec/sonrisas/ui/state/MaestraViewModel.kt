@@ -163,7 +163,9 @@ class MaestraViewModel @Inject constructor(
         viewModelScope.launch {
             estadoMensajes = UiState.Cargando
             try {
-                chatRepository.observeMessagesForTeacher(chatId).collect { mensajes ->
+                val yo = sesionRepository.sesion.first()?.id.orEmpty()
+                launch { refrescarMensajes(chatId) }
+                chatRepository.observeMessagesForTeacher(chatId, yo).collect { mensajes ->
                     estadoMensajes = if (mensajes.isEmpty()) UiState.Vacio else UiState.Exito(mensajes)
                 }
             } catch (e: Exception) {
@@ -173,18 +175,20 @@ class MaestraViewModel @Inject constructor(
         }
     }
 
+    private suspend fun refrescarMensajes(chatId: String) {
+        try {
+            chatRepository.refresh(chatId)
+        } catch (e: Exception) {
+            if (estadoMensajes !is UiState.Exito) estadoMensajes = UiState.Error("No pudimos cargar la conversación")
+        }
+    }
+
     fun enviarFoto(chatId: String, uri: Uri) {
         viewModelScope.launch {
+            val foto = context.leerFoto(uri) ?: return@launch
+            val autor = sesionRepository.sesion.first()?.id.orEmpty()
             try {
-                val autor = sesionRepository.sesion.first()?.usuario ?: "maestra"
-                chatRepository.send(
-                    Message(
-                        chatId = chatId,
-                        authorId = autor,
-                        content = "📷 Foto adjunta",
-                        sentAt = LocalDateTime.now()
-                    )
-                )
+                chatRepository.sendPhoto(chatId, autor, foto.first, foto.second)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -233,7 +237,7 @@ class MaestraViewModel @Inject constructor(
     fun enviarMensaje(chatId: String, texto: String, esAviso: Boolean = false) {
         viewModelScope.launch {
             try {
-                val autor = sesionRepository.sesion.first()?.usuario ?: "maestra"
+                val autor = sesionRepository.sesion.first()?.id ?: "maestra"
                 chatRepository.send(
                     Message(
                         chatId = chatId,
@@ -265,7 +269,7 @@ class MaestraViewModel @Inject constructor(
 
     fun enviarActividadATodos(titulo: String, mensaje: String, onListo: () -> Unit) {
         viewModelScope.launch {
-            val autor = sesionRepository.sesion.first()?.usuario ?: "maestra"
+            val autor = sesionRepository.sesion.first()?.id ?: "maestra"
             val presentes = misNinos.first().filter { it.presente }
             presentes.forEach { nino ->
                 chatRepository.send(
@@ -283,7 +287,7 @@ class MaestraViewModel @Inject constructor(
 
     fun enviarAvisoATodos(titulo: String, mensaje: String, onListo: () -> Unit) {
         viewModelScope.launch {
-            val autor = sesionRepository.sesion.first()?.usuario ?: "maestra"
+            val autor = sesionRepository.sesion.first()?.id ?: "maestra"
             val todos = childRepository.observeAll().first()
             todos.forEach { child ->
                 chatRepository.send(

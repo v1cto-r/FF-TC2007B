@@ -2,6 +2,7 @@ package mx.tec.sonrisas.data
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import java.io.IOException
 import java.time.DayOfWeek
 import java.time.LocalDateTime
 import java.time.temporal.TemporalAdjusters
@@ -9,9 +10,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import mx.tec.sonrisas.data.chat.ChatSocket
 import mx.tec.sonrisas.data.local.dao.MessageDao
+import mx.tec.sonrisas.data.local.saveFromServer
 import mx.tec.sonrisas.data.local.toDomain
 import mx.tec.sonrisas.data.local.toEntity
+import mx.tec.sonrisas.data.remote.FileRemoteDataSource
 import mx.tec.sonrisas.data.remote.MessageRemoteDataSource
 import mx.tec.sonrisas.domain.Message
 
@@ -29,10 +33,13 @@ import mx.tec.sonrisas.domain.Message
  *    permanece en BD. Si no hay conexión queda 'deletePending' hasta avisar al servidor.
  */
 interface ChatRepository {
-    fun observeMessagesForTeacher(chatId: String): Flow<List<Message>>
+    fun observeMessagesForTeacher(chatId: String, currentUserId: String): Flow<List<Message>>
     fun observeMessagesForParent(chatId: String): Flow<List<Message>>
     fun observeMessages(chatId: String): Flow<List<Message>>
+    suspend fun refresh(chatId: String)
     suspend fun send(message: Message)
+    suspend fun sendPhoto(chatId: String, authorId: String, contentType: String, bytes: ByteArray)
+    suspend fun photoUrl(fileId: String): String
     suspend fun toggleImportant(messageId: String)
     suspend fun deleteMessage(messageId: String)
 }
@@ -41,17 +48,17 @@ interface ChatRepository {
 class ChatRepositoryImpl @Inject constructor(
     private val dao: MessageDao,
     private val remote: MessageRemoteDataSource,
-    private val networkMonitor: NetworkMonitor,
+    private val files: FileRemoteDataSource,
+    private val socket: ChatSocket
 ) : ChatRepository {
 
-    override fun observeMessages(chatId: String): Flow<List<Message>> =
-        observeMessagesForTeacher(chatId)
+    override fun observeMessages(chatId: String): Flow<List<Message>> = observeMessagesForParent(chatId)
 
-    override fun observeMessagesForTeacher(chatId: String): Flow<List<Message>> =
+    override fun observeMessagesForTeacher(chatId: String, currentUserId: String): Flow<List<Message>> =
         dao.observeByChat(chatId).map { rows ->
             val domainMessages = rows.map { it.toDomain() }.filter { !it.deleted }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                filtrarMensajesInvisiblesMaestra(chatId, domainMessages)
+                filtrarMensajesInvisiblesMaestra(chatId, currentUserId, domainMessages)
             } else {
                 domainMessages
             }
@@ -62,15 +69,31 @@ class ChatRepositoryImpl @Inject constructor(
             rows.map { it.toDomain() }.filter { !it.deleted }
         }
 
-    override suspend fun send(message: Message) {
-        if (networkMonitor.isOnline()) {
-            remote.send(message)
-            dao.save(message.copy(sent = true, synced = true).toEntity())
-        } else {
-            // Stays in Room marked as pending; the worker uploads it later.
-            dao.save(message.toEntity())
-        }
+    override suspend fun refresh(chatId: String) {
+        val all = remote.list(chatId, null)
+        dao.saveFromServer(all)
+        dao.markDeletedExcept(chatId, all.map { it.id })
     }
+
+    override suspend fun send(message: Message) {
+        dao.save(message.toEntity())
+        socket.send(message)
+    }
+
+    override suspend fun sendPhoto(chatId: String, authorId: String, contentType: String, bytes: ByteArray) {
+        val fileId = files.uploadPhoto(chatId, contentType, bytes)
+        send(
+            Message(
+                chatId = chatId,
+                authorId = authorId,
+                content = "",
+                sentAt = LocalDateTime.now(),
+                attachmentFileId = fileId
+            )
+        )
+    }
+
+    override suspend fun photoUrl(fileId: String): String = files.downloadUrl(fileId)
 
     override suspend fun toggleImportant(messageId: String) {
         val entity = dao.getById(messageId) ?: return
@@ -79,17 +102,17 @@ class ChatRepositoryImpl @Inject constructor(
 
     override suspend fun deleteMessage(messageId: String) {
         val entity = dao.getById(messageId) ?: return
-        if (networkMonitor.isOnline()) {
+        val told = try {
             remote.delete(messageId)
-            dao.save(entity.copy(deleted = true, deletePending = false))
-        } else {
-            // Hidden right away on this device; the server is told later.
-            dao.save(entity.copy(deleted = true, deletePending = true))
+            true
+        } catch (e: IOException) {
+            false
         }
+        dao.save(entity.copy(deleted = true, deletePending = !told))
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun filtrarMensajesInvisiblesMaestra(chatId: String, mensajes: List<Message>): List<Message> {
+    private fun filtrarMensajesInvisiblesMaestra(chatId: String, currentUserId: String, mensajes: List<Message>): List<Message> {
         val esChatAdmin = chatId.startsWith("admin_", ignoreCase = true)
         if (esChatAdmin) {
             return mensajes
@@ -101,7 +124,7 @@ class ChatRepositoryImpl @Inject constructor(
             .withHour(0).withMinute(0).withSecond(0).withNano(0)
 
         return mensajes.filter { mensaje ->
-            val esDeMaestra = mensaje.authorId.contains("maestra", ignoreCase = true)
+            val esDeMaestra = mensaje.authorId == currentUserId
             val esAvisoOImportante = mensaje.isAviso
 
             if (esDeMaestra && !esAvisoOImportante) {
