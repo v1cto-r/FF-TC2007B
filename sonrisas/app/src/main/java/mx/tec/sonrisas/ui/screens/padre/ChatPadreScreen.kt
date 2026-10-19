@@ -3,7 +3,11 @@ package mx.tec.sonrisas.ui.screens.padre
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
+import java.io.File
 import java.time.LocalDateTime
 import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.ui.components.TabsPadre

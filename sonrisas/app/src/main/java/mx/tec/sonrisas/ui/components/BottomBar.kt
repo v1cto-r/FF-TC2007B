@@ -1,6 +1,7 @@
 package mx.tec.sonrisas.ui.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.People
@@ -51,7 +52,7 @@ fun BottomBar(
     }
 }
 
-// Listas listas para usar en cada rol
+// Listas para usar en cada rol
 val TabsMaestra = listOf(
     TabItem("Inicio", Icons.Outlined.Home),
     TabItem("Niños", Icons.Outlined.People),
@@ -60,6 +61,7 @@ val TabsMaestra = listOf(
 
 val TabsPadre = listOf(
     TabItem("Inicio", Icons.Outlined.Home),
+    TabItem("Bitácora", Icons.AutoMirrored.Outlined.MenuBook),
     TabItem("Chat", Icons.Outlined.ChatBubbleOutline)
 )
 

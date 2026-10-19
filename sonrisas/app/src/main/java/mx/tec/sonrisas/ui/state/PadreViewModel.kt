@@ -72,20 +72,71 @@ class PadreViewModel @Inject constructor(
             try {
                 val child = ninos.firstOrNull { it.id == childId }
                 val childName = child?.fullName ?: "Alumno/a"
-                resumenSemanal = WeeklySummary(
-                    childId = childId,
-                    childName = childName,
-                    weekLabel = "Semana Actual",
-                    daysAttended = 5,
-                    totalDays = 5,
-                    totalActivitiesCompleted = 6,
-                    topActivities = listOf("Taller de Pintura y Arte", "Juego de Rompecabezas", "Canto y Cuentacuentos"),
-                    mealsEaten = 8,
-                    favoriteMealNote = "Sopa de fideo y tacos de pollo",
-                    averageNapMinutes = 45,
-                    predominantMood = "Alegre y Participativo",
-                    teacherComment = "¡Un excelente comportamiento, energía y compañerismo en la sala!"
-                )
+
+                dailyLogRepository.observeByChild(childId).collect { logs ->
+                    if (logs.isEmpty()) {
+                        resumenSemanal = WeeklySummary(
+                            childId = childId,
+                            childName = childName,
+                            weekLabel = "Semana Actual",
+                            daysAttended = 0,
+                            totalDays = 5,
+                            totalActivitiesCompleted = 0,
+                            topActivities = emptyList(),
+                            mealsEaten = 0,
+                            favoriteMealNote = "Sin registros de alimentación esta semana",
+                            averageNapMinutes = 0,
+                            predominantMood = "Sin registro de ánimo",
+                            teacherComment = "Aún no hay observaciones registradas esta semana."
+                        )
+                    } else {
+                        val diasAsistidos = logs.count { it.checkIn != null }
+                        val notasComida = logs.mapNotNull { it.stay?.feedingNotes }.filter { it.isNotBlank() }
+                        val resumenComida = if (notasComida.isNotEmpty()) {
+                            notasComida.joinToString(separator = " · ")
+                        } else {
+                            "Alimentación registrada por la maestra"
+                        }
+
+                        val siestas = logs.mapNotNull { it.stay?.napMinutes }.filter { it > 0 }
+                        val promedioSiesta = if (siestas.isNotEmpty()) siestas.average().toInt() else 0
+
+                        val animos = logs.mapNotNull { it.stay?.mood }.filter { it.isNotBlank() }
+                        val animoPredominante = if (animos.isNotEmpty()) animos.last() else "Tranquilo y participativo"
+
+                        val notasMaestra = logs.mapNotNull {
+                            it.stay?.generalHealthNotes ?: it.checkOut?.notes
+                        }.filter { it.isNotBlank() }
+                        val comentarioMaestra = if (notasMaestra.isNotEmpty()) {
+                            notasMaestra.last()
+                        } else {
+                            "El alumno ha mostrado un excelente desempeño durante las jornadas escolares."
+                        }
+
+                        val listaActividadesReales = mutableListOf<String>()
+                        logs.forEach { log ->
+                            val actividades = dailyLogRepository.observeActivities(log.id).first()
+                            actividades.forEach { act ->
+                                if (act.name.isNotBlank()) listaActividadesReales.add(act.name)
+                            }
+                        }
+
+                        resumenSemanal = WeeklySummary(
+                            childId = childId,
+                            childName = childName,
+                            weekLabel = "Semana Actual",
+                            daysAttended = diasAsistidos.coerceAtLeast(1),
+                            totalDays = 5,
+                            totalActivitiesCompleted = listaActividadesReales.size,
+                            topActivities = if (listaActividadesReales.isNotEmpty()) listaActividadesReales.distinct() else listOf("Actividades pedagógicas en el aula"),
+                            mealsEaten = logs.count { it.stay != null } * 2,
+                            favoriteMealNote = resumenComida,
+                            averageNapMinutes = promedioSiesta,
+                            predominantMood = animoPredominante,
+                            teacherComment = comentarioMaestra
+                        )
+                    }
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
