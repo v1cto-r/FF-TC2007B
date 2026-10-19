@@ -154,7 +154,7 @@ def test_pre_alembic_database_is_stamped_then_upgraded(scratch):
     with scratch.begin() as c:
         c.execute(text("DROP TABLE public.alembic_version"))
     starter._ensure_tables(scratch)
-    assert q(scratch, "SELECT version_num FROM public.alembic_version")[0][0] == "0003"
+    assert q(scratch, "SELECT version_num FROM public.alembic_version")[0][0] == "0004"
     assert q(scratch, "SELECT parent_id FROM public.children")[0][0] == LEGACY["padre"]  # data kept
     starter._ensure_tables(scratch)  # running again changes nothing
 

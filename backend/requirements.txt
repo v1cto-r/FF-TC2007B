@@ -11,3 +11,5 @@ pyyaml
 python-multipart
 alembic
 firebase-admin
+prometheus-client
+prometheus-fastapi-instrumentator

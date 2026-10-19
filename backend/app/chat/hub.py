@@ -46,6 +46,11 @@ class Hub:
             if not self._conns[conn.user_id]:
                 del self._conns[conn.user_id]
 
+    def count(self) -> int:
+        """Counts open sockets, for metrics."""
+        with self._mutex:
+            return sum(len(conns) for conns in self._conns.values())
+
     def publish(self, user_ids: set[uuid.UUID], frame: dict, exclude: Connection | None = None) -> set[uuid.UUID]:
         """Sends `frame` to every open socket of `user_ids` (except `exclude`) without waiting. Callable from any
         thread. Returns the users that have no socket open: the ones a push notification would have to reach."""

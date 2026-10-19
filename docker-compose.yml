@@ -14,6 +14,7 @@ services:
       DB_HOST: ff_postgres
       S3_HOST: rustfs
       S3_PORT: "9000"
+      METRICS_PORT: "9105" # scraped by ff_prometheus over this network; deliberately not published
     volumes:
       - ./secrets:/run/secrets:ro # firebase.json goes here; then FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase.json in .env
     ports:
@@ -60,6 +61,44 @@ services:
       RUSTFS_CONSOLE_ENABLE: "true"
       RUSTFS_CONSOLE_ADDRESS: ":9001"
     restart: unless-stopped
+
+  # --- Observability ------------------------------------------------------------------------
+  ff_prometheus:
+    image: prom/prometheus:latest
+    container_name: FF_Prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Keep everything by default: Prometheus has no "forever", so 100 years; size 0 = no size limit
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-100y}
+      - --storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-0}
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:5007:9090" # host only (SSM / ssh tunnel); Prometheus has no login
+    restart: unless-stopped
+    depends_on:
+      - ff_api
+
+  ff_grafana:
+    image: grafana/grafana:latest
+    container_name: FF_Grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro # just the Prometheus data source
+      - grafana_data:/var/lib/grafana # dashboards, users and settings made in the UI live here and survive restarts
+    ports:
+      - "5006:3000"
+    restart: unless-stopped
+    depends_on:
+      - ff_prometheus
 
   # --- Tests: `docker compose --profile test run --rm --build ff_api_test` -----------------------
   # Throwaway Postgres and RustFS, separate from the real ones; nothing here is persisted.
@@ -117,3 +156,5 @@ services:
 volumes:
   rustfs_data:
   postgres_data:
+  prometheus_data:
+  grafana_data:

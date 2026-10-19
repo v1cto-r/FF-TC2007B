@@ -9,9 +9,11 @@ from sqlalchemy.exc import IntegrityError
 
 from app import starter
 from app.auth.security import load_wordlist
-from app.chat.hub import set_push
+from app.chat.hub import hub, set_push
 from app.config import settings
-from app.database.connection import SessionLocal
+from app.database.connection import SessionLocal, engine
+from app.observability import metrics
+from app.observability.middleware import WriteLogMiddleware
 from app.push.service import FcmSender, PushService
 from app.rate_limit import rate_limit
 from app.routers import (
@@ -53,7 +55,13 @@ async def lifespan(app: FastAPI):
             log.warning("push: notifications are off, could not load Firebase credentials: %s", e)
     else:
         log.info("push: notifications are off (FIREBASE_CREDENTIALS_PATH is not set)")
-    yield
+    metrics_server = metrics.serve(settings.metrics_port) if settings.metrics_port else None
+    try:
+        yield
+    finally:
+        if metrics_server:
+            metrics_server.shutdown()
+            metrics_server.server_close()
 
 # Every endpoint gets this default limit (per user, or per IP when not logged in); routes can add stricter ones
 app = FastAPI(title="ff_api", lifespan=lifespan, dependencies=[Depends(rate_limit("global", 120, 60))])
@@ -66,6 +74,9 @@ app.add_middleware(
     allow_methods=["POST", "GET", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+metrics.instrument(app)
+metrics.register_state(engine, hub)
+app.add_middleware(WriteLogMiddleware)  # added last = outermost: the request id is set before anything else runs
 
 
 @app.exception_handler(IntegrityError)

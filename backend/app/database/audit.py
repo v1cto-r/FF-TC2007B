@@ -3,7 +3,8 @@
 Hooks the session's `before_flush`, so the audit rows go into the same transaction as the change:
 either both are saved or neither is. The actor comes from `db.info["actor_id"]`, set by the auth
 dependencies (a ContextVar would not survive FastAPI running dependencies and endpoints in
-different threads). No actor means the system did it (startup seeding, cleanup jobs).
+different threads). No actor means the system did it (startup seeding, cleanup jobs). Each change is also written
+as a JSON line to stdout (app/observability/write_log.py).
 
 Only changes made through the ORM are seen. Never change a Record with a bulk `update()`.
 """
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import get_history
 
 from app.database.models import AuditAction, AuditLog, Record, RecordStatus
+from app.observability import write_log
 
 SKIP_FIELDS = {"id", "created_at", "updated_at"}
 REDACTED_FIELDS = {"password_hash"}
@@ -85,3 +87,5 @@ def _audit_before_flush(session: Session, flush_context, instances) -> None:
                 entries.append(AuditLog(actor_id=actor, action=_action_for(changes),
                                         resource_type=obj.__tablename__, resource_id=obj.id, changes=changes))
     session.add_all(entries)
+    for entry in entries:
+        write_log.record_write(entry)

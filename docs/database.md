@@ -306,7 +306,8 @@ Every domain table (everything except the auth bookkeeping above) has a nullable
 It is written by a SQLAlchemy `before_flush` hook (`app/database/audit.py`) in the **same transaction** as the change, so
 either both are saved or neither is. `password_hash` is stored as `***`. Only changes made through the ORM are seen,
 so records must never be changed with a bulk `UPDATE` statement. **The log holds copies of what was written** (chat messages, health notes of a stay...), so it is as sensitive as the tables themselves: don't expose it to anyone who couldn't read the originals. There is no endpoint for reading the log yet; it is
-queried in SQL.
+queried in SQL. Each change is also written to the API's stdout as a JSON line, without the values
+(see [observability.md](observability.md)).
 
 ## Access model
 
