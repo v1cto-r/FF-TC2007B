@@ -56,6 +56,9 @@ class ApiClient @Inject constructor(
     suspend inline fun <reified B, reified T> post(path: String, body: B, token: String? = null): T =
         json.decodeFromString(send("POST", path, token, jsonBody(body)))
 
+    suspend inline fun <reified B, reified T> put(path: String, body: B, token: String? = null): T =
+        json.decodeFromString(send("PUT", path, token, jsonBody(body)))
+
     suspend fun delete(path: String, token: String?) {
         send("DELETE", path, token)
     }

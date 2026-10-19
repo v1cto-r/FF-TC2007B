@@ -32,6 +32,7 @@ data class MeDto(
     val email: String,
     @SerialName("full_name") val fullName: String,
     val role: String,
+    @SerialName("estancia_id") val estanciaId: String? = null,
     val pending: Boolean
 )
 

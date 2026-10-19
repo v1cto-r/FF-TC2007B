@@ -12,6 +12,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,7 +29,8 @@ fun AdminDetalleSalonScreen(
     salon: SalonUi,
     modifier: Modifier = Modifier,
     onAtras: () -> Unit = {},
-    onAgregarAlumnos: () -> Unit = {}
+    onAgregarAlumnos: () -> Unit = {},
+    onCambiarMaestra: () -> Unit = {}
 ) {
     FlagSecureDisable()
     Scaffold(modifier = modifier, containerColor = Fondo) { padding ->
@@ -52,6 +54,15 @@ fun AdminDetalleSalonScreen(
                         Text(
                             text = "Este salón aún no tiene maestra asignada",
                             style = MaterialTheme.typography.bodySmall,
+                            color = Coral
+                        )
+                    }
+                }
+                item {
+                    TextButton(onClick = onCambiarMaestra) {
+                        Text(
+                            text = if (salon.maestro == null) "Asignar maestra" else "Cambiar maestra",
+                            style = MaterialTheme.typography.labelLarge,
                             color = Coral
                         )
                     }

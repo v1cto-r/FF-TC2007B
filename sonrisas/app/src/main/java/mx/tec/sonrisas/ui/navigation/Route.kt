@@ -55,6 +55,22 @@ object Route {
     const val ADMIN_AGREGAR_ALUMNOS = "admin_agregar_alumnos/{salonId}"
     fun adminAgregarAlumnos(salonId: String): String = "admin_agregar_alumnos/${Uri.encode(salonId)}"
 
+    const val ADMIN_ASIGNAR_MAESTRA = "admin_asignar_maestra/{salonId}"
+    fun adminAsignarMaestra(salonId: String): String = "admin_asignar_maestra/${Uri.encode(salonId)}"
+
+    const val ADMIN_PADRES = "admin_padres"
+    const val ADMIN_AVISOS = "admin_avisos"
+    const val ADMIN_NUEVO_AVISO = "admin_nuevo_aviso"
+    const val ADMIN_CREAR_MAESTRA = "admin_crear_maestra"
+    const val ADMIN_CREAR_PADRE = "admin_crear_padre"
+
+    const val ADMIN_DETALLE_PADRE = "admin_padre/{padreId}"
+    fun adminDetallePadre(padreId: String): String = "admin_padre/${Uri.encode(padreId)}"
+
+    const val ADMIN_AGREGAR_NINO = "admin_agregar_nino/{padreId}"
+    fun adminAgregarNino(padreId: String): String = "admin_agregar_nino/${Uri.encode(padreId)}"
+
+
     // --- ORGANIZACIÓN ---
     const val ORG_INICIO = "org_inicio"
     const val ORG_INSTANCIAS = "org_instancias"
