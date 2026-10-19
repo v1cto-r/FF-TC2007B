@@ -68,11 +68,11 @@ class SesionRepository @Inject constructor(
 
     private suspend fun abrirSesion() {
         val me = auth.authed { api.get<MeDto>("/auth/me", it) }
-        val rol = when (me.role?.uppercase()) {
+        val rol = when (me.role) {
             "DOCENTE" -> Rol.MAESTRA
             "PADRE" -> Rol.PADRE
             "ADMIN" -> Rol.ADMIN
-            "ORG", "ORGANIZACION", "ORGANIZATION" -> Rol.ORG
+            "ORG" -> Rol.ORG
             else -> {
                 auth.logout()
                 throw RolNoSoportadoException()
