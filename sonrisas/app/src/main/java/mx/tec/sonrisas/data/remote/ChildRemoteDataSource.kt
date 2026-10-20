@@ -21,7 +21,8 @@ class ChildRemoteDataSourceImpl @Inject constructor(
                 fullName = dto.fullName,
                 daycareCenter = "Estancia Mariposa",
                 group = GroupEnum.P,
-                parentName = parentName,
+                // The server sends parent_name: a DOCENTE can't read /users, so it can't look the parent up itself.
+                parentName = parentName.ifBlank { dto.parentName.orEmpty() },
                 birthdate = dto.birthDate ?: "Sin fecha registrada",
                 allergies = if (dto.allergies.isNotEmpty()) dto.allergies.joinToString(", ") else "Sin alergias registradas",
                 profileCompletedAt = dto.profileCompletedAt

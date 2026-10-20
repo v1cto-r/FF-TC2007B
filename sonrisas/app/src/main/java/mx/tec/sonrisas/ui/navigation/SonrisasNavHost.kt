@@ -320,8 +320,9 @@ fun SonrisasNavHost(
                 descripcionAyuda = "Registra una actividad o comparte una foto con los familiares.",
                 textoBoton = "Enviar a los presentes",
                 ninosPresentes = ninosPresentes,
+                permitirSeleccionAdjuntados = true,
                 onAtras = { nav.popBackStack() },
-                onEnviarATodos = { titulo, mensaje ->
+                onEnviarATodos = { titulo, mensaje, _ ->
                     viewModel.enviarActividadATodos(titulo, mensaje) { nav.popBackStack() }
                 },
                 onEnviarAAdjuntados = { titulo, mensaje, fotoUri, ninosSeleccionados ->
@@ -336,10 +337,13 @@ fun SonrisasNavHost(
             val viewModel: MaestraViewModel = hiltViewModel()
             BroadcastFormScreen(
                 titulo = "Aviso General",
-                descripcionAyuda = "Se enviará como aviso a los padres de TODOS los niños, presentes o no.",
-                textoBoton = "Enviar a todos",
+                descripcionAyuda = "Se enviará como aviso general a los padres de TODOS los niños del grupo.",
+                textoBoton = "Enviar aviso a todos",
+                permitirSeleccionAdjuntados = false,
                 onAtras = { nav.popBackStack() },
-                onEnviar = { titulo, mensaje -> viewModel.enviarAvisoATodos(titulo, mensaje) { nav.popBackStack() } }
+                onEnviarATodos = { titulo, mensaje, fotoUri ->
+                    viewModel.enviarAvisoATodos(titulo, mensaje, fotoUri) { nav.popBackStack() }
+                }
             )
         }
 

@@ -21,6 +21,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -58,9 +59,10 @@ fun BroadcastFormScreen(
     descripcionAyuda: String,
     textoBoton: String = "Enviar a los presentes",
     ninosPresentes: List<Child> = emptyList(),
+    permitirSeleccionAdjuntados: Boolean = true,
     onAtras: () -> Unit,
     onEnviar: ((titulo: String, mensaje: String) -> Unit)? = null,
-    onEnviarATodos: (titulo: String, mensaje: String) -> Unit = { t, m -> onEnviar?.invoke(t, m) },
+    onEnviarATodos: (titulo: String, mensaje: String, fotoUri: Uri?) -> Unit = { t, m, _ -> onEnviar?.invoke(t, m) },
     onEnviarAAdjuntados: (titulo: String, mensaje: String, fotoUri: Uri?, ninosSeleccionados: List<Child>) -> Unit = { _, _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
@@ -73,6 +75,7 @@ fun BroadcastFormScreen(
     var mostrarMenuFoto by remember { mutableStateOf(false) }
     var mostrarDialogoSeleccion by remember { mutableStateOf(false) }
     var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var enviando by remember { mutableStateOf(false) }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -103,7 +106,7 @@ fun BroadcastFormScreen(
         }
     }
 
-    if (mostrarMenuFoto) {
+    if (mostrarMenuFoto && !enviando) {
         SelectorFuenteFotoDialog(
             onDismiss = { mostrarMenuFoto = false },
             onCamara = abrirCamara,
@@ -114,16 +117,23 @@ fun BroadcastFormScreen(
     if (mostrarDialogoSeleccion) {
         DialogoSeleccionNinosPresentes(
             ninos = ninosPresentes,
-            onDismiss = { mostrarDialogoSeleccion = false },
+            enviando = enviando,
+            onDismiss = { if (!enviando) mostrarDialogoSeleccion = false },
             onConfirmar = { seleccionados ->
-                mostrarDialogoSeleccion = false
+                enviando = true
                 onEnviarAAdjuntados(tituloMensaje, mensaje, fotoUri, seleccionados)
             }
         )
     }
 
     val tieneFoto = fotoUri != null
-    val textoBotonDinamico = if (tieneFoto) "Enviar a los adjuntados" else textoBoton
+    val textoBotonDinamico = if (enviando) {
+        "Enviando..."
+    } else if (tieneFoto && permitirSeleccionAdjuntados) {
+        "Enviar a los adjuntados"
+    } else {
+        textoBoton
+    }
 
     Scaffold(modifier = modifier, containerColor = Fondo) { padding ->
         Column(
@@ -131,7 +141,7 @@ fun BroadcastFormScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            TopBarAtras(titulo = titulo, onAtras = onAtras)
+            TopBarAtras(titulo = titulo, onAtras = { if (!enviando) onAtras() })
             Column(
                 Modifier
                     .fillMaxSize()
@@ -140,12 +150,12 @@ fun BroadcastFormScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(descripcionAyuda, style = MaterialTheme.typography.bodySmall, color = TextoGris)
-                CampoTexto("Título", tituloMensaje, { tituloMensaje = it })
-                CampoTexto("Mensaje / Detalle de la Actividad", mensaje, { mensaje = it }, singleLine = false)
+                CampoTexto("Título", tituloMensaje, { if (!enviando) tituloMensaje = it })
+                CampoTexto("Mensaje / Detalle", mensaje, { if (!enviando) mensaje = it }, singleLine = false)
 
-                // Sección Opcional: Fotografía de la Actividad
+                // Sección Opcional: Fotografía
                 Text(
-                    text = "Fotografía de la Actividad (Opcional)",
+                    text = "Fotografía (Opcional)",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = TextoOscuro
@@ -168,7 +178,7 @@ fun BroadcastFormScreen(
                             ) {
                                 AsyncImage(
                                     model = fotoUri,
-                                    contentDescription = "Foto de actividad",
+                                    contentDescription = "Foto adjunta",
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize()
                                 )
@@ -194,12 +204,14 @@ fun BroadcastFormScreen(
                                         color = TextoOscuro
                                     )
                                 }
-                                Row {
-                                    TextButton(onClick = { mostrarMenuFoto = true }) {
-                                        Text("Cambiar", color = Coral, style = MaterialTheme.typography.labelSmall)
-                                    }
-                                    TextButton(onClick = { fotoUri = null }) {
-                                        Text("Eliminar", color = TextoGris, style = MaterialTheme.typography.labelSmall)
+                                if (!enviando) {
+                                    Row {
+                                        TextButton(onClick = { mostrarMenuFoto = true }) {
+                                            Text("Cambiar", color = Coral, style = MaterialTheme.typography.labelSmall)
+                                        }
+                                        TextButton(onClick = { fotoUri = null }) {
+                                            Text("Eliminar", color = TextoGris, style = MaterialTheme.typography.labelSmall)
+                                        }
                                     }
                                 }
                             }
@@ -208,12 +220,13 @@ fun BroadcastFormScreen(
                 } else {
                     OutlinedButton(
                         onClick = { mostrarMenuFoto = true },
+                        enabled = !enviando,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Outlined.AddAPhoto, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("📷 Adjuntar foto de la actividad")
+                        Text("📷 Adjuntar foto (Opcional)")
                     }
                 }
 
@@ -221,19 +234,28 @@ fun BroadcastFormScreen(
 
                 Button(
                     onClick = {
-                        if (tieneFoto) {
+                        if (tieneFoto && permitirSeleccionAdjuntados) {
                             mostrarDialogoSeleccion = true
                         } else {
-                            onEnviarATodos(tituloMensaje, mensaje)
+                            enviando = true
+                            onEnviarATodos(tituloMensaje, mensaje, fotoUri)
                         }
                     },
-                    enabled = tituloMensaje.isNotBlank() || mensaje.isNotBlank() || tieneFoto,
+                    enabled = !enviando && (tituloMensaje.isNotBlank() || mensaje.isNotBlank() || tieneFoto),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Coral, contentColor = Color.White)
                 ) {
+                    if (enviando) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
                     Text(textoBotonDinamico, fontWeight = FontWeight.Bold)
                 }
             }
@@ -244,13 +266,14 @@ fun BroadcastFormScreen(
 @Composable
 private fun DialogoSeleccionNinosPresentes(
     ninos: List<Child>,
+    enviando: Boolean = false,
     onDismiss: () -> Unit,
     onConfirmar: (List<Child>) -> Unit
 ) {
     var seleccionados by remember { mutableStateOf(ninos.map { it.id }.toSet()) }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!enviando) onDismiss() },
         containerColor = Color.White,
         title = {
             Text(
@@ -278,10 +301,10 @@ private fun DialogoSeleccionNinosPresentes(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = { seleccionados = ninos.map { it.id }.toSet() }) {
+                    TextButton(onClick = { if (!enviando) seleccionados = ninos.map { it.id }.toSet() }, enabled = !enviando) {
                         Text("Seleccionar Todos", color = Coral, style = MaterialTheme.typography.labelSmall)
                     }
-                    TextButton(onClick = { seleccionados = emptySet() }) {
+                    TextButton(onClick = { if (!enviando) seleccionados = emptySet() }, enabled = !enviando) {
                         Text("Deseleccionar Todos", color = TextoGris, style = MaterialTheme.typography.labelSmall)
                     }
                 }
@@ -296,7 +319,7 @@ private fun DialogoSeleccionNinosPresentes(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .clickable {
+                                .clickable(enabled = !enviando) {
                                     seleccionados = if (estaSeleccionado) {
                                         seleccionados - child.id
                                     } else {
@@ -308,6 +331,7 @@ private fun DialogoSeleccionNinosPresentes(
                         ) {
                             Checkbox(
                                 checked = estaSeleccionado,
+                                enabled = !enviando,
                                 onCheckedChange = { check ->
                                     seleccionados = if (check) {
                                         seleccionados + child.id
@@ -337,14 +361,22 @@ private fun DialogoSeleccionNinosPresentes(
                     val listaSeleccionados = ninos.filter { it.id in seleccionados }
                     onConfirmar(listaSeleccionados)
                 },
-                enabled = seleccionados.isNotEmpty(),
+                enabled = !enviando && seleccionados.isNotEmpty(),
                 colors = ButtonDefaults.buttonColors(containerColor = Coral, contentColor = Color.White)
             ) {
-                Text("Enviar a (${seleccionados.size}) adjuntados")
+                if (enviando) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(Modifier.width(6.dp))
+                }
+                Text(if (enviando) "Enviando..." else "Enviar a (${seleccionados.size}) adjuntados")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, enabled = !enviando) {
                 Text("Cancelar", color = TextoGris)
             }
         }

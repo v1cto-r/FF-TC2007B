@@ -97,6 +97,8 @@ fun PerfilNinoScreen(
 
                     is UiState.Exito -> {
                         val nino = estado.datos.child
+                        val nombreTutor = nombreTutor(estado.datos)
+
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(20.dp),
@@ -143,7 +145,7 @@ fun PerfilNinoScreen(
                                                 color = TextoGris
                                             )
                                             Text(
-                                                text = nino.parentName,
+                                                text = nombreTutor,
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = TextoOscuro
@@ -195,6 +197,8 @@ fun PerfilNinoScreen(
                 }
 
                 if (estado is UiState.Exito) {
+                    val nombreTutor = nombreTutor(estado.datos)
+
                     val terminado = estado.datos.dailyLog?.checkOut != null
                     Spacer(Modifier.height(20.dp))
                     if (terminado) {
@@ -244,7 +248,7 @@ fun PerfilNinoScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
                             border = BorderStroke(1.dp, Coral),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Coral)
+                            colors = ButtonDefaults.buttonColors(contentColor = Coral)
                         ) {
                             Text("Cancelar salida")
                         }
@@ -258,7 +262,7 @@ fun PerfilNinoScreen(
                         Spacer(Modifier.height(8.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             ItemAccionRegistro(
-                                texto = "Abrir Chat con ${estado.datos.child.parentName.substringBefore(" ")}",
+                                texto = if (nombreTutor != "Sin tutor registrado") "Abrir Chat con ${nombreTutor.substringBefore(" ")}" else "Abrir Chat",
                                 icono = Icons.Outlined.ChatBubbleOutline,
                                 colorIcono = Coral,
                                 colorFondo = CoralSuave,
@@ -306,6 +310,19 @@ fun PerfilNinoScreen(
 }
 
 @Preview(showBackground = true, showSystemUi = true)
+// The linked parent (from the server), else whoever is authorized or dropped off / picked up today.
+private fun nombreTutor(datos: NinoConEstado): String {
+    val autorizacionHoy = datos.autorizacionHoy
+    val logHoy = datos.dailyLog
+    return when {
+        datos.child.parentName.isNotBlank() -> datos.child.parentName
+        autorizacionHoy != null -> "${autorizacionHoy.authorizedPersonName} (${autorizacionHoy.relationship})"
+        logHoy?.checkIn?.droppedOffByName?.isNotBlank() == true -> logHoy.checkIn.droppedOffByName
+        logHoy?.checkOut?.pickedUpByName?.isNotBlank() == true -> logHoy.checkOut.pickedUpByName
+        else -> "Sin tutor registrado"
+    }
+}
+
 @Composable
 private fun PerfilNinoPreview() {
     SonrisasTheme {
