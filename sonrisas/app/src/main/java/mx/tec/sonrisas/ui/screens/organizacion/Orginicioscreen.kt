@@ -52,6 +52,7 @@ fun OrgInicioScreen(
     onEnviarAviso: () -> Unit = {},
     onNuevaInstancia: () -> Unit = {},
     onReintentar: () -> Unit = {},
+    onCerrarSesion: (() -> Unit)? = null,
     onTab: (Int) -> Unit = {}
 ) {
     FlagSecureDisable()
@@ -69,7 +70,8 @@ fun OrgInicioScreen(
             TopBarAtras(
                 titulo = "¡Bienvenido!",
                 subtitulo = "Administrador",
-                mostrarAvatar = true
+                mostrarAvatar = true,
+                onCerrarSesion = onCerrarSesion
             )
 
             Box(Modifier.weight(1f).fillMaxWidth()) {

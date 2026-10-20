@@ -6,18 +6,25 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDateTime
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import mx.tec.sonrisas.data.ChatRepository
+import mx.tec.sonrisas.data.SesionRepository
 import mx.tec.sonrisas.data.remote.EstanciaIn
 import mx.tec.sonrisas.data.remote.EstanciaRemoteDataSource
 import mx.tec.sonrisas.data.remote.UserCreate
+import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.ui.screens.organizacion.AdministradorUi
 import mx.tec.sonrisas.ui.screens.organizacion.InstanciaUi
 
 @HiltViewModel
 class OrgViewModel @Inject constructor(
-    private val estanciaRemote: EstanciaRemoteDataSource
+    private val estanciaRemote: EstanciaRemoteDataSource,
+    private val chatRepository: ChatRepository,
+    private val sesionRepository: SesionRepository
 ) : ViewModel() {
 
     var estadoInstancias by mutableStateOf<UiState<List<InstanciaUi>>>(UiState.Cargando)
@@ -145,6 +152,46 @@ class OrgViewModel @Inject constructor(
                 if (contrasenaTemporalGenerada == null) {
                     onListo()
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun guardarAviso(
+        titulo: String,
+        mensaje: String,
+        idsInstancias: List<String>?,
+        onListo: () -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val autor = sesionRepository.sesion.first()?.id ?: "org"
+                val estanciasDto = runCatching { estanciaRemote.fetchEstancias() }.getOrDefault(emptyList())
+                val usersDto = runCatching { estanciaRemote.fetchUsers() }.getOrDefault(emptyList())
+                val targetEstancias = if (idsInstancias != null) {
+                    estanciasDto.filter { it.id in idsInstancias }
+                } else {
+                    estanciasDto
+                }
+
+                val contenido = if (titulo.isNotBlank()) "$titulo: $mensaje" else mensaje
+
+                targetEstancias.forEach { est ->
+                    val adminUser = usersDto.firstOrNull { it.id == est.adminUserId || (it.estanciaId == est.id && it.role == "ADMIN") }
+                    adminUser?.id?.let { adminId ->
+                        chatRepository.send(
+                            Message(
+                                chatId = adminId,
+                                authorId = autor,
+                                content = contenido,
+                                sentAt = LocalDateTime.now(),
+                                isAviso = true
+                            )
+                        )
+                    }
+                }
+                onListo()
             } catch (e: Exception) {
                 e.printStackTrace()
             }

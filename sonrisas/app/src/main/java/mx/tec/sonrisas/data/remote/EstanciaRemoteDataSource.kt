@@ -15,6 +15,7 @@ interface EstanciaRemoteDataSource {
     suspend fun resetPassword(userId: String): PasswordResetDto
     suspend fun fetchSalones(): List<SalonOut>
     suspend fun fetchChildren(): List<ChildOut>
+    suspend fun guardarAviso(noticeId: String, estanciaId: String, salonId: String?, titulo: String, descripcion: String, fecha: String): NoticeDto
 }
 
 class EstanciaRemoteDataSourceImpl @Inject constructor(
@@ -62,4 +63,13 @@ class EstanciaRemoteDataSourceImpl @Inject constructor(
 
     override suspend fun fetchChildren(): List<ChildOut> =
         auth.authed { api.get<List<ChildOut>>("/children", it) }
+
+    override suspend fun guardarAviso(noticeId: String, estanciaId: String, salonId: String?, titulo: String, descripcion: String, fecha: String): NoticeDto =
+        auth.authed {
+            api.put<NoticeInBody, NoticeDto>(
+                "/notices/$noticeId",
+                NoticeInBody(estanciaId, salonId, titulo.trim(), descripcion.trim(), fecha),
+                it
+            )
+        }
 }

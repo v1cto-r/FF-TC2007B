@@ -41,6 +41,7 @@ fun OrgInstanciasScreen(
     onInstanciaClick: (InstanciaUi) -> Unit = {},
     onNuevaInstancia: () -> Unit = {},
     onReintentar: () -> Unit = {},
+    onCerrarSesion: (() -> Unit)? = null,
     onTab: (Int) -> Unit = {}
 ) {
     FlagSecureDisable()
@@ -62,7 +63,12 @@ fun OrgInstanciasScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            TopBarAtras(titulo = "Estancias", subtitulo = "Panel de organización", mostrarAvatar = true)
+            TopBarAtras(
+                titulo = "Estancias",
+                subtitulo = "Panel de organización",
+                mostrarAvatar = true,
+                onCerrarSesion = onCerrarSesion
+            )
 
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (estado) {

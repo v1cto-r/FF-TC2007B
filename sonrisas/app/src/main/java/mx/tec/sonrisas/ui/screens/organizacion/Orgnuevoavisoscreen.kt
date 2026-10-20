@@ -36,14 +36,13 @@ fun OrgNuevoAvisoScreen(
     instancias: List<InstanciaUi>,
     modifier: Modifier = Modifier,
     onAtras: () -> Unit = {},
-    onEnviar: (titulo: String, mensaje: String, urgente: Boolean, idsInstancias: List<String>?) -> Unit =
-        { _, _, _, _ -> }
+    onEnviar: (titulo: String, mensaje: String, idsInstancias: List<String>?) -> Unit =
+        { _, _, _ -> }
 ) {
     FlagSecureDisable()
     var titulo by remember { mutableStateOf("") }
     var mensaje by remember { mutableStateOf("") }
     var paraTodas by remember { mutableStateOf(true) }
-    var urgente by remember { mutableStateOf(false) }
     var seleccionadas by remember { mutableStateOf(setOf<String>()) }
 
     // Con "Elegir instancias" hay que marcar al menos una
@@ -56,7 +55,7 @@ fun OrgNuevoAvisoScreen(
             Box(Modifier.fillMaxWidth().background(Color.White).padding(16.dp)) {
                 Button(
                     onClick = {
-                        onEnviar(titulo, mensaje, urgente, if (paraTodas) null else seleccionadas.toList())
+                        onEnviar(titulo, mensaje, if (paraTodas) null else seleccionadas.toList())
                     },
                     enabled = puedeEnviar,
                     modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -118,16 +117,6 @@ fun OrgNuevoAvisoScreen(
                             }
                         )
                     }
-                }
-
-                item {
-                    CampoOpciones(
-                        etiqueta = "Tipo",
-                        valor = urgente,
-                        opciones = listOf(false, true),
-                        onValorChange = { urgente = it },
-                        etiquetaOpcion = { if (it) "Urgente" else "Informativo" }
-                    )
                 }
             }
         }

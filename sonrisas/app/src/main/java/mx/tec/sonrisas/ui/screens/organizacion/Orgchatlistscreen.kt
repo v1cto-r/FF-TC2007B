@@ -32,6 +32,7 @@ fun OrgChatListScreen(
     ultimosMensajes: Map<String, Message> = emptyMap(),
     onInstanciaClick: (adminId: String) -> Unit = {},
     onReintentar: () -> Unit = {},
+    onCerrarSesion: (() -> Unit)? = null,
     onTab: (Int) -> Unit = {}
 ) {
     FlagSecureDisable()
@@ -41,7 +42,12 @@ fun OrgChatListScreen(
         bottomBar = { BottomBar(tabs = TabsOrg, seleccionado = 2, onSeleccionar = onTab) }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            TopBarAtras(titulo = "Chats", subtitulo = "Conversaciones con los administradores", mostrarAvatar = true)
+            TopBarAtras(
+                titulo = "Chats",
+                subtitulo = "Conversaciones con los administradores",
+                mostrarAvatar = true,
+                onCerrarSesion = onCerrarSesion
+            )
 
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (estado) {

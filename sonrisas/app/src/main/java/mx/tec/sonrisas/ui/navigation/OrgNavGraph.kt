@@ -15,14 +15,13 @@ import mx.tec.sonrisas.ui.screens.organizacion.OrgChatListScreen
 import mx.tec.sonrisas.ui.screens.organizacion.OrgDetalleInstanciaScreen
 import mx.tec.sonrisas.ui.screens.organizacion.OrgInicioScreen
 import mx.tec.sonrisas.ui.screens.organizacion.OrgInstanciasScreen
-import mx.tec.sonrisas.ui.screens.organizacion.OrgMuestra
 import mx.tec.sonrisas.ui.screens.organizacion.OrgNuevaInstanciaScreen
 import mx.tec.sonrisas.ui.screens.organizacion.OrgNuevoAvisoScreen
 import mx.tec.sonrisas.ui.state.ChatViewModel
 import mx.tec.sonrisas.ui.state.OrgViewModel
 import mx.tec.sonrisas.ui.state.UiState
 
-/** Pestañas de la barra inferior: 0 = Inicio, 1 = Instancias, 2 = Chat. */
+/** Pestañas de la barra inferior: 0 = Inicio, 1 = Estancias, 2 = Chat. */
 private fun NavHostController.irATabOrg(indice: Int) {
     val destino = when (indice) {
         0 -> Route.ORG_INICIO
@@ -50,6 +49,7 @@ fun NavGraphBuilder.orgGraph(
             onEnviarAviso = { nav.navigate(Route.ORG_NUEVO_AVISO) },
             onNuevaInstancia = { nav.navigate(Route.ORG_NUEVA_INSTANCIA) },
             onReintentar = { viewModel.cargarInstancias() },
+            onCerrarSesion = onSalir,
             onTab = { indice -> nav.irATabOrg(indice) }
         )
     }
@@ -63,6 +63,7 @@ fun NavGraphBuilder.orgGraph(
             onInstanciaClick = { instancia -> nav.navigate(Route.orgDetalleInstancia(instancia.id)) },
             onNuevaInstancia = { nav.navigate(Route.ORG_NUEVA_INSTANCIA) },
             onReintentar = { viewModel.cargarInstancias() },
+            onCerrarSesion = onSalir,
             onTab = { indice -> nav.irATabOrg(indice) }
         )
     }
@@ -116,6 +117,7 @@ fun NavGraphBuilder.orgGraph(
             ultimosMensajes = chat.ultimosMensajes,
             onInstanciaClick = { adminId -> nav.navigate(Route.orgChatAdmin(adminId)) },
             onReintentar = { viewModel.cargarInstancias() },
+            onCerrarSesion = onSalir,
             onTab = { indice -> nav.irATabOrg(indice) }
         )
     }
@@ -197,10 +199,18 @@ fun NavGraphBuilder.orgGraph(
     }
 
     composable(Route.ORG_NUEVO_AVISO) {
+        val viewModel: OrgViewModel = hiltViewModel()
+        LaunchedEffect(Unit) { viewModel.cargarInstancias() }
+        val instancias = (viewModel.estadoInstancias as? UiState.Exito)?.datos ?: emptyList()
+
         OrgNuevoAvisoScreen(
-            instancias = OrgMuestra.instancias,
+            instancias = instancias,
             onAtras = { nav.popBackStack() },
-            onEnviar = { _, _, _, _ -> nav.popBackStack() }
+            onEnviar = { titulo, mensaje, idsInstancias ->
+                viewModel.guardarAviso(titulo, mensaje, idsInstancias) {
+                    nav.popBackStack()
+                }
+            }
         )
     }
 }
