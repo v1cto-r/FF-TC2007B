@@ -19,8 +19,21 @@ class FileRemoteDataSource @Inject constructor(
 
     suspend fun uploadPhoto(chatId: String, contentType: String, bytes: ByteArray): String {
         val id = UUID.randomUUID().toString()
-        val ticket: UploadTicketDto = auth.authed {
-            api.post("/files", FileCreateBody(id, "MESSAGE_ATTACHMENT", chatId, contentType, bytes.size), it)
+        uploadImage(id, "MESSAGE_ATTACHMENT", chatId, contentType, bytes)
+        return id
+    }
+
+    /**
+     * Safe to call again with the same [id]: while the upload is pending the server hands out a new
+     * ticket, and once it is complete it answers 409, which here means it's already done.
+     */
+    suspend fun uploadImage(id: String, purpose: String, targetId: String, contentType: String, bytes: ByteArray) {
+        val ticket: UploadTicketDto = try {
+            auth.authed { api.post("/files", FileCreateBody(id, purpose, targetId, contentType, bytes.size), it) }
+        } catch (e: ApiException) {
+            if (e.code != 409) throw e
+            auth.authed { api.send("POST", "/files/$id/complete", it) }  // throws if it isn't really there
+            return
         }
         val put = Request.Builder().url(ticket.upload.url)
             .method(ticket.upload.method, bytes.toRequestBody())
@@ -28,7 +41,6 @@ class FileRemoteDataSource @Inject constructor(
             .build()
         api.http.newCall(put).await().use { if (!it.isSuccessful) throw ApiException(it.code, "No se pudo subir la foto") }
         auth.authed { api.send("POST", "/files/$id/complete", it) }
-        return id
     }
 
     suspend fun uploadChildDocument(childId: String, context: Context): String {

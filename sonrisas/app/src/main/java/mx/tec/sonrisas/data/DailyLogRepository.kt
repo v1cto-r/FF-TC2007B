@@ -1,6 +1,7 @@
 package mx.tec.sonrisas.data
 
 import androidx.room.withTransaction
+import java.io.File
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -29,6 +30,9 @@ interface DailyLogRepository {
     fun observeById(id: String): Flow<DailyLog?>
     fun observeToday(childId: String): Flow<DailyLog?>
     suspend fun save(dailyLog: DailyLog)
+
+    /** Undoes today's check-out; the server's copy is removed on the next sync. */
+    suspend fun cancelCheckOut(dailyLog: DailyLog)
     suspend fun delete(dailyLog: DailyLog)
 
     fun observeActivities(dailyLogId: String): Flow<List<ActivityRecord>>
@@ -58,8 +62,14 @@ class DailyLogRepositoryImpl @Inject constructor(
         dailyLogDao.observeByChildAndDate(childId, LocalDate.now()).map { row -> row?.toDomain() }
 
     override suspend fun save(dailyLog: DailyLog) {
-        dailyLogDao.save(dailyLog.toEntity().copy(synced = false, modifiedAt = System.currentTimeMillis()))
+        val log = dailyLog.copy(checkOutCleared = dailyLog.checkOutCleared && dailyLog.checkOut == null)
+        dailyLogDao.save(log.toEntity().copy(synced = false, modifiedAt = System.currentTimeMillis()))
         syncScheduler.requestSync()
+    }
+
+    override suspend fun cancelCheckOut(dailyLog: DailyLog) {
+        dailyLog.checkOut?.idPhotoLocalPath?.let { File(it).delete() }  // never uploaded: no longer needed
+        save(dailyLog.copy(checkOut = null, checkOutCleared = dailyLog.checkOut != null || dailyLog.checkOutCleared))
     }
 
     override suspend fun delete(dailyLog: DailyLog) {

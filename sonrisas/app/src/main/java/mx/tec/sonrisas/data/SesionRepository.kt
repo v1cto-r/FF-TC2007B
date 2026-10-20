@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import mx.tec.sonrisas.data.chat.ChatSocket
 import mx.tec.sonrisas.data.local.dao.ChildDao
 import mx.tec.sonrisas.data.local.dao.MessageDao
+import mx.tec.sonrisas.data.local.dao.PickupAuthorizationDao
 import mx.tec.sonrisas.data.push.PushRepository
 import mx.tec.sonrisas.data.remote.ApiClient
 import mx.tec.sonrisas.data.remote.MeDto
@@ -24,6 +25,8 @@ class SesionRepository @Inject constructor(
     private val api: ApiClient,
     private val childRepository: ChildRepository,
     private val dailyLogRepository: DailyLogRepository,
+    private val pickupAuthorizationRepository: PickupAuthorizationRepository,
+    private val pickupAuthorizationDao: PickupAuthorizationDao,
     private val socket: ChatSocket,
     private val messageDao: MessageDao,
     private val childDao: ChildDao,
@@ -69,6 +72,7 @@ class SesionRepository @Inject constructor(
         auth.logout()
         messageDao.clear()
         childDao.clear()
+        pickupAuthorizationDao.clear()
     }
 
     private suspend fun abrirSesion() {
@@ -89,6 +93,8 @@ class SesionRepository @Inject constructor(
                 try {
                     childRepository.refreshFromServer(parentName = if (rol == Rol.PADRE) me.fullName else "")
                     dailyLogRepository.refreshFromServer()
+                    // Never blocks the session: a server without this endpoint yet must not stop the login
+                    runCatching { pickupAuthorizationRepository.refreshFromServer() }
                 } catch (e: IOException) {
                 }
             } else {

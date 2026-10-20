@@ -38,6 +38,10 @@ interface DailyLogDao {
     @Query("DELETE FROM daily_logs WHERE synced = 1 AND date >= :fromDate AND id NOT IN (:keepIds)")
     suspend fun deleteSyncedExcept(fromDate: LocalDate, keepIds: List<String>)
 
+    // The ID photo reached the server. Keyed on the file id, not modifiedAt: an edit since doesn't change the photo
+    @Query("UPDATE daily_logs SET check_out_idPhotoLocalPath = NULL WHERE id = :id AND check_out_idPhotoFileId = :fileId")
+    suspend fun markIdPhotoUploaded(id: String, fileId: String)
+
     @Query("UPDATE daily_logs SET deleted = 1, synced = 0, modifiedAt = :modifiedAt WHERE id = :id")
     suspend fun markDeleted(id: String, modifiedAt: Long)
 

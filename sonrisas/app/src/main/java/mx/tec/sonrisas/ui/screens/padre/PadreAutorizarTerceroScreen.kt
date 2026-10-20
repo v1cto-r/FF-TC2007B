@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import mx.tec.sonrisas.domain.PickupAuthorization
+import mx.tec.sonrisas.domain.PickupKind
 import mx.tec.sonrisas.ui.components.CampoDropdown
 import mx.tec.sonrisas.ui.components.CampoTexto
 import mx.tec.sonrisas.ui.components.FlagSecureDisable
@@ -113,18 +114,22 @@ fun PadreAutorizarTerceroScreen(
                 Button(
                     onClick = {
                         if (personaNombre.isNotBlank() && telefono.isNotBlank()) {
+                            // Until the week / recurring form exists: a new one covers today only
+                            val base = autorizacionExistente ?: PickupAuthorization(
+                                childId = childId,
+                                kind = PickupKind.THIS_WEEK,
+                                weekdays = setOf(LocalDate.now().dayOfWeek),
+                                authorizedPersonName = "",
+                                relationship = "",
+                                phone = ""
+                            )
                             onGuardar(
-                                PickupAuthorization(
-                                    id = autorizacionExistente?.id ?: java.util.UUID.randomUUID().toString(),
-                                    childId = childId,
-                                    childName = childName,
-                                    date = LocalDate.now(),
+                                base.copy(
                                     authorizedPersonName = personaNombre,
                                     relationship = parentesco.ifBlank { "Familiar" },
                                     phone = telefono,
                                     identificationType = identificacion.ifBlank { "INE" },
-                                    notes = observaciones.ifBlank { null },
-                                    registeredByParentName = parentName
+                                    notes = observaciones.ifBlank { null }
                                 )
                             )
                         }

@@ -8,6 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import mx.tec.sonrisas.data.local.MIGRATION_9_10
 import mx.tec.sonrisas.data.local.SonrisasDatabase
 import mx.tec.sonrisas.data.local.dao.ActivityRecordDao
 import mx.tec.sonrisas.data.local.dao.ChildDao
@@ -24,6 +25,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): SonrisasDatabase =
         Room.databaseBuilder(context, SonrisasDatabase::class.java, "sonrisas.db")
+            .addMigrations(MIGRATION_9_10)
             .fallbackToDestructiveMigration(true)
             .build()
 

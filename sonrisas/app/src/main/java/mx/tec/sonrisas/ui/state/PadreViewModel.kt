@@ -22,6 +22,7 @@ import mx.tec.sonrisas.data.ChildRepository
 import mx.tec.sonrisas.data.DailyLogRepository
 import mx.tec.sonrisas.data.NoticeRepository
 import mx.tec.sonrisas.data.PickupAuthorizationRepository
+import mx.tec.sonrisas.data.PickupSaveResult
 import mx.tec.sonrisas.data.SesionRepository
 import mx.tec.sonrisas.data.remote.ChildRemoteDataSource
 import mx.tec.sonrisas.data.remote.FileRemoteDataSource
@@ -59,6 +60,10 @@ class PadreViewModel @Inject constructor(
         private set
 
     var autorizacionHoy by mutableStateOf<PickupAuthorization?>(null)
+        private set
+
+    // Why the last authorization wasn't saved (offline, or it overlaps another one)
+    var errorAutorizacion by mutableStateOf<String?>(null)
         private set
 
     var resumenSemanal by mutableStateOf<WeeklySummary?>(null)
@@ -156,6 +161,11 @@ class PadreViewModel @Inject constructor(
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+            try {
+                pickupAuthorizationRepository.refreshFromServer()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
         viewModelScope.launch {
             estadoActividades = UiState.Cargando
@@ -171,7 +181,7 @@ class PadreViewModel @Inject constructor(
                             flowOf(emptyList())
                         } else {
                             launch {
-                                pickupAuthorizationRepository.observeTodayByChild(child.id).collect { auth ->
+                                pickupAuthorizationRepository.observeForChildOn(child.id).collect { auth ->
                                     autorizacionHoy = auth
                                 }
                             }
@@ -218,7 +228,7 @@ class PadreViewModel @Inject constructor(
     fun cargarAutorizacionHoy(childId: String) {
         viewModelScope.launch {
             try {
-                pickupAuthorizationRepository.observeTodayByChild(childId).collect { auth ->
+                pickupAuthorizationRepository.observeForChildOn(childId).collect { auth ->
                     autorizacionHoy = auth
                 }
             } catch (e: Exception) {
@@ -227,14 +237,29 @@ class PadreViewModel @Inject constructor(
         }
     }
 
-    fun guardarAutorizacionTercero(autorizacion: PickupAuthorization, onListo: () -> Unit) {
+    fun guardarAutorizacionTercero(autorizacion: PickupAuthorization, reemplazar: Boolean = false, onListo: () -> Unit) {
         viewModelScope.launch {
-            try {
-                pickupAuthorizationRepository.save(autorizacion)
-                autorizacionHoy = autorizacion
-                onListo()
+            errorAutorizacion = try {
+                when (pickupAuthorizationRepository.save(autorizacion, reemplazar)) {
+                    is PickupSaveResult.Saved -> null.also { onListo() }
+                    is PickupSaveResult.Conflict -> "Ya hay otra persona autorizada en alguno de esos días"
+                    PickupSaveResult.Offline -> "Sin conexión: la autorización no se envió a la escuela"
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
+                "No se pudo guardar la autorización"
+            }
+        }
+    }
+
+    fun cancelarAutorizacion(autorizacion: PickupAuthorization) {
+        viewModelScope.launch {
+            errorAutorizacion = try {
+                pickupAuthorizationRepository.cancel(autorizacion)
+                null
+            } catch (e: Exception) {
+                e.printStackTrace()
+                "No se pudo cancelar la autorización"
             }
         }
     }

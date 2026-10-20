@@ -7,13 +7,16 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.sync.withLock
 import mx.tec.sonrisas.data.local.dao.ActivityRecordDao
 import mx.tec.sonrisas.data.local.dao.DailyLogDao
 import mx.tec.sonrisas.data.local.toDomain
 import mx.tec.sonrisas.data.remote.ApiException
+import mx.tec.sonrisas.data.local.entities.DailyLogEntity
 import mx.tec.sonrisas.data.remote.DailyLogRemoteDataSource
+import mx.tec.sonrisas.data.remote.FileRemoteDataSource
 
 /**
  * Uploads the daily logs (check-in, stay, check-out) and activities the teacher saved in Room.
@@ -28,6 +31,7 @@ class DailyLogSyncWorker @AssistedInject constructor(
     private val dailyLogDao: DailyLogDao,
     private val activityDao: ActivityRecordDao,
     private val remote: DailyLogRemoteDataSource,
+    private val files: FileRemoteDataSource,
     private val lock: DailyLogSyncLock
 ) : CoroutineWorker(context, params) {
 
@@ -42,6 +46,7 @@ class DailyLogSyncWorker @AssistedInject constructor(
         }
         for (row in dailyLogDao.getPendingUpserts()) {
             attempt("upload log ${row.id}") {
+                uploadIdPhoto(row)
                 remote.saveDailyLog(row.toDomain())
                 dailyLogDao.markSynced(row.id, row.modifiedAt)
             }
@@ -59,6 +64,19 @@ class DailyLogSyncWorker @AssistedInject constructor(
             }
         }
         if (retry) Result.retry() else Result.success()
+    }
+
+    /** The ID photo of a check-out to an authorized person has to be on the server before the log refers to it. */
+    private suspend fun uploadIdPhoto(row: DailyLogEntity) {
+        val checkOut = row.checkOut ?: return
+        val path = checkOut.idPhotoLocalPath ?: return
+        val fileId = checkOut.idPhotoFileId ?: return
+        val photo = File(path)
+        if (photo.exists()) {
+            files.uploadImage(fileId, PICKUP_ID_PHOTO, row.childId, "image/jpeg", photo.readBytes())
+        }
+        dailyLogDao.markIdPhotoUploaded(row.id, fileId)
+        photo.delete()
     }
 
     /**
@@ -82,6 +100,7 @@ class DailyLogSyncWorker @AssistedInject constructor(
 
     private companion object {
         const val TAG = "DailyLogSync"
+        const val PICKUP_ID_PHOTO = "PICKUP_ID_PHOTO"
         // 401: session expired or logged out; 404: an activity whose log hasn't been uploaded yet
         val RETRYABLE = setOf(401, 404, 408, 429)
     }

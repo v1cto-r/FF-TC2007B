@@ -48,6 +48,7 @@ data class StayBody(
     @SerialName("feeding_breakfast") val feedingBreakfast: String,
     @SerialName("feeding_snack") val feedingSnack: String,
     @SerialName("feeding_lunch") val feedingLunch: String,
+    @SerialName("feeding_afternoon_snack") val feedingAfternoonSnack: String? = null,
     @SerialName("feeding_notes") val feedingNotes: String? = null,
     val slept: Boolean,
     @SerialName("nap_minutes") val napMinutes: Int? = null,
@@ -80,7 +81,9 @@ data class CheckOutBody(
     @SerialName("belongings_complete") val belongingsComplete: Boolean,
     val notes: String? = null,
     @SerialName("picked_up_by_name") val pickedUpByName: String,
-    @SerialName("released_by_staff_name") val releasedByStaffName: String
+    @SerialName("released_by_staff_name") val releasedByStaffName: String,
+    @SerialName("pickup_authorization_id") val pickupAuthorizationId: String? = null,
+    @SerialName("id_photo_file_id") val idPhotoFileId: String? = null
 )
 
 @Serializable
@@ -142,6 +145,7 @@ private fun Stay.toBody() = StayBody(
     feedingBreakfast = feeding.breakfast.name,
     feedingSnack = feeding.snack.name,
     feedingLunch = feeding.lunch.name,
+    feedingAfternoonSnack = feeding.afternoonSnack.name,
     feedingNotes = feedingNotes,
     slept = slept,
     napMinutes = napMinutes,
@@ -173,7 +177,9 @@ private fun CheckOutRecord.toBody() = CheckOutBody(
     belongingsComplete = belongingsComplete,
     notes = notes,
     pickedUpByName = pickedUpByName,
-    releasedByStaffName = releasedByStaffName
+    releasedByStaffName = releasedByStaffName,
+    pickupAuthorizationId = pickupAuthorizationId,
+    idPhotoFileId = idPhotoFileId
 )
 
 fun ActivityRecord.toBody() = ActivityInBody(dailyLogId = dailyLogId, name = name, imageFileIds = images)
@@ -221,12 +227,12 @@ private fun CheckInBody.toDomain() = CheckInRecord(
 )
 
 private fun StayBody.toDomain() = Stay(
-    // The server doesn't store the afternoon snack
     feeding = Feeding(
         AmountEnum.valueOf(feedingBreakfast),
         AmountEnum.valueOf(feedingSnack),
         AmountEnum.valueOf(feedingLunch),
-        AmountEnum.NONE
+        // null on logs saved before the server stored it
+        feedingAfternoonSnack?.let(AmountEnum::valueOf) ?: AmountEnum.NONE
     ),
     feedingNotes = feedingNotes,
     slept = slept,
@@ -258,5 +264,7 @@ private fun CheckOutBody.toDomain() = CheckOutRecord(
     belongingsComplete = belongingsComplete,
     notes = notes,
     pickedUpByName = pickedUpByName,
-    releasedByStaffName = releasedByStaffName
+    releasedByStaffName = releasedByStaffName,
+    pickupAuthorizationId = pickupAuthorizationId,
+    idPhotoFileId = idPhotoFileId
 )

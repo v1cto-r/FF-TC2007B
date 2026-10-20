@@ -22,6 +22,7 @@ import mx.tec.sonrisas.data.ChatRepository
 import mx.tec.sonrisas.data.ChildRepository
 import mx.tec.sonrisas.data.DailyLogRepository
 import mx.tec.sonrisas.data.NoticeRepository
+import mx.tec.sonrisas.data.PickupAuthorizationRepository
 import mx.tec.sonrisas.data.SesionRepository
 import mx.tec.sonrisas.domain.ActivityRecord
 import mx.tec.sonrisas.domain.Child
@@ -29,12 +30,15 @@ import mx.tec.sonrisas.domain.DailyLog
 import mx.tec.sonrisas.domain.GroupEnum
 import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.domain.Notice
+import mx.tec.sonrisas.domain.PickupAuthorization
 
 data class NinoConEstado(
     val child: Child,
     val presente: Boolean,
     val dailyLog: DailyLog? = null,
-    val activities: List<ActivityRecord> = emptyList()
+    val activities: List<ActivityRecord> = emptyList(),
+    // Who the parent authorized to pick the child up today, if anyone
+    val autorizacionHoy: PickupAuthorization? = null
 )
 
 data class ConversacionUi(val child: Child, val ultimoMensaje: Message?)
@@ -46,6 +50,7 @@ class MaestraViewModel @Inject constructor(
     private val noticeRepository: NoticeRepository,
     private val chatRepository: ChatRepository,
     private val sesionRepository: SesionRepository,
+    private val pickupAuthorizationRepository: PickupAuthorizationRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -72,6 +77,12 @@ class MaestraViewModel @Inject constructor(
         private set
 
     private fun observarEstadoDeHoy(child: Child): Flow<NinoConEstado> =
+        combine(
+            observarRegistroDeHoy(child),
+            pickupAuthorizationRepository.observeForChildOn(child.id)
+        ) { estado, autorizacion -> estado.copy(autorizacionHoy = autorizacion) }
+
+    private fun observarRegistroDeHoy(child: Child): Flow<NinoConEstado> =
         dailyLogRepository.observeToday(child.id).flatMapLatest { log ->
             if (log == null) {
                 flowOf(NinoConEstado(child, presente = false, dailyLog = null, activities = emptyList()))
@@ -92,6 +103,13 @@ class MaestraViewModel @Inject constructor(
         }
 
     fun cargarNinos() {
+        viewModelScope.launch {
+            try {
+                pickupAuthorizationRepository.refreshFromServer()
+            } catch (e: Exception) {
+                e.printStackTrace()  // offline: the copy in Room is shown
+            }
+        }
         viewModelScope.launch {
             estadoNinos = UiState.Cargando
             try {
@@ -248,7 +266,7 @@ class MaestraViewModel @Inject constructor(
             try {
                 val log = dailyLogRepository.observeToday(ninoId).first()
                 if (log != null) {
-                    dailyLogRepository.save(log.copy(checkOut = null))
+                    dailyLogRepository.cancelCheckOut(log)
                 }
                 onListo()
             } catch (e: Exception) {

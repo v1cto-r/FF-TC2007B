@@ -1,5 +1,6 @@
 package mx.tec.sonrisas.data.local
 
+import java.time.DayOfWeek
 import mx.tec.sonrisas.data.local.dao.MessageDao
 import mx.tec.sonrisas.data.local.entities.ActivityRecordEntity
 import mx.tec.sonrisas.data.local.entities.CheckInEmbed
@@ -10,6 +11,7 @@ import mx.tec.sonrisas.data.local.entities.FeedingEmbed
 import mx.tec.sonrisas.data.local.entities.InjuryEmbed
 import mx.tec.sonrisas.data.local.entities.MessageEntity
 import mx.tec.sonrisas.data.local.entities.NoticeEntity
+import mx.tec.sonrisas.data.local.entities.PickupAuthorizationEntity
 import mx.tec.sonrisas.data.local.entities.StayEmbed
 import mx.tec.sonrisas.domain.ActivityRecord
 import mx.tec.sonrisas.domain.AmountEnum
@@ -22,6 +24,8 @@ import mx.tec.sonrisas.domain.GroupEnum
 import mx.tec.sonrisas.domain.Injury
 import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.domain.Notice
+import mx.tec.sonrisas.domain.PickupAuthorization
+import mx.tec.sonrisas.domain.PickupKind
 import mx.tec.sonrisas.domain.Stay
 
 /**
@@ -167,7 +171,10 @@ private fun CheckOutEmbed.toDomain() = CheckOutRecord(
     belongingsComplete = belongingsComplete,
     notes = notes,
     pickedUpByName = pickedUpByName,
-    releasedByStaffName = releasedByStaffName
+    releasedByStaffName = releasedByStaffName,
+    pickupAuthorizationId = pickupAuthorizationId,
+    idPhotoFileId = idPhotoFileId,
+    idPhotoLocalPath = idPhotoLocalPath
 )
 
 private fun CheckOutRecord.toEmbed() = CheckOutEmbed(
@@ -178,7 +185,10 @@ private fun CheckOutRecord.toEmbed() = CheckOutEmbed(
     belongingsComplete = belongingsComplete,
     notes = notes,
     pickedUpByName = pickedUpByName,
-    releasedByStaffName = releasedByStaffName
+    releasedByStaffName = releasedByStaffName,
+    pickupAuthorizationId = pickupAuthorizationId,
+    idPhotoFileId = idPhotoFileId,
+    idPhotoLocalPath = idPhotoLocalPath
 )
 
 // --- DailyLog ---
@@ -191,6 +201,7 @@ fun DailyLogEntity.toDomain() = DailyLog(
     checkIn = checkIn.toDomain(),
     stay = stay?.toDomain(),
     checkOut = checkOut?.toDomain(),
+    checkOutCleared = checkOutCleared,
     synced = synced
 )
 
@@ -202,6 +213,7 @@ fun DailyLog.toEntity() = DailyLogEntity(
     checkIn = checkIn.toEmbed(),
     stay = stay?.toEmbed(),
     checkOut = checkOut?.toEmbed(),
+    checkOutCleared = checkOutCleared,
     synced = synced
 )
 
@@ -265,31 +277,34 @@ fun Message.toEntity() = MessageEntity(
 
 // --- PickupAuthorization ---
 
-fun mx.tec.sonrisas.data.local.entities.PickupAuthorizationEntity.toDomain() = mx.tec.sonrisas.domain.PickupAuthorization(
+fun PickupAuthorizationEntity.toDomain() = PickupAuthorization(
     id = id,
     childId = childId,
-    childName = childName,
-    date = date,
+    kind = PickupKind.valueOf(kind),
+    weekdays = weekdaysOf(weekdays),
+    startDate = startDate,
     authorizedPersonName = authorizedPersonName,
     relationship = relationship,
     phone = phone,
     identificationType = identificationType,
-    notes = notes,
-    registeredByParentName = registeredByParentName
+    notes = notes
 )
 
-fun mx.tec.sonrisas.domain.PickupAuthorization.toEntity() = mx.tec.sonrisas.data.local.entities.PickupAuthorizationEntity(
+fun PickupAuthorization.toEntity() = PickupAuthorizationEntity(
     id = id,
     childId = childId,
-    childName = childName,
-    date = date,
+    kind = kind.name,
+    startDate = startDate,
+    weekdays = weekdays.fold(0) { mask, day -> mask or (1 shl (day.value - 1)) },
     authorizedPersonName = authorizedPersonName,
     relationship = relationship,
     phone = phone,
     identificationType = identificationType,
-    notes = notes,
-    registeredByParentName = registeredByParentName
+    notes = notes
 )
+
+private fun weekdaysOf(mask: Int): Set<DayOfWeek> =
+    DayOfWeek.entries.filter { mask and (1 shl (it.value - 1)) != 0 }.toSet()
 
 suspend fun MessageDao.saveFromServer(messages: List<Message>) {
     messages.forEach { incoming ->
