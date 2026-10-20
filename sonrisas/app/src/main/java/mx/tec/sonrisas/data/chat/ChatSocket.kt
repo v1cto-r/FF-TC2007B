@@ -57,7 +57,8 @@ class ChatSocket @Inject constructor(
     private var socket: WebSocket? = null
     @Volatile private var ready = false
 
-    // Chats that are not a child's (teacher↔admin): teacher -> own id, admin -> every teacher of the estancia.
+    // Chats that are not a child's: teacher -> own id (admin chat); admin -> every teacher of the estancia
+    // plus own id (org chat); ORG -> every admin's id.
     // SesionRepository sets it on login, so the socket doesn't depend on the session.
     @Volatile var peerChatIds: suspend () -> List<String> = { emptyList() }
 

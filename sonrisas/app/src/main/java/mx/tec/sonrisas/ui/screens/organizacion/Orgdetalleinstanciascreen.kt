@@ -1,14 +1,15 @@
 package mx.tec.sonrisas.ui.screens.organizacion
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import mx.tec.sonrisas.ui.components.AccionRapida
 import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.components.ItemPersona
 import mx.tec.sonrisas.ui.components.TituloSeccion
@@ -30,7 +32,7 @@ fun OrgDetalleInstanciaScreen(
     modifier: Modifier = Modifier,
     onAtras: () -> Unit = {},
     onEditar: () -> Unit = {},
-    onReasignarAdmin: () -> Unit = {},
+    onChatAdmin: () -> Unit = {},
     onCambiarEstado: () -> Unit = {}
 ) {
     FlagSecureDisable()
@@ -72,20 +74,57 @@ fun OrgDetalleInstanciaScreen(
 
                 item { Spacer(Modifier.height(8.dp)) }
                 item { TituloSeccion("Acciones") }
-                item { BotonAccion("Editar datos", Coral, onEditar) }
                 item {
-                    BotonAccion(
-                        texto = if (instancia.admin == null) "Asignar administrador" else "Reasignar admin",
-                        color = Coral,
-                        onClick = onReasignarAdmin
-                    )
-                }
-                item {
-                    BotonAccion(
-                        texto = if (instancia.activa) "Suspender instancia" else "Reactivar instancia",
-                        color = Amarillo,
-                        onClick = onCambiarEstado
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            AccionRapida(
+                                texto = "Editar datos",
+                                icono = Icons.Outlined.Edit,
+                                colorIcono = Coral,
+                                colorFondo = CoralSuave,
+                                onClick = onEditar,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (instancia.admin != null) {
+                                AccionRapida(
+                                    texto = "Chat con admin",
+                                    icono = Icons.Outlined.ChatBubbleOutline,
+                                    colorIcono = Verde,
+                                    colorFondo = VerdeSuave,
+                                    onClick = onChatAdmin,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            } else {
+                                AccionRapida(
+                                    texto = if (instancia.activa) "Suspender" else "Reactivar",
+                                    icono = Icons.Outlined.Block,
+                                    colorIcono = Amarillo,
+                                    colorFondo = AmarilloSuave,
+                                    onClick = onCambiarEstado,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                        if (instancia.admin != null) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                AccionRapida(
+                                    texto = if (instancia.activa) "Suspender" else "Reactivar",
+                                    icono = Icons.Outlined.Block,
+                                    colorIcono = Amarillo,
+                                    colorFondo = AmarilloSuave,
+                                    onClick = onCambiarEstado,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -112,19 +151,6 @@ private fun DatoNumerico(valor: String, etiqueta: String, modifier: Modifier = M
             )
             Text(text = etiqueta, style = MaterialTheme.typography.bodySmall, color = TextoGris)
         }
-    }
-}
-
-@Composable
-private fun BotonAccion(texto: String, color: Color, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, color),
-        colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White, contentColor = color)
-    ) {
-        Text(texto)
     }
 }
 

@@ -109,8 +109,8 @@ fun NavGraphBuilder.adminGraph(
     composable(Route.ADMIN_CHAT_ORG) { entry ->
         val vm = entry.adminViewModel(nav)
         val context = LocalContext.current
-        val chatId = "admin_org"
-        LaunchedEffect(Unit) { vm.cargarMensajes(chatId) }
+        val chatId = miId // org↔admin chat: its id is the admin's own user id
+        LaunchedEffect(chatId) { vm.cargarMensajes(chatId) }
         AdminChatScreen(
             estado = vm.estadoMensajes,
             currentUserId = miId,

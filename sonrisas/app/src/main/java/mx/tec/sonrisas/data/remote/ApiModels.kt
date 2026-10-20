@@ -37,6 +37,49 @@ data class MeDto(
 )
 
 @Serializable
+data class EstanciaOut(
+    val id: String,
+    val status: String? = null,
+    val name: String,
+    val address: String? = null,
+    @SerialName("admin_user_id") val adminUserId: String? = null,
+    @SerialName("logo_file_id") val logoFileId: String? = null
+)
+
+@Serializable
+data class EstanciaIn(
+    val name: String,
+    val address: String? = null,
+    @SerialName("admin_user_id") val adminUserId: String? = null,
+    @SerialName("logo_file_id") val logoFileId: String? = null
+)
+
+@Serializable
+data class UserOut(
+    val id: String,
+    val email: String,
+    @SerialName("full_name") val fullName: String,
+    val role: String,
+    @SerialName("estancia_id") val estanciaId: String? = null,
+    @SerialName("is_active") val isActive: Boolean = true
+)
+
+@Serializable
+data class UserCreate(
+    val email: String,
+    @SerialName("full_name") val fullName: String,
+    val role: String
+)
+
+@Serializable
+data class UserCreated(
+    val id: String,
+    val email: String,
+    val role: String,
+    @SerialName("temporary_password") val temporaryPassword: String
+)
+
+@Serializable
 data class ChildDto(
     val id: String,
     @SerialName("full_name") val fullName: String,
@@ -96,6 +139,30 @@ data class UploadTicketDto(val upload: SignedUploadDto)
 
 @Serializable
 data class FileDownloadDto(val url: String, @SerialName("expires_at") val expiresAt: String)
+
+@Serializable
+data class PasswordResetDto(
+    val id: String,
+    @SerialName("temporary_password") val temporaryPassword: String
+)
+
+@Serializable
+data class SalonOut(
+    val id: String,
+    val status: String? = null,
+    @SerialName("estancia_id") val estanciaId: String,
+    val name: String,
+    @SerialName("group_type") val groupType: String,
+    @SerialName("docente_id") val docenteId: String? = null
+)
+
+@Serializable
+data class ChildOut(
+    val id: String,
+    val status: String? = null,
+    @SerialName("estancia_id") val estanciaId: String,
+    @SerialName("full_name") val fullName: String
+)
 
 private val imageLine = Regex("""(?:^|\n)::Image /([0-9a-fA-F-]{36})(?:\.\w+)?\s*$""")
 private val avisoLine = Regex("""(?:^|\n)::Aviso\s*$""")

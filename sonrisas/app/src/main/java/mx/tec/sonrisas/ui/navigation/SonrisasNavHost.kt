@@ -51,17 +51,19 @@ fun SonrisasNavHost(
         Rol.MAESTRA -> Route.INICIO_MAESTRA
         Rol.PADRE -> Route.INICIO_PADRE
         Rol.ADMIN -> Route.ADMIN_INICIO
-        else -> Route.INICIO_PADRE
+        Rol.ORG -> Route.ORG_INICIO
     }
 
-    // A tapped push notification carries a chat id. A teacher whose own id it is gets the admin chat,
-    // otherwise it is a child chat; an admin only receives teacher chats (chat id = teacher id).
+    // A tapped push notification carries a chat id. Your own id is your chat with the level above
+    // (teacher → admin, admin → org); a teacher's id is an admin↔teacher chat; ORG only receives admin ids;
+    // anything else is a child chat.
     LaunchedEffect(chatPendiente) {
         chatPendiente?.let {
             nav.navigate(
                 when (sesion.rol) {
                     Rol.MAESTRA -> if (it == sesion.id) Route.CHAT_ADMIN_MAESTRA else Route.chatMaestra(it)
-                    Rol.ADMIN -> Route.adminChatTeacher(it)
+                    Rol.ADMIN -> if (it == sesion.id) Route.ADMIN_CHAT_ORG else Route.adminChatTeacher(it)
+                    Rol.ORG -> Route.orgChatAdmin(it)
                     else -> Route.chatPadre(it)
                 }
             )
@@ -73,8 +75,8 @@ fun SonrisasNavHost(
         navController = nav,
         startDestination = destinoInicial
     ) {
-        /* --- ADMIN odo vive en AdminNavGraph ---*/
         adminGraph(nav = nav, miId = sesion.id, onSalir = onSalir)
+        orgGraph(nav = nav, nombre = sesion.nombre, miId = sesion.id, onSalir = onSalir)
 
         // --- MAESTRA ---
         composable(Route.INICIO_MAESTRA) {

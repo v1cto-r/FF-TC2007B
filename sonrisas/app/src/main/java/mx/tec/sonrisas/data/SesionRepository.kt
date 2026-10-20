@@ -12,6 +12,7 @@ import mx.tec.sonrisas.data.local.dao.MessageDao
 import mx.tec.sonrisas.data.push.PushRepository
 import mx.tec.sonrisas.data.remote.ApiClient
 import mx.tec.sonrisas.data.remote.MeDto
+import mx.tec.sonrisas.data.remote.EstanciaRemoteDataSource
 import mx.tec.sonrisas.domain.Rol
 import mx.tec.sonrisas.domain.Sesion
 
@@ -26,7 +27,8 @@ class SesionRepository @Inject constructor(
     private val messageDao: MessageDao,
     private val childDao: ChildDao,
     private val push: PushRepository,
-    private val admin: AdminRepository
+    private val admin: AdminRepository,
+    private val estancias: EstanciaRemoteDataSource
 ) {
     private val _sesion = MutableStateFlow<Sesion?>(null)
     val sesion: StateFlow<Sesion?> = _sesion.asStateFlow()
@@ -70,10 +72,10 @@ class SesionRepository @Inject constructor(
 
     private suspend fun abrirSesion() {
         val me = auth.authed { api.get<MeDto>("/auth/me", it) }
-        val rol = when (me.role) {
-            "DOCENTE" -> Rol.MAESTRA
+        val rol = when (me.role.uppercase()) {
+            "DOCENTE", "MAESTRA" -> Rol.MAESTRA
             "PADRE" -> Rol.PADRE
-            "ADMIN" -> Rol.ADMIN
+            "ADMIN", "ADMINISTRADOR" -> Rol.ADMIN
             "ORG" -> Rol.ORG
             else -> {
                 auth.logout()
@@ -82,15 +84,16 @@ class SesionRepository @Inject constructor(
         }
         val sesion = Sesion(me.sub, me.email, me.fullName, rol, me.pending)
         if (!me.pending) {
-            try {
-                if (rol == Rol.PADRE || rol == Rol.MAESTRA) {
+            if (rol == Rol.PADRE || rol == Rol.MAESTRA) {
+                try {
                     childRepository.refreshFromServer(parentName = if (rol == Rol.PADRE) me.fullName else "")
+                } catch (e: IOException) {
                 }
-            } catch (e: IOException) {
             }
             socket.peerChatIds = when (rol) {
                 Rol.MAESTRA -> { { listOf(me.sub) } }
-                Rol.ADMIN -> { { admin.teacherIds() } }
+                Rol.ADMIN -> { { admin.teacherIds() + me.sub } }
+                Rol.ORG -> { { estancias.fetchEstancias().mapNotNull { it.adminUserId } } }
                 else -> { { emptyList() } }
             }
             socket.connect()

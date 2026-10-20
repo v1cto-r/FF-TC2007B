@@ -19,6 +19,8 @@ import mx.tec.sonrisas.data.remote.ChildRemoteDataSource
 import mx.tec.sonrisas.data.remote.ChildRemoteDataSourceImpl
 import mx.tec.sonrisas.data.remote.DailyLogRemoteDataSource
 import mx.tec.sonrisas.data.remote.DailyLogRemoteDataSourceImpl
+import mx.tec.sonrisas.data.remote.EstanciaRemoteDataSource
+import mx.tec.sonrisas.data.remote.EstanciaRemoteDataSourceImpl
 import mx.tec.sonrisas.data.remote.MessageRemoteDataSource
 import mx.tec.sonrisas.data.remote.MessageRemoteDataSourceImpl
 import mx.tec.sonrisas.data.remote.NoticeRemoteDataSource
@@ -64,4 +66,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindMessageRemoteDataSource(impl: MessageRemoteDataSourceImpl): MessageRemoteDataSource
+
+    @Binds
+    abstract fun bindEstanciaRemoteDataSource(impl: EstanciaRemoteDataSourceImpl): EstanciaRemoteDataSource
 }
