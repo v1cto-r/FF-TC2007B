@@ -89,6 +89,9 @@ class SesionRepository @Inject constructor(
                     childRepository.refreshFromServer(parentName = if (rol == Rol.PADRE) me.fullName else "")
                 } catch (e: IOException) {
                 }
+            } else {
+                // ADMIN / ORG have no child chats: stale children would make the socket fetch chats it can't open.
+                childDao.clear()
             }
             socket.peerChatIds = when (rol) {
                 Rol.MAESTRA -> { { listOf(me.sub) } }

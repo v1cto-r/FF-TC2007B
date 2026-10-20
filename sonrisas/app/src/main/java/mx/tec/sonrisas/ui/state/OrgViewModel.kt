@@ -37,8 +37,8 @@ class OrgViewModel @Inject constructor(
         viewModelScope.launch {
             estadoInstancias = UiState.Cargando
             try {
-                val estanciasDto = estanciaRemote.fetchEstancias()
-                val usersDto = estanciaRemote.fetchUsers()
+                val estanciasDto = runCatching { estanciaRemote.fetchEstancias() }.getOrDefault(emptyList())
+                val usersDto = runCatching { estanciaRemote.fetchUsers() }.getOrDefault(emptyList())
                 val salonesDto = runCatching { estanciaRemote.fetchSalones() }.getOrDefault(emptyList())
                 val childrenDto = runCatching { estanciaRemote.fetchChildren() }.getOrDefault(emptyList())
 
@@ -77,7 +77,7 @@ class OrgViewModel @Inject constructor(
             estadoDetalleInstancia = UiState.Cargando
             try {
                 val est = estanciaRemote.getEstancia(id)
-                val users = estanciaRemote.fetchUsers()
+                val users = runCatching { estanciaRemote.fetchUsers() }.getOrDefault(emptyList())
                 val salonesDto = runCatching { estanciaRemote.fetchSalones() }.getOrDefault(emptyList())
                 val childrenDto = runCatching { estanciaRemote.fetchChildren() }.getOrDefault(emptyList())
 
@@ -122,13 +122,14 @@ class OrgViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val estanciaId = id ?: UUID.randomUUID().toString()
-                val users = estanciaRemote.fetchUsers()
-                var adminUser = users.firstOrNull { it.email.equals(adminCorreo.trim(), true) }
-                if (adminUser == null && adminNombre.isNotBlank() && adminCorreo.isNotBlank()) {
+                val users = runCatching { estanciaRemote.fetchUsers() }.getOrDefault(emptyList())
+                var adminUserId = users.firstOrNull { it.email.equals(adminCorreo.trim(), true) }?.id
+
+                if (adminUserId == null && adminNombre.isNotBlank() && adminCorreo.isNotBlank()) {
                     val created = estanciaRemote.createUser(
                         UserCreate(email = adminCorreo.trim(), fullName = adminNombre.trim(), role = "ADMIN")
                     )
-                    adminUser = users.firstOrNull { it.id == created.id }
+                    adminUserId = created.id
                     contrasenaTemporalGenerada = created.temporaryPassword
                 }
 
@@ -137,7 +138,7 @@ class OrgViewModel @Inject constructor(
                     estancia = EstanciaIn(
                         name = nombre.trim(),
                         address = direccion.trim(),
-                        adminUserId = adminUser?.id
+                        adminUserId = adminUserId
                     )
                 )
                 cargarInstancias()

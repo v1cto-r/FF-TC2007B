@@ -105,10 +105,15 @@ fun NavGraphBuilder.orgGraph(
 
     composable(Route.ORG_CHAT_LIST) {
         val viewModel: OrgViewModel = hiltViewModel()
+        val chat: ChatViewModel = hiltViewModel()
         LaunchedEffect(Unit) { viewModel.cargarInstancias() }
+        // Chat ids: each estancia's admin user id.
+        val adminIds = (viewModel.estadoInstancias as? UiState.Exito)?.datos?.mapNotNull { it.admin?.id } ?: emptyList()
+        LaunchedEffect(adminIds) { chat.observarUltimosMensajes(adminIds) }
 
         OrgChatListScreen(
             estado = viewModel.estadoInstancias,
+            ultimosMensajes = chat.ultimosMensajes,
             onInstanciaClick = { adminId -> nav.navigate(Route.orgChatAdmin(adminId)) },
             onReintentar = { viewModel.cargarInstancias() },
             onTab = { indice -> nav.irATabOrg(indice) }

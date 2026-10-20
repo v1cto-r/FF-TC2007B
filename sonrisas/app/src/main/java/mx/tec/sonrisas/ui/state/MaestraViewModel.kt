@@ -175,23 +175,6 @@ class MaestraViewModel @Inject constructor(
         }
     }
 
-    /** Teacher↔admin chat: the chat id is the teacher's own id, and nothing is hidden by week. */
-    fun cargarMensajesDireccion() {
-        viewModelScope.launch {
-            estadoMensajes = UiState.Cargando
-            try {
-                val yo = sesionRepository.sesion.first()?.id.orEmpty()
-                launch { refrescarMensajes(yo) }
-                chatRepository.observeMessages(yo).collect { mensajes ->
-                    estadoMensajes = if (mensajes.isEmpty()) UiState.Vacio else UiState.Exito(mensajes)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                estadoMensajes = UiState.Error("Error al cargar chat: ${e.message}")
-            }
-        }
-    }
-
     private suspend fun refrescarMensajes(chatId: String) {
         try {
             chatRepository.refresh(chatId)

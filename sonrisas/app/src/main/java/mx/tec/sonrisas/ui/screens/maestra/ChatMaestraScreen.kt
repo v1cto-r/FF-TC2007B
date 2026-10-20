@@ -33,7 +33,6 @@ fun ChatMaestraScreen(
         estado = estado,
         currentUserId = currentUserId,
         titulo = titulo,
-        textoVacio = "Envía un mensaje para iniciar la conversación",
         modifier = modifier,
         subtitulo = subtitulo,
         tabs = TabsMaestra,
