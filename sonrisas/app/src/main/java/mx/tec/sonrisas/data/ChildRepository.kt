@@ -46,7 +46,14 @@ class ChildRepositoryImpl @Inject constructor(
 
     override suspend fun refreshFromServer(parentName: String) {
         val children = remote.fetchAll(parentName)
-        dao.clear()
-        children.forEach { dao.save(it.toEntity()) }
+        children.forEach { remoteChild ->
+            val existing = dao.getById(remoteChild.id)
+            val finalParentName = when {
+                remoteChild.parentName.isNotBlank() && remoteChild.parentName != "Padre / Tutor" -> remoteChild.parentName
+                existing != null && existing.parentName.isNotBlank() && existing.parentName != "Padre / Tutor" -> existing.parentName
+                else -> "Padre / Tutor"
+            }
+            dao.save(remoteChild.copy(parentName = finalParentName).toEntity())
+        }
     }
 }

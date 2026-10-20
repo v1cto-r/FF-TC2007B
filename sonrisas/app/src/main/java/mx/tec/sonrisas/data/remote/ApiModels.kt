@@ -83,6 +83,7 @@ data class UserCreated(
 data class ChildDto(
     val id: String,
     @SerialName("full_name") val fullName: String,
+    @SerialName("parent_id") val parentId: String? = null,
     @SerialName("profile_completed_at") val profileCompletedAt: String? = null,
     @SerialName("birth_date") val birthDate: String? = null,
     val allergies: List<String> = emptyList()

@@ -97,6 +97,17 @@ fun PerfilNinoScreen(
 
                     is UiState.Exito -> {
                         val nino = estado.datos.child
+                        val autorizacionHoy = estado.datos.autorizacionHoy
+                        val logHoy = estado.datos.dailyLog
+
+                        val nombreTutor = when {
+                            nino.parentName.isNotBlank() && nino.parentName != "Padre / Tutor" -> nino.parentName
+                            autorizacionHoy != null -> "${autorizacionHoy.authorizedPersonName} (${autorizacionHoy.relationship})"
+                            logHoy?.checkIn?.droppedOffByName?.isNotBlank() == true -> logHoy.checkIn.droppedOffByName
+                            logHoy?.checkOut?.pickedUpByName?.isNotBlank() == true -> logHoy.checkOut.pickedUpByName
+                            else -> "Sin tutor registrado"
+                        }
+
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(20.dp),
@@ -143,7 +154,7 @@ fun PerfilNinoScreen(
                                                 color = TextoGris
                                             )
                                             Text(
-                                                text = nino.parentName,
+                                                text = nombreTutor,
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = TextoOscuro
@@ -195,6 +206,18 @@ fun PerfilNinoScreen(
                 }
 
                 if (estado is UiState.Exito) {
+                    val nino = estado.datos.child
+                    val autorizacionHoy = estado.datos.autorizacionHoy
+                    val logHoy = estado.datos.dailyLog
+
+                    val nombreTutor = when {
+                        nino.parentName.isNotBlank() && nino.parentName != "Padre / Tutor" -> nino.parentName
+                        autorizacionHoy != null -> "${autorizacionHoy.authorizedPersonName} (${autorizacionHoy.relationship})"
+                        logHoy?.checkIn?.droppedOffByName?.isNotBlank() == true -> logHoy.checkIn.droppedOffByName
+                        logHoy?.checkOut?.pickedUpByName?.isNotBlank() == true -> logHoy.checkOut.pickedUpByName
+                        else -> "Sin tutor registrado"
+                    }
+
                     val terminado = estado.datos.dailyLog?.checkOut != null
                     Spacer(Modifier.height(20.dp))
                     if (terminado) {
@@ -244,7 +267,7 @@ fun PerfilNinoScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
                             border = BorderStroke(1.dp, Coral),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Coral)
+                            colors = ButtonDefaults.buttonColors(contentColor = Coral)
                         ) {
                             Text("Cancelar salida")
                         }
@@ -258,7 +281,7 @@ fun PerfilNinoScreen(
                         Spacer(Modifier.height(8.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             ItemAccionRegistro(
-                                texto = "Abrir Chat con ${estado.datos.child.parentName.substringBefore(" ")}",
+                                texto = if (nombreTutor != "Sin tutor registrado") "Abrir Chat con ${nombreTutor.substringBefore(" ")}" else "Abrir Chat",
                                 icono = Icons.Outlined.ChatBubbleOutline,
                                 colorIcono = Coral,
                                 colorFondo = CoralSuave,
