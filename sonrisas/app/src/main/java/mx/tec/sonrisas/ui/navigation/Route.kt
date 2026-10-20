@@ -70,4 +70,7 @@ object Route {
 
     const val ORG_REASIGNAR_ADMIN = "org_reasignar_admin/{instanciaId}"
     fun orgReasignarAdmin(instanciaId: String): String = "org_reasignar_admin/${Uri.encode(instanciaId)}"
+
+    const val ORG_CHAT = "org_chat/{instanciaId}"
+    fun orgChat(instanciaId: String): String = "org_chat/${Uri.encode(instanciaId)}"
 }

@@ -48,7 +48,8 @@ fun SonrisasNavHost(
     val destinoInicial = when (sesion.rol) {
         Rol.MAESTRA -> Route.INICIO_MAESTRA
         Rol.PADRE -> Route.INICIO_PADRE
-        else -> Route.INICIO_PADRE
+        Rol.ADMIN -> Route.ADMIN_INICIO
+        Rol.ORG -> Route.ORG_INICIO
     }
 
     // A tapped push notification opens that child's chat: the teacher's or the parent's, depending on who is logged in.
@@ -63,6 +64,9 @@ fun SonrisasNavHost(
         navController = nav,
         startDestination = destinoInicial
     ) {
+        adminGraph(nav = nav, onSalir = onSalir)
+        orgGraph(nav = nav, nombre = sesion.nombre, onSalir = onSalir)
+
         // --- MAESTRA ---
         composable(Route.INICIO_MAESTRA) {
             val viewModel: MaestraViewModel = hiltViewModel()
