@@ -150,6 +150,14 @@ class PadreViewModel @Inject constructor(
 
     fun cargarInicio() {
         viewModelScope.launch {
+            // Brings down what the teacher registered; the screen updates on its own from Room
+            try {
+                dailyLogRepository.refreshFromServer()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        viewModelScope.launch {
             estadoActividades = UiState.Cargando
             try {
                 val nombrePadre = sesionRepository.sesion.first()?.nombre

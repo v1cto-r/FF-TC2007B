@@ -22,8 +22,17 @@ interface ActivityRecordDao {
     @Query("SELECT * FROM activity_records WHERE deleted = 1")
     suspend fun getPendingDeletes(): List<ActivityRecordEntity>
 
+    @Query("SELECT id FROM activity_records WHERE synced = 0")
+    suspend fun getUnsyncedIds(): List<String>
+
     @Upsert
     suspend fun save(activity: ActivityRecordEntity)
+
+    @Upsert
+    suspend fun saveAll(activities: List<ActivityRecordEntity>)
+
+    @Query("DELETE FROM activity_records WHERE synced = 1 AND dailyLogId IN (:dailyLogIds) AND id NOT IN (:keepIds)")
+    suspend fun deleteSyncedExcept(dailyLogIds: List<String>, keepIds: List<String>)
 
     @Query("UPDATE activity_records SET deleted = 1, synced = 0, modifiedAt = :modifiedAt WHERE id = :id")
     suspend fun markDeleted(id: String, modifiedAt: Long)

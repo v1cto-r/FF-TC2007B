@@ -25,8 +25,18 @@ interface DailyLogDao {
     @Query("SELECT * FROM daily_logs WHERE deleted = 1")
     suspend fun getPendingDeletes(): List<DailyLogEntity>
 
+    @Query("SELECT * FROM daily_logs WHERE synced = 0")
+    suspend fun getUnsynced(): List<DailyLogEntity>
+
     @Upsert
     suspend fun save(dailyLog: DailyLogEntity)
+
+    @Upsert
+    suspend fun saveAll(dailyLogs: List<DailyLogEntity>)
+
+    // Logs the server no longer has (deleted there); pending local changes are never touched
+    @Query("DELETE FROM daily_logs WHERE synced = 1 AND date >= :fromDate AND id NOT IN (:keepIds)")
+    suspend fun deleteSyncedExcept(fromDate: LocalDate, keepIds: List<String>)
 
     @Query("UPDATE daily_logs SET deleted = 1, synced = 0, modifiedAt = :modifiedAt WHERE id = :id")
     suspend fun markDeleted(id: String, modifiedAt: Long)

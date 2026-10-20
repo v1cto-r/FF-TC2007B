@@ -1,14 +1,20 @@
 package mx.tec.sonrisas.data.remote
 
+import java.time.LocalDate
+import java.time.LocalTime
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import mx.tec.sonrisas.domain.ActivityRecord
+import mx.tec.sonrisas.domain.AmountEnum
 import mx.tec.sonrisas.domain.CheckInRecord
 import mx.tec.sonrisas.domain.CheckOutRecord
 import mx.tec.sonrisas.domain.DailyLog
+import mx.tec.sonrisas.domain.Feeding
+import mx.tec.sonrisas.domain.Injury
 import mx.tec.sonrisas.domain.Stay
 
-// Request bodies of PUT /daily-logs/{id} and PUT /activities/{id} (backend app/schemas/logs.py)
+// Bodies of /daily-logs and /activities (backend app/schemas/logs.py). The server's *Out stages carry
+// the same fields as the *In ones plus record metadata, so the stage classes are reused for reading.
 
 @Serializable
 data class DailyLogInBody(
@@ -84,6 +90,29 @@ data class ActivityInBody(
     @SerialName("image_file_ids") val imageFileIds: List<String> = emptyList()
 )
 
+@Serializable
+data class DailyLogOutDto(
+    val id: String,
+    @SerialName("child_id") val childId: String,
+    val date: String,
+    @SerialName("caregiver_name") val caregiverName: String,
+    @SerialName("check_in") val checkIn: CheckInBody? = null,
+    val stay: StayBody? = null,
+    @SerialName("check_out") val checkOut: CheckOutBody? = null,
+    val activities: List<ActivityOutDto> = emptyList()
+)
+
+@Serializable
+data class ActivityOutDto(
+    val id: String,
+    @SerialName("daily_log_id") val dailyLogId: String,
+    val name: String,
+    val images: List<ActivityImageDto> = emptyList()
+)
+
+@Serializable
+data class ActivityImageDto(@SerialName("file_id") val fileId: String, val position: Int)
+
 fun DailyLog.toBody() = DailyLogInBody(
     childId = childId,
     date = date.toString(),
@@ -148,3 +177,86 @@ private fun CheckOutRecord.toBody() = CheckOutBody(
 )
 
 fun ActivityRecord.toBody() = ActivityInBody(dailyLogId = dailyLogId, name = name, imageFileIds = images)
+
+// --- Server -> domain ---
+
+/** Null when the log has no check-in: the app models a day as starting with one. */
+fun DailyLogOutDto.toDomain(): DailyLog? = checkIn?.let { checkIn ->
+    DailyLog(
+        id = id,
+        childId = childId,
+        date = LocalDate.parse(date),
+        caregiverName = caregiverName,
+        checkIn = checkIn.toDomain(),
+        stay = stay?.toDomain(),
+        checkOut = checkOut?.toDomain(),
+        synced = true
+    )
+}
+
+fun ActivityOutDto.toDomain() = ActivityRecord(
+    id = id,
+    dailyLogId = dailyLogId,
+    name = name,
+    images = images.sortedBy { it.position }.map { it.fileId },
+    synced = true
+)
+
+private fun injuryOf(bodyPart: String?, description: String?): Injury? =
+    if (bodyPart == null && description == null) null else Injury(bodyPart.orEmpty(), description.orEmpty())
+
+private fun CheckInBody.toDomain() = CheckInRecord(
+    checkInTime = LocalTime.parse(checkInTime),
+    droppedOffByName = droppedOffByName,
+    receivedByStaffName = receivedByStaffName,
+    isSick = isSick,
+    medicationLeftWithPrescription = medicationLeftWithPrescription,
+    arrivesWithSymptoms = arrivesWithSymptoms,
+    symptomsDescription = symptomsDescription,
+    arrivedClean = arrivedClean,
+    broughtCompleteBackpack = broughtCompleteBackpack,
+    goodPhysicalCondition = goodPhysicalCondition,
+    injury = injuryOf(injuryBodyPart, injuryDescription),
+    parentsNotes = parentsNotes
+)
+
+private fun StayBody.toDomain() = Stay(
+    // The server doesn't store the afternoon snack
+    feeding = Feeding(
+        AmountEnum.valueOf(feedingBreakfast),
+        AmountEnum.valueOf(feedingSnack),
+        AmountEnum.valueOf(feedingLunch),
+        AmountEnum.NONE
+    ),
+    feedingNotes = feedingNotes,
+    slept = slept,
+    napMinutes = napMinutes,
+    restComments = restComments,
+    toiletingNotice = toiletingNotice,
+    peeCount = peeCount,
+    poopCount = poopCount,
+    toiletingNotes = toiletingNotes,
+    mood = mood,
+    cried = cried,
+    fought = fought,
+    participated = participated,
+    moodNotes = moodNotes,
+    hadAccident = hadAccident,
+    accidentDescription = accidentDescription,
+    accidentReportFolio = accidentReportFolio,
+    healthIssue = healthIssue,
+    healthIssueDescription = healthIssueDescription,
+    careProvided = careProvided,
+    generalHealthNotes = generalHealthNotes
+)
+
+private fun CheckOutBody.toDomain() = CheckOutRecord(
+    checkOutTime = LocalTime.parse(checkOutTime),
+    releasedInGoodPhysicalCondition = releasedInGoodPhysicalCondition,
+    injury = injuryOf(injuryBodyPart, injuryDescription),
+    releasedClean = releasedClean,
+    belongingsComplete = belongingsComplete,
+    notes = notes,
+    pickedUpByName = pickedUpByName,
+    releasedByStaffName = releasedByStaffName
+)

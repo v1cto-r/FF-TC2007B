@@ -1,11 +1,14 @@
 package mx.tec.sonrisas.data.remote
 
+import java.time.LocalDate
 import javax.inject.Inject
 import mx.tec.sonrisas.data.AuthRepository
 import mx.tec.sonrisas.domain.ActivityRecord
 import mx.tec.sonrisas.domain.DailyLog
 
 interface DailyLogRemoteDataSource {
+    /** Every log the user can see (a parent: their children; a teacher: their group) since [fromDate]. */
+    suspend fun fetchDailyLogs(fromDate: LocalDate): List<DailyLogOutDto>
     suspend fun saveDailyLog(dailyLog: DailyLog)
     suspend fun deleteDailyLog(dailyLog: DailyLog)
     suspend fun saveActivity(activity: ActivityRecord)
@@ -20,6 +23,9 @@ class DailyLogRemoteDataSourceImpl @Inject constructor(
     private val api: ApiClient,
     private val auth: AuthRepository
 ) : DailyLogRemoteDataSource {
+
+    override suspend fun fetchDailyLogs(fromDate: LocalDate): List<DailyLogOutDto> =
+        auth.authed { api.get<List<DailyLogOutDto>>("/daily-logs?from_date=$fromDate", it) }
 
     override suspend fun saveDailyLog(dailyLog: DailyLog) {
         auth.authed { api.send("PUT", "/daily-logs/${dailyLog.id}", it, api.jsonBody(dailyLog.toBody())) }

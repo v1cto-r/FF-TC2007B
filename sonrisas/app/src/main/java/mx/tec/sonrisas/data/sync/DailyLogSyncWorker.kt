@@ -8,6 +8,7 @@ import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.io.IOException
+import kotlinx.coroutines.sync.withLock
 import mx.tec.sonrisas.data.local.dao.ActivityRecordDao
 import mx.tec.sonrisas.data.local.dao.DailyLogDao
 import mx.tec.sonrisas.data.local.toDomain
@@ -26,12 +27,13 @@ class DailyLogSyncWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val dailyLogDao: DailyLogDao,
     private val activityDao: ActivityRecordDao,
-    private val remote: DailyLogRemoteDataSource
+    private val remote: DailyLogRemoteDataSource,
+    private val lock: DailyLogSyncLock
 ) : CoroutineWorker(context, params) {
 
     private var retry = false
 
-    override suspend fun doWork(): Result {
+    override suspend fun doWork(): Result = lock.mutex.withLock {
         for (row in dailyLogDao.getPendingDeletes()) {
             attempt("delete log ${row.id}") {
                 remote.deleteDailyLog(row.toDomain())
@@ -56,7 +58,7 @@ class DailyLogSyncWorker @AssistedInject constructor(
                 activityDao.markSynced(row.id, row.modifiedAt)
             }
         }
-        return if (retry) Result.retry() else Result.success()
+        if (retry) Result.retry() else Result.success()
     }
 
     /**

@@ -23,6 +23,7 @@ class SesionRepository @Inject constructor(
     private val auth: AuthRepository,
     private val api: ApiClient,
     private val childRepository: ChildRepository,
+    private val dailyLogRepository: DailyLogRepository,
     private val socket: ChatSocket,
     private val messageDao: MessageDao,
     private val childDao: ChildDao,
@@ -87,6 +88,7 @@ class SesionRepository @Inject constructor(
             if (rol == Rol.PADRE || rol == Rol.MAESTRA) {
                 try {
                     childRepository.refreshFromServer(parentName = if (rol == Rol.PADRE) me.fullName else "")
+                    dailyLogRepository.refreshFromServer()
                 } catch (e: IOException) {
                 }
             } else {
