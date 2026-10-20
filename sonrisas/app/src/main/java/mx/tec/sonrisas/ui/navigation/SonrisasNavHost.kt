@@ -54,10 +54,17 @@ fun SonrisasNavHost(
         Rol.ORG -> Route.ORG_INICIO
     }
 
-    // A tapped push notification opens that child's chat: the teacher's or the parent's, depending on who is logged in.
+    // A tapped push notification carries a chat id. ORG only receives admin ids (open that admin's chat);
+    // an admin whose own id it is gets the org chat; otherwise it is a child chat.
     LaunchedEffect(chatPendiente) {
         chatPendiente?.let {
-            nav.navigate(if (sesion.rol == Rol.MAESTRA) Route.chatMaestra(it) else Route.chatPadre(it))
+            val destino = when (sesion.rol) {
+                Rol.ORG -> Route.orgChatAdmin(it)
+                Rol.ADMIN -> if (it == sesion.id) Route.ADMIN_CHAT_ORG else null
+                Rol.MAESTRA -> Route.chatMaestra(it)
+                else -> Route.chatPadre(it)
+            }
+            destino?.let(nav::navigate)
             onChatAbierto()
         }
     }
@@ -66,8 +73,8 @@ fun SonrisasNavHost(
         navController = nav,
         startDestination = destinoInicial
     ) {
-        adminGraph(nav = nav, onSalir = onSalir)
-        orgGraph(nav = nav, nombre = sesion.nombre, onSalir = onSalir)
+        adminGraph(nav = nav, miId = sesion.id, onSalir = onSalir)
+        orgGraph(nav = nav, nombre = sesion.nombre, miId = sesion.id, onSalir = onSalir)
 
         // --- MAESTRA ---
         composable(Route.INICIO_MAESTRA) {

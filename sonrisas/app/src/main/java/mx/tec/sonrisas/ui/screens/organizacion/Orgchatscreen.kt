@@ -23,10 +23,8 @@ fun ChatOrgScreen(
     titulo: String = "Chat con Administrador",
     subtitulo: String? = null,
     onAtras: (() -> Unit)? = null,
-    onEnviar: (texto: String) -> Unit = {},
+    onEnviar: (texto: String, esAviso: Boolean) -> Unit = { _, _ -> },
     onEnviarFoto: (Uri) -> Unit = {},
-    onToggleImportante: (Message) -> Unit = {},
-    onEliminar: ((Message) -> Unit)? = null,
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
@@ -38,13 +36,13 @@ fun ChatOrgScreen(
         modifier = modifier,
         subtitulo = subtitulo,
         tabs = TabsOrg,
-        tabSeleccionado = -1,
+        tabSeleccionado = 2,
         onTab = onTab,
         onAtras = onAtras,
         onEnviar = onEnviar,
         onEnviarFoto = onEnviarFoto,
-        onToggleImportante = onToggleImportante,
-        onEliminar = onEliminar,
+        // Org↔admin messages can never be deleted.
+        onEliminar = null,
         onReintentar = onReintentar
     )
 }

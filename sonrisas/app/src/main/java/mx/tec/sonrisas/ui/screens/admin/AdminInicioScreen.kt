@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.GroupAdd
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.HowToReg
@@ -36,6 +37,7 @@ fun AdminInicioScreen(
     modifier: Modifier = Modifier,
     onCrearGrupo: () -> Unit = {},
     onInscripcion: () -> Unit = {},
+    onChatOrg: () -> Unit = {},
     onSalonClick: (SalonUi) -> Unit = {},
     onTab: (Int) -> Unit = {},
     onSalir: (() -> Unit)? = null
@@ -111,6 +113,18 @@ fun AdminInicioScreen(
                         colorIcono = Amarillo,
                         colorFondo = AmarilloSuave,
                         onClick = onInscripcion,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    AccionRapida(
+                        texto = "Chat con Organización",
+                        icono = Icons.Outlined.ChatBubbleOutline,
+                        colorIcono = Verde,
+                        colorFondo = Color.White,
+                        onClick = onChatOrg,
                         modifier = Modifier.weight(1f)
                     )
                 }

@@ -12,6 +12,7 @@ import mx.tec.sonrisas.data.local.dao.MessageDao
 import mx.tec.sonrisas.data.push.PushRepository
 import mx.tec.sonrisas.data.remote.ApiClient
 import mx.tec.sonrisas.data.remote.MeDto
+import mx.tec.sonrisas.data.remote.EstanciaRemoteDataSource
 import mx.tec.sonrisas.domain.Rol
 import mx.tec.sonrisas.domain.Sesion
 
@@ -25,7 +26,8 @@ class SesionRepository @Inject constructor(
     private val socket: ChatSocket,
     private val messageDao: MessageDao,
     private val childDao: ChildDao,
-    private val push: PushRepository
+    private val push: PushRepository,
+    private val estancias: EstanciaRemoteDataSource
 ) {
     private val _sesion = MutableStateFlow<Sesion?>(null)
     val sesion: StateFlow<Sesion?> = _sesion.asStateFlow()
@@ -58,6 +60,7 @@ class SesionRepository @Inject constructor(
 
     suspend fun salir() {
         socket.disconnect()
+        socket.peerChatIds = { emptyList() }
         _sesion.value = null
         push.unregister()
         auth.logout()
@@ -84,6 +87,11 @@ class SesionRepository @Inject constructor(
                     childRepository.refreshFromServer(parentName = if (rol == Rol.PADRE) me.fullName else "")
                 } catch (e: IOException) {
                 }
+            }
+            socket.peerChatIds = when (rol) {
+                Rol.ADMIN -> { { listOf(me.sub) } }
+                Rol.ORG -> { { estancias.fetchEstancias().mapNotNull { it.adminUserId } } }
+                else -> { { emptyList() } }
             }
             socket.connect()
             push.register()

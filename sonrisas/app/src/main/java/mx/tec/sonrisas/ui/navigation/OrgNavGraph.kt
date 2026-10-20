@@ -7,26 +7,27 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import java.time.LocalDateTime
-import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.ui.components.EstadoCargando
 import mx.tec.sonrisas.ui.components.EstadoError
 import mx.tec.sonrisas.ui.components.EstadoVacio
 import mx.tec.sonrisas.ui.screens.organizacion.ChatOrgScreen
+import mx.tec.sonrisas.ui.screens.organizacion.OrgChatListScreen
 import mx.tec.sonrisas.ui.screens.organizacion.OrgDetalleInstanciaScreen
 import mx.tec.sonrisas.ui.screens.organizacion.OrgInicioScreen
 import mx.tec.sonrisas.ui.screens.organizacion.OrgInstanciasScreen
 import mx.tec.sonrisas.ui.screens.organizacion.OrgMuestra
 import mx.tec.sonrisas.ui.screens.organizacion.OrgNuevaInstanciaScreen
 import mx.tec.sonrisas.ui.screens.organizacion.OrgNuevoAvisoScreen
+import mx.tec.sonrisas.ui.state.ChatViewModel
 import mx.tec.sonrisas.ui.state.OrgViewModel
 import mx.tec.sonrisas.ui.state.UiState
 
-/** Pestañas de la barra inferior: 0 = Inicio, 1 = Instancias. */
+/** Pestañas de la barra inferior: 0 = Inicio, 1 = Instancias, 2 = Chat. */
 private fun NavHostController.irATabOrg(indice: Int) {
     val destino = when (indice) {
         0 -> Route.ORG_INICIO
-        else -> Route.ORG_INSTANCIAS
+        1 -> Route.ORG_INSTANCIAS
+        else -> Route.ORG_CHAT_LIST
     }
     navigate(destino) {
         popUpTo(Route.ORG_INICIO)
@@ -37,6 +38,7 @@ private fun NavHostController.irATabOrg(indice: Int) {
 fun NavGraphBuilder.orgGraph(
     nav: NavHostController,
     nombre: String,
+    miId: String,
     onSalir: () -> Unit
 ) {
     composable(Route.ORG_INICIO) {
@@ -90,7 +92,7 @@ fun NavGraphBuilder.orgGraph(
                     instancia = instancia,
                     onAtras = { nav.popBackStack() },
                     onEditar = { nav.navigate(Route.orgEditarInstancia(instanciaId)) },
-                    onChatAdmin = { nav.navigate(Route.orgChat(instanciaId)) },
+                    onChatAdmin = { instancia.admin?.let { nav.navigate(Route.orgChatAdmin(it.id)) } },
                     onCambiarEstado = {
                         viewModel.cambiarEstadoInstancia(instanciaId, instancia.activa) {
                             viewModel.cargarInstanciaDetalle(instanciaId)
@@ -101,31 +103,40 @@ fun NavGraphBuilder.orgGraph(
         }
     }
 
-    composable(
-        route = Route.ORG_CHAT,
-        arguments = listOf(navArgument("instanciaId") { type = NavType.StringType })
-    ) { entry ->
-        val instanciaId = entry.arguments?.getString("instanciaId").orEmpty()
+    composable(Route.ORG_CHAT_LIST) {
         val viewModel: OrgViewModel = hiltViewModel()
-        val estado = viewModel.estadoDetalleInstancia
-        val instancia = (estado as? UiState.Exito)?.datos
-        val adminNombre = instancia?.admin?.nombre ?: "Administrador"
+        LaunchedEffect(Unit) { viewModel.cargarInstancias() }
 
-        val mensajesEjemplo = listOf(
-            Message(
-                chatId = "admin_$instanciaId",
-                authorId = "admin",
-                content = "Hola, soy $adminNombre. ¿En qué podemos ayudarte desde la estancia ${instancia?.nombre ?: ""}",
-                sentAt = LocalDateTime.now().minusMinutes(10)
-            )
+        OrgChatListScreen(
+            estado = viewModel.estadoInstancias,
+            onInstanciaClick = { adminId -> nav.navigate(Route.orgChatAdmin(adminId)) },
+            onReintentar = { viewModel.cargarInstancias() },
+            onTab = { indice -> nav.irATabOrg(indice) }
         )
+    }
+
+    composable(
+        route = Route.ORG_CHAT_ADMIN,
+        arguments = listOf(navArgument("adminId") { type = NavType.StringType })
+    ) { entry ->
+        val adminId = entry.arguments?.getString("adminId").orEmpty()
+        val viewModel: OrgViewModel = hiltViewModel()
+        val chat: ChatViewModel = hiltViewModel()
+        LaunchedEffect(adminId) {
+            viewModel.cargarInstancias()
+            chat.cargarMensajes(adminId)
+        }
+        val instancia = (viewModel.estadoInstancias as? UiState.Exito)?.datos?.firstOrNull { it.admin?.id == adminId }
 
         ChatOrgScreen(
-            estado = UiState.Exito(mensajesEjemplo),
-            currentUserId = "org",
-            titulo = adminNombre,
-            subtitulo = instancia?.nombre ?: "Instancia",
+            estado = chat.estadoMensajes,
+            currentUserId = miId,
+            titulo = instancia?.nombre ?: "Instancia",
+            subtitulo = instancia?.admin?.nombre ?: "Administrador",
             onAtras = { nav.popBackStack() },
+            onEnviar = { texto, esAviso -> chat.enviarMensaje(adminId, texto, esAviso) },
+            onEnviarFoto = { uri -> chat.enviarFoto(adminId, uri) },
+            onReintentar = { chat.cargarMensajes(adminId) },
             onTab = { indice -> nav.irATabOrg(indice) }
         )
     }
@@ -184,11 +195,7 @@ fun NavGraphBuilder.orgGraph(
         OrgNuevoAvisoScreen(
             instancias = OrgMuestra.instancias,
             onAtras = { nav.popBackStack() },
-            onEnviar = { _, _, _, idsInstancias ->
-                val targetInstanciaId = idsInstancias?.firstOrNull() ?: OrgMuestra.instancias.firstOrNull()?.id ?: "i1"
-                nav.popBackStack()
-                nav.navigate(Route.orgChat(targetInstanciaId))
-            }
+            onEnviar = { _, _, _, _ -> nav.popBackStack() }
         )
     }
 }
