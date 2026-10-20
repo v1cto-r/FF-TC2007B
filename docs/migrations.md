@@ -7,6 +7,7 @@ Revisions live in `backend/migrations/versions/`; the API runs `alembic upgrade 
 | `0001_baseline` | The schema exactly as `create_all` made it before Alembic. |
 | `0002_soft_delete_audit_files` | `status` on the domain tables and the delete-blocking triggers, partial unique indexes, `ON DELETE RESTRICT`, `audit_log`, `files` and `child_documents`, `children.parent_id` replacing `child_parents`, new `role_actions`. Moves existing data (parents, photo keys) across. |
 | `0004_child_birth_data` | `children.birth_date`, `children.allergies` and `children.profile_completed_at`. Existing children keep `birth_date` null. |
+| `0005_peer_chats` | `messages.peer_id` (DOCENTE ↔ ADMIN and ADMIN ↔ ORG chats) with `messages.child_id` now nullable, `files.peer_id` for their photos, and `message:write` / `message:delete` for ADMIN, `message:write` for ORG (only on databases whose `role_actions` is already seeded). Downgrading fails while peer chat messages exist. |
 
 ## Databases created before Alembic
 

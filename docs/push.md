@@ -28,14 +28,17 @@ Archiving or deleting a user removes all their devices (same place that revokes 
 A **data-only** message with `priority: high` and **ids only**, so no names or text pass through Google:
 
 ```json
-{"type": "message", "child_id": "<uuid>", "message_id": "<uuid>"}
+{"type": "message", "chat_id": "<uuid>", "message_id": "<uuid>"}
 ```
 
-The app's `FirebaseMessagingService.onMessageReceived` then calls `GET /messages?child_id=...&since=...` (authenticated, same rules as always)
+The app's `FirebaseMessagingService.onMessageReceived` then calls `GET /messages?chat_id=...&since=...` (authenticated, same rules as always)
 and builds the notification itself.
 
-Who gets it: the child's PADRE, DOCENTE and ADMIN **that have no open socket**, minus the author, and only if their account is active (not archived or deleted).
-Every registered device of such a user is notified. ORG and other families never are. Deleting a message sends no push.
+`chat_id` is a child's, a DOCENTE's or an ADMIN's id ([chat.md](chat.md)).
+
+Who gets it: the chat's people **that have no open socket**, minus the author, and only if their account is active (not archived or deleted):
+the child's PADRE, DOCENTE and ADMIN; the docente and their ADMIN; the admin and every ORG user.
+Every registered device of such a user is notified. ORG is only pushed for ADMIN ↔ ORG chats. Deleting a message sends no push.
 
 Pushes are sent from a small thread pool and are best effort: a Firebase outage is logged and never affects sending or storing a message.
 A token Firebase reports as `UNREGISTERED` / sender mismatch is deleted.

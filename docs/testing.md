@@ -32,6 +32,7 @@ they never touch the real database or storage.
 | `test_access.py` | which ids each role reaches |
 | `test_org_api.py`, `test_users_api.py`, `test_logs_api.py`, `test_comms_api.py` | every endpoint (messages are sent through the socket, `test/chat_helpers.py`), per role, including who gets 403 / 404 / 409 |
 | `test_chat_ws.py` | the chat socket: handshake and token expiry, routing to the right people, retries, photos, deletes, rate limit |
+| `test_peer_chats.py` | DOCENTE ↔ ADMIN and ADMIN ↔ ORG chats: who reads / writes / receives, outsiders get 404, no deletes, `::Aviso` marker, photos |
 | `test_devices_push.py` | device registration, who gets a push (and who doesn't), dead tokens, Firebase failures |
 | `test_files_api.py`, `test_attachments_api.py` | the upload flow, type / size / content checks, per-purpose permissions, rate limits, expiry, downloads, photos, avatars, logos, documents |
 | `test_defense_in_depth.py` | role rules in code hold even if `role_actions` grants everything |

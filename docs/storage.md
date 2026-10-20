@@ -8,7 +8,7 @@ Code: `backend/app/storage/` and `backend/app/routers/files.py`. Other tables re
 | Purpose | Who uploads | `target_id` | Bucket | Formats | Attached with |
 |---|---|---|---|---|---|
 | `ACTIVITY_IMAGE` | the **DOCENTE** of the child's salon | the child | `images` | jpeg, png, webp | `PUT /activities/{id}` (`image_file_ids`) |
-| `MESSAGE_ATTACHMENT` | the child's **PADRE** or **DOCENTE** | the child | `images` | jpeg, png, webp | chat socket message (`attachment_file_id`), see [chat.md](chat.md) |
+| `MESSAGE_ATTACHMENT` | anyone who can write in the chat | the chat id (a child, a DOCENTE or an ADMIN) | `images` | jpeg, png, webp | chat socket message (`attachment_file_id`), see [chat.md](chat.md) |
 | `CHILD_PHOTO` | the child's **PADRE** | the child | `images` | jpeg, png, webp | `PUT /children/{id}/photo` |
 | `USER_AVATAR` | the user, for **themself** | - | `images` | jpeg, png, webp | `PATCH /users/me` |
 | `ESTANCIA_LOGO` | the estancia's **ADMIN** | the estancia | `estancias` | jpeg, png, webp | `PUT /estancias/{id}` (`logo_file_id`) |
@@ -59,7 +59,7 @@ What protects each step:
 * **The signed URL pins the object.** The signature covers the bucket, the key, `Content-Type` and `Content-Length`. Changing any of them, or the key, makes RustFS answer `403`. The app must send exactly the `headers` it was given. The URL expires after 300 s. Objects are private: without a signature there is no access, and no listing.
 * **The client's id makes retries safe.** Asking again with the same `id` and the same details returns a fresh URL (`200`) instead of a second file; a different request with a used id is a `409`.
 * **`complete` is the proof.** Until the server has seen the object and checked its first bytes (`FFD8FF` jpeg, `89504E47` png, `RIFF....WEBP`, `%PDF-`, `PK\x03\x04` docx), the file stays `PENDING` and cannot be attached or downloaded. A pdf renamed to `.jpg` is rejected here.
-* **Attaching re-checks everything** (`load_attachable`): the file is `READY`, not deleted, has the right purpose, belongs to the same child / estancia, and was uploaded by the same user where that matters. One photo can belong to one activity / message / document only.
+* **Attaching re-checks everything** (`load_attachable`): the file is `READY`, not deleted, has the right purpose, belongs to the same child / estancia / peer chat (`files.peer_id`), and was uploaded by the same user where that matters. One photo can belong to one activity / message / document only.
 * **Unconfirmed uploads expire.** Files still `PENDING` after the URL's lifetime plus a minute are marked `DELETED` (by the system, in the audit log) when the API starts and whenever someone asks for a new upload.
 * **Rate limits** are per user, counted in Postgres (fixed windows): uploads 10/minute and 200/day, downloads 300/minute by default (`policy.yml`, or `STORAGE_UPLOAD_PER_MINUTE`, `STORAGE_UPLOAD_PER_DAY`, `STORAGE_DOWNLOAD_PER_MINUTE`). A request that is refused for permissions or validation does not use up quota. Over the limit: `429` with `Retry-After`.
 

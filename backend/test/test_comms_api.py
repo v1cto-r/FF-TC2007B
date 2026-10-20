@@ -90,14 +90,14 @@ def test_notice_rejects_bad_input(client, world, auth):
 # --- messages -----------------------------------------------------------------------------
 
 def msg(child, text="Hola", sent=SENT, **kw):
-    return dict(child_id=str(child.id), content=text, sent_at=sent, **kw)
+    return dict(chat_id=str(child.id), content=text, sent_at=sent, **kw)
 
 
 send = ws_send   # messages go through the chat socket
 
 
 def chat(client, headers, child):
-    return client.get(f"/messages?child_id={child.id}", headers=headers)
+    return client.get(f"/messages?chat_id={child.id}", headers=headers)
 
 
 def test_parent_and_docente_chat_about_a_child(client, world, auth):
@@ -114,14 +114,13 @@ def test_chat_is_private_to_the_child_s_people(client, world, auth):
     send(client, auth(world.p1), msg(world.c1))
     for who in (world.p2, world.d2, world.admin2, world.p3):
         assert chat(client, auth(who), world.c1).status_code == 404
-    for who in (world.p2, world.d2, world.p3):
+    for who in (world.p2, world.d2, world.admin2, world.p3):
         assert send(client, auth(who), msg(world.c1)).status_code == 404
-    assert send(client, auth(world.admin2), msg(world.c1)).status_code == 403   # admins never send
     assert chat(client, auth(world.p1), world.c3).status_code == 404
 
 
-def test_only_parent_and_docente_may_send(client, world, auth):
-    assert send(client, auth(world.admin1), msg(world.c1)).status_code == 403   # admins read the chat, not write
+def test_the_estancia_admin_writes_in_a_child_s_chat_and_org_only_reads(client, world, auth):
+    assert send(client, auth(world.admin1), msg(world.c1)).status_code == 201
     assert send(client, auth(world.org), msg(world.c1)).status_code == 403
 
 
@@ -153,17 +152,25 @@ def test_parent_deletes_any_message_for_both_sides(client, db, world, auth):
     assert db.get(Message, theirs).status == RecordStatus.DELETED and db.get(Message, theirs).content == "del docente"
     kept = chat(client, auth(world.org), world.c1)
     assert kept.status_code == 200 and kept.json() == []
-    shown = client.get(f"/messages?child_id={world.c1.id}&include_deleted=true", headers=auth(world.org)).json()
+    shown = client.get(f"/messages?chat_id={world.c1.id}&include_deleted=true", headers=auth(world.org)).json()
     assert {m["content"] for m in shown} == {"mío", "del docente"}
 
 
-def test_docente_and_staff_cannot_delete_messages(client, world, auth):
+def test_docente_and_org_cannot_delete_messages(client, world, auth):
     mid = uuid.uuid4()
     send(client, auth(world.d1), msg(world.c1), mid)
-    for who in (world.d1, world.admin1, world.org):
+    for who in (world.d1, world.org):
         assert client.delete(f"/messages/{mid}", headers=auth(who)).status_code == 403
-    assert client.delete(f"/messages/{mid}", headers=auth(world.p2)).status_code == 404     # another family
+    for who in (world.p2, world.admin2):                                                    # another family / estancia
+        assert client.delete(f"/messages/{mid}", headers=auth(who)).status_code == 404
     assert len(chat(client, auth(world.d1), world.c1).json()) == 1
+
+
+def test_the_estancia_admin_deletes_any_message_of_a_child_s_chat(client, world, auth):
+    mid = uuid.uuid4()
+    send(client, auth(world.p1), msg(world.c1), mid)
+    assert client.delete(f"/messages/{mid}", headers=auth(world.admin1)).status_code == 204
+    assert chat(client, auth(world.p1), world.c1).json() == []
 
 
 def test_archived_child_chat_is_read_only(client, db, world, auth):
@@ -215,7 +222,7 @@ def test_since_returns_only_what_the_server_stored_after_it(client, world, auth)
     first = send(client, auth(world.p1), msg(world.c1, "uno")).json()
     send(client, auth(world.d1), msg(world.c1, "dos"))
     send(client, auth(world.d1), msg(world.c1, "tres", sent="2026-04-01T00:00:00Z"))   # old sent_at, stored last
-    got = client.get("/messages", params={"child_id": str(world.c1.id), "since": first["created_at"]}, headers=auth(world.p1))
+    got = client.get("/messages", params={"chat_id": str(world.c1.id), "since": first["created_at"]}, headers=auth(world.p1))
     assert [m["content"] for m in got.json()] == ["tres", "dos"]                          # still ordered by sent_at
     assert chat(client, auth(world.p1), world.c1).json()[-1]["content"] == "dos"
-    assert client.get(f"/messages?child_id={world.c1.id}&since=2026-05-01T09:30:00", headers=auth(world.p1)).status_code == 422
+    assert client.get(f"/messages?chat_id={world.c1.id}&since=2026-05-01T09:30:00", headers=auth(world.p1)).status_code == 422

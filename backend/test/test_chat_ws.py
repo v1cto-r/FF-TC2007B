@@ -17,7 +17,7 @@ BODY = dict(content="Hola", sent_at="2026-05-01T09:30:00Z")
 
 
 def body(child, **kw):
-    return dict(child_id=str(child.id), **{**BODY, **kw})
+    return dict(chat_id=str(child.id), **{**BODY, **kw})
 
 
 def closed_with(client, headers) -> int:
@@ -144,11 +144,14 @@ def test_errors_come_back_as_frames_and_the_socket_stays_open(client, world, aut
         assert ws.receive_json()["type"] == "ack"
 
 
-def test_admin_and_org_read_the_live_chat_but_cannot_send(client, world, auth):
-    for who in (world.admin1, world.org):
-        with connect(client, auth(who)) as ws:
-            ws.send_json(frame_for(body(world.c1)))
-            assert ws.receive_json()["status"] == 403
+def test_the_admin_writes_in_a_child_s_chat_and_org_only_reads_it(client, world, auth):
+    with connect(client, auth(world.admin1)) as admin, connect(client, auth(world.p1)) as parent:
+        admin.send_json(frame_for(body(world.c1)))
+        assert admin.receive_json()["type"] == "ack"
+        assert parent.receive_json()["message"]["author_id"] == str(world.admin1.id)
+    with connect(client, auth(world.org)) as ws:
+        ws.send_json(frame_for(body(world.c1)))
+        assert ws.receive_json()["status"] == 403
 
 
 def test_access_is_checked_again_on_every_message(client, db, world, auth):
@@ -184,7 +187,7 @@ def test_a_photo_travels_as_an_image_marker_the_client_resolves_through_files(cl
             world.p1, FilePurpose.MESSAGE_ATTACHMENT, child=world.c1).id))))
         assert parent.receive_json()["message"]["content"].startswith("::Image /")
     assert client.get(f"/files/{f.id}", headers=auth(world.d1)).status_code == 200      # what the client does next
-    history = client.get(f"/messages?child_id={world.c1.id}", headers=auth(world.d1)).json()
+    history = client.get(f"/messages?chat_id={world.c1.id}", headers=auth(world.d1)).json()
     assert history[0]["content"] == f"Mira\n::Image /{f.id}.jpg"
 
 
@@ -204,5 +207,5 @@ def test_deleting_a_message_tells_everyone_in_the_chat(client, world, auth):
         docente.receive_json()
         parent.receive_json()
         assert client.delete(f"/messages/{mid}", headers=auth(world.p1)).status_code == 204
-        expected = {"type": "deleted", "id": str(mid), "child_id": str(world.c1.id)}
+        expected = {"type": "deleted", "id": str(mid), "chat_id": str(world.c1.id)}
         assert parent.receive_json() == expected and docente.receive_json() == expected

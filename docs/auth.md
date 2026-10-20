@@ -79,15 +79,16 @@ Default grants:
 | child | read | all | read | read |
 | daily_log | read | read, write (correct) | all | read |
 | notice | read | all | all (own salones) | read |
-| message | read | read | read, write | read, write, delete |
+| message | read, write | read, write, delete | read, write | read, write, delete |
 | file | all | all | all | all |
 | document | read | read | read | all |
 
 Rules in code that no grant can change:
 
 - `ORG` creates `ADMIN`s and estancias; `ADMIN` creates `DOCENTE`s and `PADRE`s, who join the admin's estancia. An `ADMIN` only manages the people of its own estancia (`can_manage_user`).
-- Only the `PADRE` of a child deletes messages in the child's chat (any message in it), sets the child's photo and manages their documents.
-- Only `PADRE` and `DOCENTE` send messages (over the [chat socket](chat.md), which authenticates with the session token and re-checks access on every message); nobody edits them.
+- Only the `PADRE` of a child sets the child's photo and manages their documents.
+- Only the people of a chat send in it ([chat.md](chat.md): a child's PADRE / DOCENTE / ADMIN, a DOCENTE and their ADMIN, an ADMIN and ORG). ORG reads every chat but only writes in ADMIN ones. Sending goes over the [chat socket](chat.md), which authenticates with the session token and re-checks access on every message; nobody edits messages.
+- Only the child's `PADRE` or the estancia's `ADMIN` deletes messages, and only in a child's chat (any message in it). DOCENTE ↔ ADMIN and ADMIN ↔ ORG messages are never deleted.
 - Only a `DOCENTE` uploads activity photos; only an `ADMIN` uploads the estancia logo and posts to a whole estancia.
 - Archiving or deleting a user blocks their login and refresh immediately and revokes their refresh tokens. Their current session token still works until it expires (5 minutes, the stateless-token tradeoff below).
 

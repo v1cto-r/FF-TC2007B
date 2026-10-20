@@ -198,11 +198,11 @@ BUCKETS = {"ESTANCIA_LOGO": "estancias", "CHILD_DOCUMENT": "files"}
 def make_file(db):
     """A File row as if it had been uploaded (READY by default), without going through the API."""
     def make(uploader, purpose, child=None, estancia=None, state=m.UploadState.READY, content_type="image/jpeg",
-             status=None):
+             status=None, peer=None):
         fid = uuid.uuid4()
         f = m.File(id=fid, bucket=BUCKETS.get(purpose.value, "images"), key=f"{purpose.value.lower()}/{fid}.jpg",
                    purpose=purpose, kind="image", content_type=content_type, size=10, upload_state=state,
-                   uploaded_by=uploader.id, child_id=child.id if child else None,
+                   uploaded_by=uploader.id, child_id=child.id if child else None, peer_id=peer.id if peer else None,
                    estancia_id=estancia.id if estancia else (child.estancia_id if child else None), status=status)
         db.add(f)
         db.commit()

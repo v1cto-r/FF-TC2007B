@@ -12,7 +12,8 @@ from app import starter
 from app.auth.permissions import DEFAULT_ROLE_ACTIONS
 from app.config import settings
 
-MIGRATION_0002 = Path(__file__).resolve().parent.parent / "migrations/versions/0002_soft_delete_audit_files.py"
+VERSIONS = Path(__file__).resolve().parent.parent / "migrations/versions"
+GRANTING_MIGRATIONS = ["0002_soft_delete_audit_files.py", "0005_peer_chats.py"]  # the ones that add role_actions
 
 
 @pytest.fixture
@@ -154,14 +155,17 @@ def test_pre_alembic_database_is_stamped_then_upgraded(scratch):
     with scratch.begin() as c:
         c.execute(text("DROP TABLE public.alembic_version"))
     starter._ensure_tables(scratch)
-    assert q(scratch, "SELECT version_num FROM public.alembic_version")[0][0] == "0004"
+    assert q(scratch, "SELECT version_num FROM public.alembic_version")[0][0] == "0005"
     assert q(scratch, "SELECT parent_id FROM public.children")[0][0] == LEGACY["padre"]  # data kept
     starter._ensure_tables(scratch)  # running again changes nothing
 
 
-def test_code_and_migration_grant_the_same_actions():
-    spec = importlib.util.spec_from_file_location("m0002", MIGRATION_0002)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    in_code = {r.value: sorted(a) for r, a in DEFAULT_ROLE_ACTIONS.items()}
-    assert in_code == {r: sorted(a) for r, a in mod.NEW_ROLE_ACTIONS.items()}
+def test_code_and_migrations_grant_the_same_actions():
+    granted: dict[str, set[str]] = {}
+    for name in GRANTING_MIGRATIONS:
+        spec = importlib.util.spec_from_file_location(name.removesuffix(".py"), VERSIONS / name)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        for role, actions in mod.NEW_ROLE_ACTIONS.items():
+            granted.setdefault(role, set()).update(actions)
+    assert {r.value: set(a) for r, a in DEFAULT_ROLE_ACTIONS.items()} == granted

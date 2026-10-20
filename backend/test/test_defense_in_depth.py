@@ -17,17 +17,23 @@ def everything_granted(db):
     db.commit()
 
 
-def test_only_a_parent_can_delete_messages(client, world, auth, everything_granted):
+def test_only_the_parent_and_the_admin_delete_messages(client, world, auth, everything_granted):
     mid = uuid.uuid4()
-    ws_send(client, auth(world.p1), dict(child_id=str(world.c1.id), **MSG), mid)
-    for who in (world.d1, world.admin1, world.org):
+    ws_send(client, auth(world.p1), dict(chat_id=str(world.c1.id), **MSG), mid)
+    for who in (world.d1, world.org):
         assert client.delete(f"/messages/{mid}", headers=auth(who)).status_code == 403, who.email
 
 
-def test_only_parents_and_docentes_send_messages(client, world, auth, everything_granted):
-    for who in (world.admin1, world.org):
-        r = ws_send(client, auth(who), dict(child_id=str(world.c1.id), **MSG))
-        assert r.status_code == 403, who.email
+def test_org_doesnt_write_in_a_child_s_chat(client, world, auth, everything_granted):
+    r = ws_send(client, auth(world.org), dict(chat_id=str(world.c1.id), **MSG))
+    assert r.status_code == 403
+
+
+def test_peer_chat_messages_are_never_deleted(client, world, auth, everything_granted):
+    mid = uuid.uuid4()
+    ws_send(client, auth(world.d1), dict(chat_id=str(world.d1.id), **MSG), mid)
+    for who in (world.admin1, world.org, world.d1):
+        assert client.delete(f"/messages/{mid}", headers=auth(who)).status_code == 403, who.email
 
 
 def test_only_the_parent_sets_photo_and_manages_documents(client, world, auth, make_file, everything_granted):
@@ -46,8 +52,8 @@ def test_only_the_parent_sets_photo_and_manages_documents(client, world, auth, m
 
 @pytest.mark.parametrize("who,purpose,target", [
     ("d1", "CHILD_PHOTO", "c1"), ("d1", "CHILD_DOCUMENT", "c1"), ("d1", "ESTANCIA_LOGO", "e1"),
-    ("admin1", "ACTIVITY_IMAGE", "c1"), ("admin1", "CHILD_PHOTO", "c1"), ("admin1", "MESSAGE_ATTACHMENT", "c1"),
-    ("org", "ACTIVITY_IMAGE", "c1"), ("org", "CHILD_DOCUMENT", "c1"), ("org", "ESTANCIA_LOGO", "e1"),
+    ("admin1", "ACTIVITY_IMAGE", "c1"), ("admin1", "CHILD_PHOTO", "c1"),
+    ("org", "ACTIVITY_IMAGE", "c1"), ("org", "MESSAGE_ATTACHMENT", "c1"), ("org", "CHILD_DOCUMENT", "c1"), ("org", "ESTANCIA_LOGO", "e1"),
 ])
 def test_upload_purposes_are_tied_to_roles(client, world, auth, everything_granted, who, purpose, target):
     ct = "application/pdf" if purpose == "CHILD_DOCUMENT" else "image/jpeg"

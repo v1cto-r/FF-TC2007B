@@ -42,7 +42,7 @@ def register(client, headers, name, device=None):
 
 
 def message(child):
-    return frame_for(dict(child_id=str(child.id), **BODY))
+    return frame_for(dict(chat_id=str(child.id), **BODY))
 
 
 def send_and_settle(ws, frame):
@@ -96,7 +96,7 @@ def test_an_offline_parent_gets_a_push_with_ids_only(client, world, auth, sender
     register(client, auth(world.p1), "p1")
     with connect(client, auth(world.d1)) as docente:
         ack = send_and_settle(docente, message(world.c1))
-    assert sender.calls == [([token("p1")], {"type": "message", "child_id": str(world.c1.id),
+    assert sender.calls == [([token("p1")], {"type": "message", "chat_id": str(world.c1.id),
                                               "message_id": ack["id"]})]
 
 
@@ -108,6 +108,18 @@ def test_nobody_else_is_pushed(client, db, world, auth, sender):
         send_and_settle(docente, message(world.c1))
     # p1 (parent) and admin1 (admin) take part in the chat; the rest of the families, other docentes and ORG do not
     assert sender.calls == [(sorted([token("p1"), token("admin1")]), sender.calls[0][1])]
+
+
+def test_peer_chats_push_their_people(client, world, auth, sender):
+    for name, user in (("admin1", world.admin1), ("org", world.org), ("d2", world.d2), ("admin2", world.admin2)):
+        register(client, auth(user), name)
+    with connect(client, auth(world.d1)) as docente:                             # d1 <-> admin1
+        ack = send_and_settle(docente, message(world.d1))
+    assert sender.calls == [([token("admin1")], {"type": "message", "chat_id": str(world.d1.id),
+                                                 "message_id": ack["id"]})]
+    with connect(client, auth(world.admin2)) as admin:                           # admin2 <-> every ORG user
+        send_and_settle(admin, message(world.admin2))
+    assert sender.calls[1][0] == [token("org")]
 
 
 def test_a_user_with_the_socket_open_is_not_pushed(client, world, auth, sender):

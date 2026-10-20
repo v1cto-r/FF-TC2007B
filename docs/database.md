@@ -121,6 +121,7 @@ erDiagram
     uuid uploaded_by FK
     uuid estancia_id FK
     uuid child_id FK
+    uuid peer_id FK
     enum status "ARCHIVED|DELETED"
     uuid id PK
     timestamptz created_at
@@ -128,6 +129,7 @@ erDiagram
   }
   MESSAGES {
     uuid child_id FK
+    uuid peer_id FK
     uuid author_id FK
     text content
     timestamptz sent_at
@@ -256,6 +258,8 @@ erDiagram
   USERS |o--o{ CHILDREN : "parent_id"
   USERS |o--o{ DAILY_LOGS : "caregiver_id"
   USERS |o--o{ MESSAGES : "author_id"
+  USERS |o--o{ MESSAGES : "peer_id"
+  USERS |o--o{ FILES : "peer_id"
   USERS |o--o{ NOTICES : "author_id"
   USERS |o--o{ SALONES : "docente_id"
   USERS ||--o{ FILES : "uploaded_by"
@@ -327,4 +331,4 @@ A child has exactly one parent account (`children.parent_id`); a parent can have
 get `users.estancia_id` from the admin who created them. `DELETED` rows drop out of these sets; `ARCHIVED` ones stay.
 
 What each role may *do* with what it reaches is the `role_actions` table (see [auth.md](auth.md)) plus a few rules
-written in code (only the parent deletes chat messages, only the docente of the salon uploads activity photos...).
+written in code (only the parent or the admin deletes chat messages, only the docente of the salon uploads activity photos...).
