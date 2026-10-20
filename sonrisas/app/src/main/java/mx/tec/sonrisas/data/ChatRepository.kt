@@ -40,7 +40,7 @@ interface ChatRepository {
     fun observeMessages(chatId: String): Flow<List<Message>>
     suspend fun refresh(chatId: String)
     suspend fun send(message: Message)
-    suspend fun sendPhoto(chatId: String, authorId: String, contentType: String, bytes: ByteArray)
+    suspend fun sendPhoto(chatId: String, authorId: String, contentType: String, bytes: ByteArray, textContent: String = "")
     suspend fun photoUrl(fileId: String): String
     suspend fun deleteMessage(messageId: String)
 }
@@ -81,13 +81,13 @@ class ChatRepositoryImpl @Inject constructor(
         socket.send(message)
     }
 
-    override suspend fun sendPhoto(chatId: String, authorId: String, contentType: String, bytes: ByteArray) {
+    override suspend fun sendPhoto(chatId: String, authorId: String, contentType: String, bytes: ByteArray, textContent: String) {
         val fileId = files.uploadPhoto(chatId, contentType, bytes)
         send(
             Message(
                 chatId = chatId,
                 authorId = authorId,
-                content = "",
+                content = textContent,
                 sentAt = LocalDateTime.now(),
                 attachmentFileId = fileId
             )

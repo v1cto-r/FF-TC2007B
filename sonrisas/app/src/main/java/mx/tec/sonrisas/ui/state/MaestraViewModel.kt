@@ -37,7 +37,6 @@ data class NinoConEstado(
     val presente: Boolean,
     val dailyLog: DailyLog? = null,
     val activities: List<ActivityRecord> = emptyList(),
-    // Who the parent authorized to pick the child up today, if anyone
     val autorizacionHoy: PickupAuthorization? = null
 )
 
@@ -49,8 +48,8 @@ class MaestraViewModel @Inject constructor(
     private val dailyLogRepository: DailyLogRepository,
     private val noticeRepository: NoticeRepository,
     private val chatRepository: ChatRepository,
-    private val sesionRepository: SesionRepository,
     private val pickupAuthorizationRepository: PickupAuthorizationRepository,
+    private val sesionRepository: SesionRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -76,19 +75,23 @@ class MaestraViewModel @Inject constructor(
     var grupo by mutableStateOf<GroupEnum?>(null)
         private set
 
+    /** Polled while the home screen is open (RefrescoPeriodico). */
+    suspend fun refrescar() = sesionRepository.refrescarDatos()
+
     private fun observarEstadoDeHoy(child: Child): Flow<NinoConEstado> =
         combine(
-            observarRegistroDeHoy(child),
+            dailyLogRepository.observeToday(child.id),
             pickupAuthorizationRepository.observeForChildOn(child.id)
-        ) { estado, autorizacion -> estado.copy(autorizacionHoy = autorizacion) }
-
-    private fun observarRegistroDeHoy(child: Child): Flow<NinoConEstado> =
-        dailyLogRepository.observeToday(child.id).flatMapLatest { log ->
+        ) { log, auth ->
+            Pair(log, auth)
+        }.flatMapLatest { pair ->
+            val log = pair.first
+            val auth = pair.second
             if (log == null) {
-                flowOf(NinoConEstado(child, presente = false, dailyLog = null, activities = emptyList()))
+                flowOf(NinoConEstado(child, presente = false, dailyLog = null, activities = emptyList(), autorizacionHoy = auth))
             } else {
                 dailyLogRepository.observeActivities(log.id).map { actividades ->
-                    NinoConEstado(child, presente = true, dailyLog = log, activities = actividades)
+                    NinoConEstado(child, presente = true, dailyLog = log, activities = actividades, autorizacionHoy = auth)
                 }
             }
         }
@@ -102,13 +105,7 @@ class MaestraViewModel @Inject constructor(
             }
         }
 
-    /** Polled while the home screen is open (RefrescoPeriodico). */
-    suspend fun refrescar() = sesionRepository.refrescarDatos()
-
     fun cargarNinos() {
-        viewModelScope.launch {
-            refrescar()  // never throws: offline, the copy in Room is shown
-        }
         viewModelScope.launch {
             estadoNinos = UiState.Cargando
             try {
@@ -127,7 +124,6 @@ class MaestraViewModel @Inject constructor(
 
     fun cargarInicio() {
         viewModelScope.launch {
-            launch { refrescar() }  // notices included; the list below updates from Room
             launch {
                 try {
                     misNinos.collect { lista ->
@@ -184,6 +180,23 @@ class MaestraViewModel @Inject constructor(
                 val yo = sesionRepository.sesion.first()?.id.orEmpty()
                 launch { refrescarMensajes(chatId) }
                 chatRepository.observeMessagesForTeacher(chatId, yo).collect { mensajes ->
+                    estadoMensajes = if (mensajes.isEmpty()) UiState.Vacio else UiState.Exito(mensajes)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                estadoMensajes = UiState.Error("Error al cargar chat: ${e.message}")
+            }
+        }
+    }
+
+    /** Teacher↔admin chat: the chat id is the teacher's own id, and nothing is hidden by week. */
+    fun cargarMensajesDireccion() {
+        viewModelScope.launch {
+            estadoMensajes = UiState.Cargando
+            try {
+                val yo = sesionRepository.sesion.first()?.id.orEmpty()
+                launch { refrescarMensajes(yo) }
+                chatRepository.observeMessages(yo).collect { mensajes ->
                     estadoMensajes = if (mensajes.isEmpty()) UiState.Vacio else UiState.Exito(mensajes)
                 }
             } catch (e: Exception) {
@@ -266,7 +279,7 @@ class MaestraViewModel @Inject constructor(
             try {
                 val log = dailyLogRepository.observeToday(ninoId).first()
                 if (log != null) {
-                    dailyLogRepository.cancelCheckOut(log)
+                    dailyLogRepository.save(log.copy(checkOut = null))
                 }
                 onListo()
             } catch (e: Exception) {
@@ -277,19 +290,68 @@ class MaestraViewModel @Inject constructor(
 
     fun enviarActividadATodos(titulo: String, mensaje: String, onListo: () -> Unit) {
         viewModelScope.launch {
-            val autor = sesionRepository.sesion.first()?.id ?: ""
-            val presentes = misNinos.first().filter { it.presente }
-            presentes.forEach { nino ->
-                chatRepository.send(
-                    Message(
-                        chatId = nino.child.id,
-                        authorId = autor,
-                        content = "$titulo: $mensaje",
-                        sentAt = LocalDateTime.now()
+            try {
+                val autor = sesionRepository.sesion.first()?.id ?: ""
+                val todos = childRepository.observeAll().first()
+                val texto = if (titulo.isNotBlank() && mensaje.isNotBlank()) "$titulo: $mensaje" else titulo.ifBlank { mensaje }
+
+                todos.forEach { child ->
+                    chatRepository.send(
+                        Message(
+                            chatId = child.id,
+                            authorId = autor,
+                            content = texto,
+                            sentAt = LocalDateTime.now(),
+                            isAviso = false
+                        )
                     )
-                )
+                }
+                onListo()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            onListo()
+        }
+    }
+
+    fun enviarAvisoATodos(titulo: String, mensaje: String, fotoUri: Uri? = null, onListo: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val autor = sesionRepository.sesion.first()?.id ?: ""
+                val todos = childRepository.observeAll().first()
+                val texto = if (titulo.isNotBlank() && mensaje.isNotBlank()) "$titulo: $mensaje" else titulo.ifBlank { mensaje }
+
+                todos.forEach { child ->
+                    if (fotoUri != null) {
+                        val foto = context.leerFoto(fotoUri)
+                        if (foto != null) {
+                            chatRepository.sendPhoto(child.id, autor, foto.first, foto.second, textContent = texto)
+                        } else if (texto.isNotBlank()) {
+                            chatRepository.send(
+                                Message(
+                                    chatId = child.id,
+                                    authorId = autor,
+                                    content = texto,
+                                    sentAt = LocalDateTime.now(),
+                                    isAviso = true
+                                )
+                            )
+                        }
+                    } else if (texto.isNotBlank()) {
+                        chatRepository.send(
+                            Message(
+                                chatId = child.id,
+                                authorId = autor,
+                                content = texto,
+                                sentAt = LocalDateTime.now(),
+                                isAviso = true
+                            )
+                        )
+                    }
+                }
+                onListo()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -301,51 +363,40 @@ class MaestraViewModel @Inject constructor(
         onListo: () -> Unit
     ) {
         viewModelScope.launch {
-            val autor = sesionRepository.sesion.first()?.id ?: ""
-            val textoMensaje = if (titulo.isNotBlank() && mensaje.isNotBlank()) {
-                "$titulo: $mensaje"
-            } else {
-                titulo.ifBlank { mensaje }
-            }
+            try {
+                val autor = sesionRepository.sesion.first()?.id ?: ""
+                val texto = if (titulo.isNotBlank() && mensaje.isNotBlank()) "$titulo: $mensaje" else titulo.ifBlank { mensaje }
 
-            ninosSeleccionados.forEach { child ->
-                if (fotoUri != null) {
-                    val foto = context.leerFoto(fotoUri)
-                    if (foto != null) {
-                        chatRepository.sendPhoto(child.id, autor, foto.first, foto.second)
+                ninosSeleccionados.forEach { child ->
+                    if (fotoUri != null) {
+                        val foto = context.leerFoto(fotoUri)
+                        if (foto != null) {
+                            chatRepository.sendPhoto(child.id, autor, foto.first, foto.second, textContent = texto)
+                        } else if (texto.isNotBlank()) {
+                            chatRepository.send(
+                                Message(
+                                    chatId = child.id,
+                                    authorId = autor,
+                                    content = texto,
+                                    sentAt = LocalDateTime.now()
+                                )
+                            )
+                        }
+                    } else if (texto.isNotBlank()) {
+                        chatRepository.send(
+                            Message(
+                                chatId = child.id,
+                                authorId = autor,
+                                content = texto,
+                                sentAt = LocalDateTime.now()
+                            )
+                        )
                     }
                 }
-                if (textoMensaje.isNotBlank()) {
-                    chatRepository.send(
-                        Message(
-                            chatId = child.id,
-                            authorId = autor,
-                            content = textoMensaje,
-                            sentAt = LocalDateTime.now()
-                        )
-                    )
-                }
+                onListo()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            onListo()
-        }
-    }
-
-    fun enviarAvisoATodos(titulo: String, mensaje: String, onListo: () -> Unit) {
-        viewModelScope.launch {
-            val autor = sesionRepository.sesion.first()?.id ?: ""
-            val todos = childRepository.observeAll().first()
-            todos.forEach { child ->
-                chatRepository.send(
-                    Message(
-                        chatId = child.id,
-                        authorId = autor,
-                        content = "$titulo: $mensaje",
-                        sentAt = LocalDateTime.now(),
-                        isAviso = true
-                    )
-                )
-            }
-            onListo()
         }
     }
 }
