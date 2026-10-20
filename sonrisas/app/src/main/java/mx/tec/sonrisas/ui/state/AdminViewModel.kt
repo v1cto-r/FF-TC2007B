@@ -142,7 +142,7 @@ class AdminViewModel @Inject constructor(
     fun enviarMensaje(chatId: String, texto: String, esAviso: Boolean = false) {
         viewModelScope.launch {
             try {
-                val autor = sesionRepository.get().sesion.first()?.id ?: "admin"
+                val autor = sesionRepository.get().sesion.first()?.id ?: ""
                 chatRepository.send(
                     Message(
                         chatId = chatId,

@@ -316,7 +316,7 @@ class PadreViewModel @Inject constructor(
     fun enviarMensaje(texto: String, esAviso: Boolean = false) {
         viewModelScope.launch {
             try {
-                val autor = sesionRepository.sesion.first()?.id ?: "padre"
+                val autor = sesionRepository.sesion.first()?.id ?: ""
                 chatRepository.send(
                     Message(
                         chatId = chatIdActual,

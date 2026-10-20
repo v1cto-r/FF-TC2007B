@@ -98,8 +98,6 @@ fun AdminInicioScreen(
                 }
 
                 // Acciones rápidas
-                // BACKEND: faltan "Chat con maestros" y "Chat con organizador". La API solo tiene chat
-                // padre-docente por niño (GET/PUT /messages?child_id), no hay mensajes admin-maestra ni admin-organizador.
                 Spacer(Modifier.height(20.dp))
                 TituloSeccion("Acciones Rápidas")
                 Spacer(Modifier.height(8.dp))

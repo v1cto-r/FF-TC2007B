@@ -244,7 +244,7 @@ class MaestraViewModel @Inject constructor(
     fun enviarMensaje(chatId: String, texto: String, esAviso: Boolean = false) {
         viewModelScope.launch {
             try {
-                val autor = sesionRepository.sesion.first()?.id ?: "maestra"
+                val autor = sesionRepository.sesion.first()?.id ?: ""
                 chatRepository.send(
                     Message(
                         chatId = chatId,
@@ -276,7 +276,7 @@ class MaestraViewModel @Inject constructor(
 
     fun enviarActividadATodos(titulo: String, mensaje: String, onListo: () -> Unit) {
         viewModelScope.launch {
-            val autor = sesionRepository.sesion.first()?.id ?: "maestra"
+            val autor = sesionRepository.sesion.first()?.id ?: ""
             val presentes = misNinos.first().filter { it.presente }
             presentes.forEach { nino ->
                 chatRepository.send(
@@ -294,7 +294,7 @@ class MaestraViewModel @Inject constructor(
 
     fun enviarAvisoATodos(titulo: String, mensaje: String, onListo: () -> Unit) {
         viewModelScope.launch {
-            val autor = sesionRepository.sesion.first()?.id ?: "maestra"
+            val autor = sesionRepository.sesion.first()?.id ?: ""
             val todos = childRepository.observeAll().first()
             todos.forEach { child ->
                 chatRepository.send(
