@@ -2,7 +2,7 @@
 import uuid
 from contextlib import ExitStack
 
-from app.database.models import FilePurpose, Message, RecordStatus
+from app.database.models import FilePurpose, Message, RecordStatus, UserRole
 
 from .chat_helpers import connect, frame_for, ws_send
 
@@ -68,12 +68,14 @@ def test_ids_that_name_no_chat_are_404(client, world, auth):
         assert ws_send(client, auth(world.org), dict(chat_id=str(chat_id), **BODY)).status_code == 404
 
 
-def test_the_admin_of_the_docente_s_estancia_changes_with_the_estancia(client, db, world, auth):
-    world.e1.admin_user_id = world.admin2.id
-    world.e2.admin_user_id = world.admin1.id
-    db.commit()
+def test_the_admin_of_the_docente_s_estancia_changes_with_the_estancia(client, world, auth, make_user):
+    """ORG gives E1 a new admin (one estancia at a time, as the API does: an admin runs only one)."""
+    admin3 = make_user("admin3@x", UserRole.ADMIN)
+    r = client.put(f"/estancias/{world.e1.id}", headers=auth(world.org),
+                   json={"name": world.e1.name, "admin_user_id": str(admin3.id)})
+    assert r.status_code == 200, r.text
     assert ws_send(client, auth(world.admin1), body(world.d1)).status_code == 404
-    assert ws_send(client, auth(world.admin2), body(world.d1)).status_code == 201
+    assert ws_send(client, auth(admin3), body(world.d1)).status_code == 201
 
 
 def test_peer_chat_messages_cant_be_deleted(client, world, auth):
