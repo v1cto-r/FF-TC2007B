@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.auth.dependency import authorize
 from app.auth.token import TokenClaims, decode_session_token, session_token_expiry
-from app.chat.hub import hub, notify_offline
+from app.chat.hub import UNAUTHORIZED, hub, notify_offline
 from app.config import settings
 from app.chat.members import find_chat
 from app.chat.service import render, send_message
@@ -20,8 +20,7 @@ from app.schemas.comms import MessageFrame
 
 router = APIRouter(tags=["chat"])
 
-UNAUTHORIZED = 4401  # close code: token missing, invalid or expired (the client refreshes it and reconnects)
-IDLE = 4408          # close code: no frame for too long, the client is gone or the link is dead (it reconnects)
+IDLE = 4408  # close code: no frame for too long, the client is gone or the link is dead (it reconnects)
 MESSAGES_PER_MINUTE = 60
 
 

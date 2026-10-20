@@ -153,6 +153,21 @@ def test_deleting_a_user_is_soft_frees_the_email_and_blocks_login(client, db, wo
     assert new_user(client, auth(world.admin1), "spare@x").status_code == 201                    # email is free again
 
 
+def test_deleting_a_user_signs_them_out_at_once(client, db, world, auth, make_user):
+    spare = make_user("gone@x", UserRole.PADRE, world.e1.id)
+    session = login(client, "gone@x").json()
+    still_valid = {"Authorization": f"Bearer {session['access_token']}"}
+    assert client.get("/users/me", headers=still_valid).status_code == 200
+    assert client.delete(f"/users/{spare.id}", headers=auth(world.admin1)).status_code == 204
+    # the session token has minutes left, but the user is DELETED now
+    assert client.get("/users/me", headers=still_valid).status_code == 401
+    assert client.get("/auth/me", headers=still_valid).status_code == 401
+    assert client.post("/auth/refresh", json={"refresh_token": session["refresh_token"]}).status_code == 401
+    assert login(client, "gone@x", ip="8.8.8.8").status_code == 401
+    db.refresh(spare)
+    assert spare.status == RecordStatus.DELETED   # only marked, the row stays
+
+
 def test_users_with_responsibilities_cannot_be_deleted(client, world, auth):
     org, admin = auth(world.org), auth(world.admin1)
     assert client.delete(f"/users/{world.admin1.id}", headers=org).status_code == 409   # runs E1

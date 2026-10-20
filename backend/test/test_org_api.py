@@ -232,18 +232,21 @@ def test_only_admin_writes_children(client, world, auth):
         assert client.delete(f"/children/{world.c1.id}", headers=auth(who)).status_code == 403
 
 
-def test_child_with_history_cannot_be_deleted_until_it_is_cleared(client, db, world, auth):
+def test_deleting_a_child_soft_deletes_its_history_with_it(client, db, world, auth):
     from app.database.models import DailyLog, Message
     import datetime as dt
-    db.add_all([DailyLog(id=uuid.uuid4(), child_id=world.c1.id, date=dt.date(2026, 1, 1), caregiver_name="x"),
-                Message(id=uuid.uuid4(), child_id=world.c1.id, content="hi", sent_at=dt.datetime.now(dt.timezone.utc))])
+    log = DailyLog(id=uuid.uuid4(), child_id=world.c1.id, date=dt.date(2026, 1, 1), caregiver_name="x")
+    msg = Message(id=uuid.uuid4(), child_id=world.c1.id, content="hi", sent_at=dt.datetime.now(dt.timezone.utc))
+    db.add_all([log, msg])
     db.commit()
     h = auth(world.admin1)
-    assert client.delete(f"/children/{world.c1.id}", headers=h).status_code == 409
-    assert client.delete(f"/children/{world.c2.id}", headers=h).status_code == 204   # nothing recorded for c2
-    assert world.c2.id not in {uuid.UUID(c["id"]) for c in client.get("/children", headers=h).json()}
-    assert client.get(f"/children/{world.c2.id}", headers=h).status_code == 404       # hidden from the admin...
-    assert client.get(f"/children/{world.c2.id}", headers=auth(world.org)).json()["status"] == "DELETED"  # ...not from ORG
+    assert client.delete(f"/children/{world.c1.id}", headers=h).status_code == 204
+    assert world.c1.id not in {uuid.UUID(c["id"]) for c in client.get("/children", headers=h).json()}
+    assert client.get(f"/children/{world.c1.id}", headers=h).status_code == 404       # hidden from the admin...
+    assert client.get(f"/children/{world.c1.id}", headers=auth(world.org)).json()["status"] == "DELETED"  # ...not from ORG
+    db.refresh(log)
+    db.refresh(msg)
+    assert log.status == msg.status == RecordStatus.DELETED   # still in the database, only marked
 
 
 def test_archived_child_stays_listed_but_is_read_only(client, world, auth):

@@ -64,6 +64,16 @@ def test_a_fresh_token_keeps_the_socket_open(client, world):
         assert ws.receive_json() == {"type": "pong"}
 
 
+def test_deleting_a_user_closes_their_open_sockets(client, world, auth, make_user):
+    spare = make_user("kicked@x", UserRole.DOCENTE, world.e1.id)   # no salon, so it can be deleted
+    with connect(client, auth(spare)) as ws:
+        assert client.delete(f"/users/{spare.id}", headers=auth(world.admin1)).status_code == 204
+        with pytest.raises(WebSocketDisconnect) as e:
+            ws.receive_json()
+        assert e.value.code == 4401
+    assert closed_with(client, auth(spare)) == 4401   # and it can't come back with the same token
+
+
 def test_a_token_of_another_user_is_refused(client, world, auth):
     with connect(client, auth(world.p1)) as ws:
         ws.send_json({"type": "auth", "token": token(world.d1)})

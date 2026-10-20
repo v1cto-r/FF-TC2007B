@@ -15,6 +15,8 @@ from fastapi import WebSocket
 
 log = logging.getLogger("uvicorn.error")
 
+UNAUTHORIZED = 4401  # close code: token missing, invalid or expired, or the user was signed out
+
 
 @dataclass(eq=False)
 class Connection:
@@ -63,6 +65,14 @@ class Hub:
                     fut = asyncio.run_coroutine_threadsafe(conn.send(frame), conn.loop)
                     fut.add_done_callback(self._log_failure)
         return offline
+
+    def close_user(self, user_id: uuid.UUID, code: int) -> None:
+        """Closes every open socket of `user_id` (e.g. the account was just deleted). Callable from any thread."""
+        with self._mutex:
+            conns = list(self._conns.get(user_id, ()))
+        for conn in conns:
+            fut = asyncio.run_coroutine_threadsafe(conn.ws.close(code), conn.loop)
+            fut.add_done_callback(self._log_failure)
 
     @staticmethod
     def _log_failure(fut) -> None:

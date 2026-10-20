@@ -4,9 +4,10 @@ from sqlalchemy.orm import Session
 
 from app.auth import service
 from app.auth.access import Access
-from app.auth.dependency import get_claims, require_access
+from app.auth.dependency import get_claims, require_access, signed_in
 from app.auth.permissions import can_manage_user
 from app.auth.token import TokenClaims
+from app.chat.hub import UNAUTHORIZED, hub
 from app.database.connection import get_db
 from app.database.lifecycle import get_or_404
 from app.database.models import User
@@ -37,7 +38,7 @@ def logout(body: RefreshBody, db: Session = Depends(get_db)):
 
 
 @router.get("/me", response_model=ClaimsOut, responses={401: {"model": Detail}})
-def me(claims: TokenClaims = Depends(get_claims)):
+def me(claims: TokenClaims = Depends(signed_in())):
     return claims
 
 
@@ -56,3 +57,4 @@ def revoke(body: RevokeBody, access: Access = Depends(require_access("session:re
     if not can_manage_user(access, target):
         raise HTTPException(403, "Not allowed")
     service.revoke_user_tokens(db, target.id)
+    hub.close_user(target.id, UNAUTHORIZED)

@@ -11,7 +11,8 @@ from app.auth.dependency import require_access
 from app.database import lifecycle
 from app.database.connection import get_db
 from app.database.models import (
-    Child, ChildDocument, DailyLog, Estancia, File, FilePurpose, Message, RecordStatus, Salon, User, UserRole,
+    Child, ChildDocument, DailyLog, Estancia, File, FilePurpose, Message, PickupAuthorization, RecordStatus, Salon, User,
+    UserRole,
 )
 from app.schemas.common import Detail
 from app.schemas.org import ChildIn, ChildOut, ChildPhotoIn, ChildProfileIn
@@ -142,9 +143,11 @@ def unarchive_child(child_id: uuid.UUID, access: Access = Depends(require_access
 @router.delete("/{child_id}", status_code=204, responses=ERRORS)
 def delete_child(child_id: uuid.UUID, access: Access = Depends(require_access("child:delete")),
                  db: Session = Depends(get_db)):
-    """Soft delete. Refused while the child still has active daily logs, messages or documents."""
+    """Soft delete. The child's daily logs, messages, documents and pickup authorizations are soft-deleted with it:
+    nothing leaves the database, ORG can still list it all with ?include_deleted=true."""
     child = _visible_or_404(db, access, child_id)
-    lifecycle.soft_delete(db, child, blockers=[
-        (DailyLog, DailyLog.child_id), (Message, Message.child_id), (ChildDocument, ChildDocument.child_id)])
+    lifecycle.soft_delete(db, child, parts=[
+        (DailyLog, DailyLog.child_id), (Message, Message.child_id), (ChildDocument, ChildDocument.child_id),
+        (PickupAuthorization, PickupAuthorization.child_id)])
     db.commit()
     return Response(status_code=204)

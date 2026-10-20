@@ -9,6 +9,7 @@ from app.auth.access import Access
 from app.auth.dependency import authenticated, require_access
 from app.auth.permissions import can_create_user, can_manage_user
 from app.auth.security import hash_password, placeholder_password
+from app.chat.hub import UNAUTHORIZED, hub
 from app.database import lifecycle
 from app.database.connection import get_db
 from app.database.models import Child, Estancia, File, FilePurpose, Salon, User, UserProfile, UserRole
@@ -135,6 +136,7 @@ def reset_password(user_id: uuid.UUID, access: Access = Depends(require_access("
     else:
         profile.pending = True
     service.revoke_user_tokens(db, target.id)  # commits
+    hub.close_user(target.id, UNAUTHORIZED)
     return PasswordReset(id=target.id, temporary_password=password)
 
 
@@ -151,6 +153,7 @@ def archive_user(user_id: uuid.UUID, access: Access = Depends(require_access("us
     _not_self(access, target)
     lifecycle.archive(target)
     service.revoke_user_tokens(db, target.id)  # commits
+    hub.close_user(target.id, UNAUTHORIZED)
     return target
 
 
@@ -173,4 +176,5 @@ def delete_user(user_id: uuid.UUID, access: Access = Depends(require_access("use
     lifecycle.soft_delete(db, target, blockers=[
         (Estancia, Estancia.admin_user_id), (Salon, Salon.docente_id), (Child, Child.parent_id)])
     service.revoke_user_tokens(db, target.id)  # commits
+    hub.close_user(target.id, UNAUTHORIZED)
     return Response(status_code=204)
