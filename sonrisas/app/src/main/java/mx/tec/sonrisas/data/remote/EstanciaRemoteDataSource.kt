@@ -29,7 +29,7 @@ class EstanciaRemoteDataSourceImpl @Inject constructor(
 
     override suspend fun putEstancia(id: String, estancia: EstanciaIn): EstanciaOut =
         auth.authed {
-            api.post<EstanciaIn, EstanciaOut>("/estancias/$id", estancia, it)
+            api.put<EstanciaIn, EstanciaOut>("/estancias/$id", estancia, it)
         }
 
     override suspend fun archiveEstancia(id: String): EstanciaOut =
