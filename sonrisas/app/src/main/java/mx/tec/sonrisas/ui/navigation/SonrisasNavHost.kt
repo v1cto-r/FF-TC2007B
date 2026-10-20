@@ -292,12 +292,24 @@ fun SonrisasNavHost(
 
         composable(Route.ACTIVIDAD_MASIVA) {
             val viewModel: MaestraViewModel = hiltViewModel()
+            LaunchedEffect(Unit) { viewModel.cargarNinos() }
+
+            val ninosPresentes = (viewModel.estadoNinos as? UiState.Exito)?.datos?.filter { it.presente }?.map { it.child } ?: emptyList()
+
             BroadcastFormScreen(
-                titulo = "Actividad para todos",
-                descripcionAyuda = "Se enviará como mensaje de chat a los padres de todos los niños presentes hoy.",
-                textoBoton = "Enviar a presentes",
+                titulo = "Actividad",
+                descripcionAyuda = "Registra una actividad o comparte una foto con los familiares.",
+                textoBoton = "Enviar a los presentes",
+                ninosPresentes = ninosPresentes,
                 onAtras = { nav.popBackStack() },
-                onEnviar = { titulo, mensaje -> viewModel.enviarActividadATodos(titulo, mensaje) { nav.popBackStack() } }
+                onEnviarATodos = { titulo, mensaje ->
+                    viewModel.enviarActividadATodos(titulo, mensaje) { nav.popBackStack() }
+                },
+                onEnviarAAdjuntados = { titulo, mensaje, fotoUri, ninosSeleccionados ->
+                    viewModel.enviarActividadASeleccionados(titulo, mensaje, fotoUri, ninosSeleccionados) {
+                        nav.popBackStack()
+                    }
+                }
             )
         }
 

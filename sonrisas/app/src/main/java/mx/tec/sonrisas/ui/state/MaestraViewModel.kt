@@ -292,6 +292,43 @@ class MaestraViewModel @Inject constructor(
         }
     }
 
+    fun enviarActividadASeleccionados(
+        titulo: String,
+        mensaje: String,
+        fotoUri: Uri?,
+        ninosSeleccionados: List<Child>,
+        onListo: () -> Unit
+    ) {
+        viewModelScope.launch {
+            val autor = sesionRepository.sesion.first()?.id ?: ""
+            val textoMensaje = if (titulo.isNotBlank() && mensaje.isNotBlank()) {
+                "$titulo: $mensaje"
+            } else {
+                titulo.ifBlank { mensaje }
+            }
+
+            ninosSeleccionados.forEach { child ->
+                if (fotoUri != null) {
+                    val foto = context.leerFoto(fotoUri)
+                    if (foto != null) {
+                        chatRepository.sendPhoto(child.id, autor, foto.first, foto.second)
+                    }
+                }
+                if (textoMensaje.isNotBlank()) {
+                    chatRepository.send(
+                        Message(
+                            chatId = child.id,
+                            authorId = autor,
+                            content = textoMensaje,
+                            sentAt = LocalDateTime.now()
+                        )
+                    )
+                }
+            }
+            onListo()
+        }
+    }
+
     fun enviarAvisoATodos(titulo: String, mensaje: String, onListo: () -> Unit) {
         viewModelScope.launch {
             val autor = sesionRepository.sesion.first()?.id ?: ""
