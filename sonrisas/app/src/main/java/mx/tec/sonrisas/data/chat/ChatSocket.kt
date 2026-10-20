@@ -91,7 +91,7 @@ class ChatSocket @Inject constructor(
             buildJsonObject {
                 put("type", "message")
                 put("id", message.id)
-                put("child_id", message.chatId)
+                put("chat_id", message.chatId)
                 put("content", message.content)
                 put("sent_at", message.sentAt.toUtcIso())
                 put("is_aviso", message.isAviso)

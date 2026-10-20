@@ -21,7 +21,7 @@ import mx.tec.sonrisas.ui.theme.SonrisasTheme
 class MainActivity : FragmentActivity() {
     @Inject lateinit var sesionRepository: SesionRepository
 
-    // child whose chat should open (set when the user taps a push notification)
+    // chat that should open (a child's chat id is the child id) (set when the user taps a push notification)
     private var chatPendiente by mutableStateOf<String?>(null)
 
     override fun onStart() {
@@ -31,7 +31,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        chatPendiente = intent.getStringExtra(EXTRA_CHILD_ID)
+        chatPendiente = intent.getStringExtra(EXTRA_CHAT_ID)
         enableEdgeToEdge()
         if (Build.VERSION.SDK_INT >= 33) {
             registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -46,10 +46,10 @@ class MainActivity : FragmentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        chatPendiente = intent.getStringExtra(EXTRA_CHILD_ID)
+        chatPendiente = intent.getStringExtra(EXTRA_CHAT_ID)
     }
 
     companion object {
-        const val EXTRA_CHILD_ID = "child_id"
+        const val EXTRA_CHAT_ID = "chat_id"
     }
 }

@@ -303,16 +303,6 @@ class PadreViewModel @Inject constructor(
         }
     }
 
-    fun toggleImportant(messageId: String) {
-        viewModelScope.launch {
-            try {
-                chatRepository.toggleImportant(messageId)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
     fun deleteMessage(messageId: String) {
         viewModelScope.launch {
             try {

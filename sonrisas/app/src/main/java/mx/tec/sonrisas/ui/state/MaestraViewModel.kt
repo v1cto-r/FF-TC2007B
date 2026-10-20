@@ -195,16 +195,6 @@ class MaestraViewModel @Inject constructor(
         }
     }
 
-    fun toggleImportant(messageId: String) {
-        viewModelScope.launch {
-            try {
-                chatRepository.toggleImportant(messageId)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
     fun cargarConversaciones() {
         viewModelScope.launch {
             estadoConversaciones = UiState.Cargando

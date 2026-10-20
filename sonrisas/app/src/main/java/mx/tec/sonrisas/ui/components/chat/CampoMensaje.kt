@@ -10,6 +10,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,7 +31,10 @@ fun CampoMensaje(
     onValorChange: (String) -> Unit,
     onEnviar: () -> Unit,
     modifier: Modifier = Modifier,
-    onCamara: () -> Unit = {}
+    onCamara: () -> Unit = {},
+    // The server never edits a message, so an aviso has to be marked before sending.
+    esAviso: Boolean = false,
+    onAvisoChange: ((Boolean) -> Unit)? = null
 ) {
     Row(
         modifier = modifier
@@ -71,6 +75,19 @@ fun CampoMensaje(
                     }
                 }
             )
+            if (onAvisoChange != null) {
+                IconButton(
+                    onClick = { onAvisoChange(!esAviso) },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.PushPin,
+                        contentDescription = if (esAviso) "Quitar aviso" else "Enviar como aviso",
+                        tint = if (esAviso) Coral else TextoGris,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
             IconButton(
                 onClick = onCamara,
                 modifier = Modifier.size(28.dp)
