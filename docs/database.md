@@ -61,6 +61,8 @@ erDiagram
     text notes
     string picked_up_by_name
     string released_by_staff_name
+    uuid pickup_authorization_id FK
+    uuid id_photo_file_id FK
     enum status "ARCHIVED|DELETED"
     uuid id PK
     timestamptz created_at
@@ -112,7 +114,7 @@ erDiagram
   FILES {
     string bucket
     string key UK
-    enum purpose "ACTIVITY_IMAGE|MESSAGE_ATTACHMENT|CHILD_PHOTO|USER_AVATAR|ESTANCIA_LOGO|CHILD_DOCUMENT"
+    enum purpose "ACTIVITY_IMAGE|MESSAGE_ATTACHMENT|CHILD_PHOTO|USER_AVATAR|ESTANCIA_LOGO|CHILD_DOCUMENT|PICKUP_ID_PHOTO"
     string kind
     string content_type
     int size
@@ -167,6 +169,22 @@ erDiagram
     timestamptz created_at
     timestamptz updated_at
   }
+  PICKUP_AUTHORIZATIONS {
+    uuid child_id FK
+    uuid created_by FK
+    enum kind "THIS_WEEK|RECURRING"
+    date start_date
+    int weekdays
+    string authorized_person_name
+    string relationship
+    string phone
+    string identification_type
+    text notes
+    enum status "ARCHIVED|DELETED"
+    uuid id PK
+    timestamptz created_at
+    timestamptz updated_at
+  }
   ROLE_ACTIONS {
     enum role "ORG|ADMIN|DOCENTE|PADRE"
     string action
@@ -189,6 +207,7 @@ erDiagram
     enum feeding_breakfast "NONE|SOME|ALL|ASKED_FOR_MORE"
     enum feeding_snack "NONE|SOME|ALL|ASKED_FOR_MORE"
     enum feeding_lunch "NONE|SOME|ALL|ASKED_FOR_MORE"
+    enum feeding_afternoon_snack "NONE|SOME|ALL|ASKED_FOR_MORE"
     text feeding_notes
     bool slept
     int nap_minutes
@@ -237,6 +256,9 @@ erDiagram
   CHILDREN ||--o{ CHILD_DOCUMENTS : "child_id"
   CHILDREN ||--o{ DAILY_LOGS : "child_id"
   CHILDREN ||--o{ MESSAGES : "child_id"
+  CHILDREN ||--o{ PICKUP_AUTHORIZATIONS : "child_id"
+  PICKUP_AUTHORIZATIONS |o--o{ CHECK_OUTS : "pickup_authorization_id"
+  FILES |o--o| CHECK_OUTS : "id_photo_file_id"
   DAILY_LOGS ||--o{ ACTIVITY_RECORDS : "daily_log_id"
   DAILY_LOGS ||--o| CHECK_INS : "daily_log_id"
   DAILY_LOGS ||--o| CHECK_OUTS : "daily_log_id"
@@ -272,6 +294,19 @@ Notes on the diagram: `rate_limits`, `refresh_tokens`, `device_tokens` (FCM push
 `ACTIVITY_IMAGES`, `MESSAGES`, `USERS`, `ESTANCIAS` and `CHILDREN` point at `FILES` for their images; `FILES` points back
 at the user, estancia and child it belongs to (those foreign keys are added after the tables exist, because the
 references go in a circle).
+
+## Pickup authorizations
+
+Who besides the parent may pick a child up (`app/pickups.py`). `weekdays` is a bitmask (Monday = 1 ... Sunday = 64):
+
+- `THIS_WEEK`: those days of one week only; `start_date` is its Monday. Days already past can't be added. It is
+  no longer listed once the week is over.
+- `RECURRING`: those days of every week from `start_date` (the day it was created) until the parent cancels it.
+
+At most one applies per child and day: a `THIS_WEEK` one wins over a `RECURRING` one on its days, and two of the
+same kind that share a day are refused (409, or `?replace=true` cancels the old ones). "Today" and "this week" are
+in `LOCAL_TIMEZONE` (default `America/Mexico_City`). A check-out to an authorized person stores
+`pickup_authorization_id` and requires `id_photo_file_id` (a `PICKUP_ID_PHOTO` the DOCENTE takes).
 
 ## Nothing is ever deleted
 

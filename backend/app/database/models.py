@@ -73,6 +73,12 @@ class FilePurpose(str, enum.Enum):
   USER_AVATAR = 'USER_AVATAR'
   ESTANCIA_LOGO = 'ESTANCIA_LOGO'
   CHILD_DOCUMENT = 'CHILD_DOCUMENT'
+  PICKUP_ID_PHOTO = 'PICKUP_ID_PHOTO'  # the ID of whoever picks a child up, shown at check-out
+
+
+class PickupKind(str, enum.Enum):
+  THIS_WEEK = 'THIS_WEEK'  # some days of one week (start_date = its Monday); ends with the week
+  RECURRING = 'RECURRING'  # some weekdays, every week, until the parent cancels it
 
 
 class UploadState(str, enum.Enum):
@@ -257,6 +263,7 @@ class Stay(Record, Base):
   feeding_breakfast: Mapped[Amount] = mapped_column(_enum(Amount, 'amount'), nullable=False)
   feeding_snack: Mapped[Amount] = mapped_column(_enum(Amount, 'amount'), nullable=False)
   feeding_lunch: Mapped[Amount] = mapped_column(_enum(Amount, 'amount'), nullable=False)
+  feeding_afternoon_snack: Mapped[Amount | None] = mapped_column(_enum(Amount, 'amount'), nullable=True)  # null on older rows
   feeding_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
   # rest
   slept: Mapped[bool] = mapped_column(Boolean, nullable=False)
@@ -297,6 +304,28 @@ class CheckOut(Record, Base):
   notes: Mapped[str | None] = mapped_column(Text, nullable=True)
   picked_up_by_name: Mapped[str] = mapped_column(String(255), nullable=False)
   released_by_staff_name: Mapped[str] = mapped_column(String(255), nullable=False)
+  # Set when the child left with someone the parent authorized; the ID photo is then required
+  pickup_authorization_id: Mapped[uuid.UUID | None] = _uuid_fk(
+    f'{SCHEMA}.pickup_authorizations.id', nullable=True, ondelete='RESTRICT')
+  id_photo_file_id: Mapped[uuid.UUID | None] = _uuid_fk(f'{SCHEMA}.files.id', nullable=True, ondelete='RESTRICT')
+
+
+class PickupAuthorization(Record, Base):
+  """Someone other than the parent the parent allows to pick the child up. At most one applies per child
+  and day; the rules (which one applies, which overlap) are in app/pickups.py."""
+
+  __tablename__ = 'pickup_authorizations'
+
+  child_id: Mapped[uuid.UUID] = _uuid_fk(f'{SCHEMA}.children.id', ondelete='RESTRICT', index=True)
+  created_by: Mapped[uuid.UUID | None] = _uuid_fk(f'{SCHEMA}.users.id', nullable=True, ondelete='SET NULL')
+  kind: Mapped[PickupKind] = mapped_column(_enum(PickupKind, 'pickup_kind'), nullable=False)
+  start_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+  weekdays: Mapped[int] = mapped_column(Integer, nullable=False)  # bitmask, Monday = 1 ... Sunday = 64
+  authorized_person_name: Mapped[str] = mapped_column(String(255), nullable=False)
+  relationship: Mapped[str] = mapped_column(String(255), nullable=False)
+  phone: Mapped[str] = mapped_column(String(50), nullable=False)
+  identification_type: Mapped[str] = mapped_column(String(50), nullable=False)
+  notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ActivityRecord(Record, Base):

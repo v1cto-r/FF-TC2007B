@@ -6,16 +6,18 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import pickups
 from app.auth.access import Access
 from app.auth.dependency import require_access
 from app.database import lifecycle
 from app.database.connection import get_db
 from app.database.models import (
-    ActivityImage, ActivityRecord, CheckIn, CheckOut, Child, DailyLog, File, FilePurpose, RecordStatus, Stay,
+    ActivityImage, ActivityRecord, CheckIn, CheckOut, Child, DailyLog, File, FilePurpose, PickupAuthorization,
+    RecordStatus, Stay,
 )
 from app.schemas.common import Detail
 from app.schemas.logs import (
-    ActivityImageOut, ActivityIn, ActivityOut, CheckInOut, CheckOutOut, DailyLogIn, DailyLogOut, StayOut,
+    ActivityImageOut, ActivityIn, ActivityOut, CheckInOut, CheckOutIn, CheckOutOut, DailyLogIn, DailyLogOut, StayOut,
 )
 from app.storage.rules import load_attachable, release
 
@@ -65,6 +67,33 @@ def _activity_out(a: ActivityRecord, images: list[ActivityImageOut]) -> Activity
                        daily_log_id=a.daily_log_id, name=a.name, images=images)
 
 
+def _check_pickup(db: Session, log: DailyLog, data: CheckOutIn, row: CheckOut | None) -> None:
+    """A release to an authorized person needs that person's authorization for this child and day, and a
+    photo of their ID. Whether the authorization was cancelled since doesn't matter: an offline check-out can
+    arrive late, and this records what happened."""
+    if data.pickup_authorization_id is not None:
+        p = db.get(PickupAuthorization, data.pickup_authorization_id)
+        if p is None or p.child_id != log.child_id or not pickups.applies_on(p, log.date):
+            raise HTTPException(422, "That pickup authorization doesn't cover this child on this day")
+        if data.id_photo_file_id is None:
+            raise HTTPException(422, "A pickup by an authorized person needs a photo of their ID")
+    old = row.id_photo_file_id if row is not None else None
+    if data.id_photo_file_id is not None and data.id_photo_file_id != old:
+        load_attachable(db, data.id_photo_file_id, FilePurpose.PICKUP_ID_PHOTO, child_id=log.child_id)
+        if db.scalar(select(CheckOut.id).where(CheckOut.id_photo_file_id == data.id_photo_file_id,
+                                               lifecycle.live(CheckOut))):
+            raise HTTPException(409, f"File {data.id_photo_file_id} is already used by another check-out")
+    if old is not None and old != data.id_photo_file_id:
+        release(db.get(File, old))
+
+
+def _remove_part(db: Session, row) -> None:
+    """A stage sent as an explicit null was undone in the app (a check-out cancelled)."""
+    if isinstance(row, CheckOut) and row.id_photo_file_id is not None:
+        release(db.get(File, row.id_photo_file_id))
+    row.status = RecordStatus.DELETED
+
+
 @router.get("/daily-logs", response_model=list[DailyLogOut])
 def list_daily_logs(child_id: uuid.UUID | None = None, from_date: date | None = None, to_date: date | None = None,
                     include_deleted: bool = False, access: Access = Depends(require_access("daily_log:read")),
@@ -91,8 +120,8 @@ def get_daily_log(log_id: uuid.UUID, access: Access = Depends(require_access("da
 @router.put("/daily-logs/{log_id}", response_model=DailyLogOut, responses={201: {"model": DailyLogOut}, **ERRORS})
 def put_daily_log(log_id: uuid.UUID, body: DailyLogIn, response: Response,
                   access: Access = Depends(require_access("daily_log:write")), db: Session = Depends(get_db)):
-    """Creates or updates the log of one child for one day. Stages that are sent are created or replaced;
-    stages that are left out stay as they are."""
+    """Creates or updates the log of one child for one day. Stages that are sent are created or replaced,
+    stages that are left out stay as they are, and stages sent as an explicit null are removed."""
     log = db.get(DailyLog, log_id)
     if log is None:
         if not access.can_see_child(body.child_id):
@@ -114,9 +143,13 @@ def put_daily_log(log_id: uuid.UUID, body: DailyLogIn, response: Response,
 
     for name, model in PARTS:
         data = getattr(body, name)
-        if data is None:
-            continue
         row = db.scalar(select(model).where(model.daily_log_id == log.id, lifecycle.live(model)))
+        if data is None:
+            if name in body.model_fields_set and row is not None:
+                _remove_part(db, row)
+            continue
+        if model is CheckOut:
+            _check_pickup(db, log, data, row)
         if row is None:
             db.add(model(id=uuid.uuid4(), daily_log_id=log.id, **data.model_dump()))
         else:
@@ -135,6 +168,9 @@ def delete_daily_log(log_id: uuid.UUID, access: Access = Depends(require_access(
         for act in db.scalars(select(ActivityRecord).where(
                 ActivityRecord.daily_log_id == log.id, lifecycle.live(ActivityRecord))):
             _drop_images(db, act, keep=[])
+        check_out = db.scalar(select(CheckOut).where(CheckOut.daily_log_id == log.id, lifecycle.live(CheckOut)))
+        if check_out is not None and check_out.id_photo_file_id is not None:
+            release(db.get(File, check_out.id_photo_file_id))
         lifecycle.soft_delete(db, log, parts=[(m, m.daily_log_id) for _, m in PARTS] +
                               [(ActivityRecord, ActivityRecord.daily_log_id)])
     db.commit()

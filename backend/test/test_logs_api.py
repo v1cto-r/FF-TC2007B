@@ -5,6 +5,7 @@ from datetime import date
 import pytest
 from sqlalchemy import select
 
+from app import pickups
 from app.database.models import (
     ActivityImage, ActivityRecord, CheckIn, DailyLog, File, FilePurpose, RecordStatus, Stay, UploadState,
 )
@@ -248,3 +249,84 @@ def test_activity_cannot_move_between_logs(client, world, auth, a_log):
     aid = uuid.uuid4()
     assert put_activity(client, h, a_log, aid=aid).status_code == 201
     assert put_activity(client, h, other, aid=aid).status_code == 422
+
+
+# --- undoing a stage, afternoon snack -------------------------------------------------------
+
+def test_a_check_out_sent_as_null_is_undone(client, world, auth):
+    h, lid = auth(world.d1), uuid.uuid4()
+    put_log(client, h, world.c1, lid, check_in=CHECK_IN, check_out=CHECK_OUT)
+    r = put_log(client, h, world.c1, lid, stay=STAY)                     # left out: kept
+    assert r.json()["check_out"]["picked_up_by_name"] == "Papá"
+    r = put_log(client, h, world.c1, lid, check_out=None)                # explicit null: removed
+    assert r.status_code == 200 and r.json()["check_out"] is None and r.json()["stay"] is not None
+    assert put_log(client, h, world.c1, lid, check_out=CHECK_OUT).json()["check_out"] is not None   # and redone
+
+
+def test_afternoon_snack(client, world, auth):
+    h = auth(world.d1)
+    r = put_log(client, h, world.c1, stay={**STAY, "feeding_afternoon_snack": "SOME"})
+    assert r.json()["stay"]["feeding_afternoon_snack"] == "SOME"
+    assert put_log(client, h, world.c2, stay=STAY).json()["stay"]["feeding_afternoon_snack"] is None
+
+
+# --- check-out to an authorized person ---------------------------------------------------------
+
+PICKUP_DAY = date(2026, 10, 21)
+
+
+@pytest.fixture
+def pickup(client, world, auth, monkeypatch):
+    """Aunt Ana may pick c1 up any day from PICKUP_DAY on."""
+    monkeypatch.setattr(pickups, "local_today", lambda: PICKUP_DAY)
+    r = client.put(f"/pickup-authorizations/{uuid.uuid4()}", headers=auth(world.p1), json=dict(
+        child_id=str(world.c1.id), kind="RECURRING", weekdays=[1, 2, 3, 4, 5, 6, 7],
+        authorized_person_name="Tía Ana", relationship="Tía", phone="5511112222"))
+    assert r.status_code == 201, r.text
+    return r.json()["id"]
+
+
+def released_to(pickup_id, photo=None):
+    return {**CHECK_OUT, "picked_up_by_name": "Tía Ana", "pickup_authorization_id": pickup_id,
+            "id_photo_file_id": str(photo.id) if photo else None}
+
+
+def test_a_release_to_an_authorized_person_records_who_and_their_id(client, db, world, auth, make_file, pickup):
+    h, day = auth(world.d1), PICKUP_DAY.isoformat()
+    id_photo = make_file(world.d1, FilePurpose.PICKUP_ID_PHOTO, child=world.c1)
+    r = put_log(client, h, world.c1, day=day, check_out=released_to(pickup))
+    assert r.status_code == 422 and "photo" in r.json()["detail"]
+    r = put_log(client, h, world.c1, day=day, check_out=released_to(pickup, id_photo))
+    assert r.status_code == 201, r.text
+    assert r.json()["check_out"]["pickup_authorization_id"] == pickup
+    assert r.json()["check_out"]["id_photo_file_id"] == str(id_photo.id)
+    assert client.get(f"/files/{id_photo.id}", headers=auth(world.p1)).status_code == 200   # the parent sees it
+    assert client.get(f"/files/{id_photo.id}", headers=auth(world.p2)).status_code == 404
+
+
+def test_the_authorization_and_photo_must_fit_the_log(client, world, auth, make_file, pickup):
+    h, day = auth(world.d1), PICKUP_DAY.isoformat()
+    other_purpose = make_file(world.d1, FilePurpose.ACTIVITY_IMAGE, child=world.c1)
+    other_child = make_file(world.d1, FilePurpose.PICKUP_ID_PHOTO, child=world.c2)
+    ok = make_file(world.d1, FilePurpose.PICKUP_ID_PHOTO, child=world.c1)
+    assert put_log(client, h, world.c1, day=day, check_out=released_to(pickup, other_purpose)).status_code == 422
+    assert put_log(client, h, world.c1, day=day, check_out=released_to(pickup, other_child)).status_code == 422
+    assert put_log(client, h, world.c2, day=day, check_out=released_to(pickup, ok)).status_code == 422  # c1's aunt
+    assert put_log(client, h, world.c1, day="2026-10-20", check_out=released_to(pickup, ok)).status_code == 422
+
+
+def test_undoing_the_check_out_releases_the_id_photo(client, db, world, auth, make_file, pickup):
+    h, lid, day = auth(world.d1), uuid.uuid4(), PICKUP_DAY.isoformat()
+    id_photo = make_file(world.d1, FilePurpose.PICKUP_ID_PHOTO, child=world.c1)
+    put_log(client, h, world.c1, lid, day=day, check_out=released_to(pickup, id_photo))
+    assert put_log(client, h, world.c1, lid, day=day, check_out=None).status_code == 200
+    db.expire_all()
+    assert db.get(File, id_photo.id).status == RecordStatus.DELETED
+
+
+def test_a_cancelled_authorization_still_records_what_happened(client, world, auth, make_file, pickup):
+    """An offline check-out can reach the server after the parent cancelled the authorization."""
+    assert client.delete(f"/pickup-authorizations/{pickup}", headers=auth(world.p1)).status_code == 204
+    id_photo = make_file(world.d1, FilePurpose.PICKUP_ID_PHOTO, child=world.c1)
+    r = put_log(client, auth(world.d1), world.c1, day=PICKUP_DAY.isoformat(), check_out=released_to(pickup, id_photo))
+    assert r.status_code == 201, r.text

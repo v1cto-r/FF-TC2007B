@@ -12,7 +12,8 @@ from app.auth.access import Access
 from app.chat.members import find_chat, open_chat
 from app.database.lifecycle import ensure_writable
 from app.database.models import (
-    ActivityImage, Child, ChildDocument, Estancia, File, FilePurpose, Message, RecordStatus, UploadState, User,
+    ActivityImage, CheckOut, Child, ChildDocument, Estancia, File, FilePurpose, Message, RecordStatus, UploadState,
+    User,
 )
 
 # purposes tied to a child -> roles that may upload them
@@ -20,6 +21,7 @@ CHILD_UPLOADERS = {
     FilePurpose.ACTIVITY_IMAGE: {"DOCENTE"},
     FilePurpose.CHILD_PHOTO: {"PADRE"},
     FilePurpose.CHILD_DOCUMENT: {"PADRE"},
+    FilePurpose.PICKUP_ID_PHOTO: {"DOCENTE"},
 }
 
 
@@ -115,6 +117,7 @@ def file_in_use(db: Session, file_id: uuid.UUID) -> bool:
         select(ActivityImage.id).where(ActivityImage.file_id == file_id, live(ActivityImage)),
         select(Message.id).where(Message.attachment_file_id == file_id, live(Message)),
         select(ChildDocument.id).where(ChildDocument.file_id == file_id, live(ChildDocument)),
+        select(CheckOut.id).where(CheckOut.id_photo_file_id == file_id, live(CheckOut)),
         select(User.id).where(User.avatar_file_id == file_id),
         select(Estancia.id).where(Estancia.logo_file_id == file_id),
         select(Child.id).where(Child.photo_file_id == file_id),

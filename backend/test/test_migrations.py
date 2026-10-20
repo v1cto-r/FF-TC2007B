@@ -13,7 +13,7 @@ from app.auth.permissions import DEFAULT_ROLE_ACTIONS
 from app.config import settings
 
 VERSIONS = Path(__file__).resolve().parent.parent / "migrations/versions"
-GRANTING_MIGRATIONS = ["0002_soft_delete_audit_files.py", "0005_peer_chats.py"]  # the ones that add role_actions
+GRANTING_MIGRATIONS = ["0002_soft_delete_audit_files.py", "0005_peer_chats.py", "0006_pickup_authorizations.py"]  # the ones that add role_actions
 
 
 @pytest.fixture
@@ -155,7 +155,7 @@ def test_pre_alembic_database_is_stamped_then_upgraded(scratch):
     with scratch.begin() as c:
         c.execute(text("DROP TABLE public.alembic_version"))
     starter._ensure_tables(scratch)
-    assert q(scratch, "SELECT version_num FROM public.alembic_version")[0][0] == "0005"
+    assert q(scratch, "SELECT version_num FROM public.alembic_version")[0][0] == "0006"
     assert q(scratch, "SELECT parent_id FROM public.children")[0][0] == LEGACY["padre"]  # data kept
     starter._ensure_tables(scratch)  # running again changes nothing
 

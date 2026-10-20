@@ -13,6 +13,7 @@ Code: `backend/app/storage/` and `backend/app/routers/files.py`. Other tables re
 | `USER_AVATAR` | the user, for **themself** | - | `images` | jpeg, png, webp | `PATCH /users/me` |
 | `ESTANCIA_LOGO` | the estancia's **ADMIN** | the estancia | `estancias` | jpeg, png, webp | `PUT /estancias/{id}` (`logo_file_id`) |
 | `CHILD_DOCUMENT` | the child's **PADRE** | the child | `files` | pdf, docx, jpeg, png, webp (a scan) | `PUT /documents/{id}` |
+| `PICKUP_ID_PHOTO` | the **DOCENTE** of the child's salon | the child | `images` | jpeg, png, webp | `PUT /daily-logs/{id}` (`check_out.id_photo_file_id`) |
 
 Limits: images 5 MB, pdf / docx 10 MB (`policy.yml`; defaults from `STORAGE_MAX_IMAGE_BYTES` / `STORAGE_MAX_FILE_BYTES`).
 Nothing else is accepted: no gif, svg, html, zip or executables.

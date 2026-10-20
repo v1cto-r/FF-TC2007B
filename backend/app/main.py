@@ -19,7 +19,7 @@ from app.rate_limit import rate_limit
 from app.routers import (
     auth as auth_router, children as children_router, daily_logs as daily_logs_router,
     chat_ws as chat_ws_router, devices as devices_router, estancias as estancias_router, files as files_router, messages as messages_router,
-    notices as notices_router, salones as salones_router, users as users_router,
+    notices as notices_router, pickups as pickups_router, salones as salones_router, users as users_router,
 )
 from app.storage import StorageService
 from app.storage.policy import load_policy
@@ -86,7 +86,7 @@ async def integrity_error(request: Request, exc: IntegrityError):
 
 
 ROUTERS = (auth_router, users_router, estancias_router, salones_router, children_router, daily_logs_router,
-           notices_router, messages_router, files_router, chat_ws_router, devices_router)
+           notices_router, messages_router, files_router, chat_ws_router, devices_router, pickups_router)
 for r in ROUTERS:
     app.include_router(r.router)
 

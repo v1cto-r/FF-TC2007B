@@ -83,6 +83,7 @@ def test_docente_uploads_an_activity_photo_end_to_end(client, db, s3, world, aut
     ("p1", "CHILD_DOCUMENT", "application/pdf", PDF),
     ("p1", "CHILD_DOCUMENT", DOCX, ZIP),
     ("p1", "CHILD_DOCUMENT", "image/jpeg", JPEG),         # a scan or a photo of a paper
+    ("d1", "PICKUP_ID_PHOTO", "image/jpeg", JPEG),
 ])
 def test_each_purpose_accepts_its_types(client, s3, world, auth, who, purpose, content_type, data):
     f = upload(client, s3, auth(getattr(world, who)), purpose, world.c1, data, content_type)
@@ -161,6 +162,8 @@ def test_every_type_is_checked_against_its_magic_bytes(client, s3, world, auth, 
     ("admin1", "ESTANCIA_LOGO", "e1", 201), ("admin1", "ESTANCIA_LOGO", "e2", 404),
     ("admin2", "ESTANCIA_LOGO", "e1", 404), ("org", "ESTANCIA_LOGO", "e1", 403),
     ("d1", "ESTANCIA_LOGO", "e1", 403), ("p1", "ESTANCIA_LOGO", "e1", 403),
+    ("d1", "PICKUP_ID_PHOTO", "c1", 201), ("d2", "PICKUP_ID_PHOTO", "c1", 404),   # the teacher at check-out
+    ("p1", "PICKUP_ID_PHOTO", "c1", 403), ("admin1", "PICKUP_ID_PHOTO", "c1", 403),
 ])
 def test_upload_permissions(client, world, auth, who, purpose, target, expected):
     content_type = "application/pdf" if purpose == "CHILD_DOCUMENT" else "image/jpeg"

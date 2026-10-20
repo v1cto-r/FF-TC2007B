@@ -13,3 +13,4 @@ alembic
 firebase-admin
 prometheus-client
 prometheus-fastapi-instrumentator
+tzdata

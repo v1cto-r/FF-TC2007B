@@ -82,14 +82,15 @@ Default grants:
 | message | read, write | read, write, delete | read, write | read, write, delete |
 | file | all | all | all | all |
 | document | read | read | read | all |
+| pickup | read | read | read | all (own children) |
 
 Rules in code that no grant can change:
 
 - `ORG` creates `ADMIN`s and estancias; `ADMIN` creates `DOCENTE`s and `PADRE`s, who join the admin's estancia. An `ADMIN` only manages the people of its own estancia (`can_manage_user`).
-- Only the `PADRE` of a child sets the child's photo and manages their documents.
+- Only the `PADRE` of a child sets the child's photo and manages their documents and pickup authorizations.
 - Only the people of a chat send in it ([chat.md](chat.md): a child's PADRE / DOCENTE / ADMIN, a DOCENTE and their ADMIN, an ADMIN and ORG). ORG reads every chat but only writes in ADMIN ones. Sending goes over the [chat socket](chat.md), which authenticates with the session token and re-checks access on every message; nobody edits messages.
 - Only the child's `PADRE` or the estancia's `ADMIN` deletes messages, and only in a child's chat (any message in it). DOCENTE ↔ ADMIN and ADMIN ↔ ORG messages are never deleted.
-- Only a `DOCENTE` uploads activity photos; only an `ADMIN` uploads the estancia logo and posts to a whole estancia.
+- Only a `DOCENTE` uploads activity photos and the ID photo of whoever picks a child up; only an `ADMIN` uploads the estancia logo and posts to a whole estancia.
 - Archiving or deleting a user blocks their login and refresh immediately and revokes their refresh tokens. Their current session token still works until it expires (5 minutes, the stateless-token tradeoff below).
 
 ### Creating users and first login

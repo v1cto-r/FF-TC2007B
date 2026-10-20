@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     # Port of the Prometheus /metrics server, separate from the API port so it is never public. Unset = not served
     metrics_port: int | None = None
 
+    # Where the estancias are: decides what "today" and "this week" mean for pickup authorizations
+    local_timezone: str = "America/Mexico_City"
+
     # Created on start if there is no ORG user yet. Must be changed on first login.
     default_org_email: str = "admin"
     default_org_password: str = "admin"

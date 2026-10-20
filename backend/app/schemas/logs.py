@@ -28,6 +28,7 @@ class StayIn(BaseModel):
     feeding_breakfast: Amount
     feeding_snack: Amount
     feeding_lunch: Amount
+    feeding_afternoon_snack: Amount | None = None
     feeding_notes: OptText = None
     slept: bool
     nap_minutes: int | None = Field(default=None, ge=0, le=1440)
@@ -60,6 +61,9 @@ class CheckOutIn(BaseModel):
     notes: OptText = None
     picked_up_by_name: Name
     released_by_staff_name: Name
+    # A pickup by someone the parent authorized; then id_photo_file_id (PICKUP_ID_PHOTO) is required
+    pickup_authorization_id: uuid.UUID | None = None
+    id_photo_file_id: uuid.UUID | None = None
 
 
 class CheckInOut(CheckInIn, RecordOut):
@@ -92,7 +96,8 @@ class ActivityOut(RecordOut):
 
 
 class DailyLogIn(BaseModel):
-    """A part that is left out (or null) is not touched; a part that is sent is created or replaced."""
+    """A part that is left out is not touched, a part that is sent is created or replaced, and a part sent
+    as an explicit null is removed (a check-out that was undone)."""
     child_id: uuid.UUID
     date: date
     caregiver_name: Name
