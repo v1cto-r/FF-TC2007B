@@ -22,5 +22,8 @@ data class ActivityRecordEntity(
     val dailyLogId: String,
     val name: String,
     val images: List<String>,
-    val synced: Boolean
+    val synced: Boolean,
+    // Same meaning as in DailyLogEntity
+    val deleted: Boolean = false,
+    val modifiedAt: Long = 0
 )

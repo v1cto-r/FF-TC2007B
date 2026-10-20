@@ -13,10 +13,10 @@ interface NetworkMonitor {
 }
 
 /**
- * There is no API integration or real connectivity detection yet: this
- * always reports offline, so every write flow falls back to Room. Once the
- * sync worker is implemented, this is the class that gets replaced (or made
- * dynamic) without touching a single repository.
+ * There is no real connectivity detection yet: this always reports offline,
+ * so the repositories that still use it (children, notices) write to Room.
+ * Daily logs don't use it: they always go to Room and DailyLogSyncWorker
+ * uploads them.
  */
 @Singleton
 class AlwaysOfflineNetworkMonitor @Inject constructor() : NetworkMonitor {

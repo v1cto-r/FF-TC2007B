@@ -9,12 +9,13 @@ import mx.tec.sonrisas.data.local.dao.ActivityRecordDao
 import mx.tec.sonrisas.data.local.dao.DailyLogDao
 import mx.tec.sonrisas.data.local.toDomain
 import mx.tec.sonrisas.data.local.toEntity
-import mx.tec.sonrisas.data.remote.DailyLogRemoteDataSource
+import mx.tec.sonrisas.data.sync.SyncScheduler
 import mx.tec.sonrisas.domain.ActivityRecord
 import mx.tec.sonrisas.domain.DailyLog
 
 /**
- * Same as ChildRepository: decides Room vs. API
+ * Room is the source of truth: every write lands there first and is marked pending, then
+ * DailyLogSyncWorker uploads it as soon as there is a connection.
  */
 interface DailyLogRepository {
     fun observeByChild(childId: String): Flow<List<DailyLog>>
@@ -32,8 +33,7 @@ interface DailyLogRepository {
 class DailyLogRepositoryImpl @Inject constructor(
     private val dailyLogDao: DailyLogDao,
     private val activityDao: ActivityRecordDao,
-    private val remote: DailyLogRemoteDataSource,
-    private val networkMonitor: NetworkMonitor
+    private val syncScheduler: SyncScheduler
 ) : DailyLogRepository {
 
     override fun observeByChild(childId: String): Flow<List<DailyLog>> =
@@ -46,37 +46,25 @@ class DailyLogRepositoryImpl @Inject constructor(
         dailyLogDao.observeByChildAndDate(childId, LocalDate.now()).map { row -> row?.toDomain() }
 
     override suspend fun save(dailyLog: DailyLog) {
-        if (networkMonitor.isOnline()) {
-            remote.saveDailyLog(dailyLog)
-        } else {
-            dailyLogDao.save(dailyLog.toEntity())
-        }
+        dailyLogDao.save(dailyLog.toEntity().copy(synced = false, modifiedAt = System.currentTimeMillis()))
+        syncScheduler.requestSync()
     }
 
     override suspend fun delete(dailyLog: DailyLog) {
-        if (networkMonitor.isOnline()) {
-            remote.deleteDailyLog(dailyLog)
-        } else {
-            dailyLogDao.delete(dailyLog.toEntity())
-        }
+        dailyLogDao.markDeleted(dailyLog.id, System.currentTimeMillis())
+        syncScheduler.requestSync()
     }
 
     override fun observeActivities(dailyLogId: String): Flow<List<ActivityRecord>> =
         activityDao.observeByDailyLog(dailyLogId).map { rows -> rows.map { it.toDomain() } }
 
     override suspend fun saveActivity(activity: ActivityRecord) {
-        if (networkMonitor.isOnline()) {
-            remote.saveActivity(activity)
-        } else {
-            activityDao.save(activity.toEntity())
-        }
+        activityDao.save(activity.toEntity().copy(synced = false, modifiedAt = System.currentTimeMillis()))
+        syncScheduler.requestSync()
     }
 
     override suspend fun deleteActivity(activity: ActivityRecord) {
-        if (networkMonitor.isOnline()) {
-            remote.deleteActivity(activity)
-        } else {
-            activityDao.delete(activity.toEntity())
-        }
+        activityDao.markDeleted(activity.id, System.currentTimeMillis())
+        syncScheduler.requestSync()
     }
 }

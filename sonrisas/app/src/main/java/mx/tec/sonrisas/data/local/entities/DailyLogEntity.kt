@@ -18,7 +18,11 @@ data class DailyLogEntity(
     @Embedded(prefix = "check_in_") val checkIn: CheckInEmbed,
     @Embedded(prefix = "stay_") val stay: StayEmbed?,
     @Embedded(prefix = "check_out_") val checkOut: CheckOutEmbed?,
-    val synced: Boolean
+    val synced: Boolean,
+    // Deleted locally, waiting for the server to confirm before the row is removed
+    val deleted: Boolean = false,
+    // Time of the last local change; lets the sync worker tell if the row changed during an upload
+    val modifiedAt: Long = 0
 )
 
 data class InjuryEmbed(
