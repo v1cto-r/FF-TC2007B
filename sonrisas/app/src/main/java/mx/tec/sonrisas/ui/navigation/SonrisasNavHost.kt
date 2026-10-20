@@ -52,10 +52,17 @@ fun SonrisasNavHost(
         else -> Route.INICIO_PADRE
     }
 
-    // A tapped push notification opens that child's chat: the teacher's or the parent's, depending on who is logged in.
+    // A tapped push notification carries a chat id. A teacher whose own id it is gets the admin chat,
+    // otherwise it is a child chat; an admin only receives teacher chats (chat id = teacher id).
     LaunchedEffect(chatPendiente) {
         chatPendiente?.let {
-            nav.navigate(if (sesion.rol == Rol.MAESTRA) Route.chatMaestra(it) else Route.chatPadre(it))
+            nav.navigate(
+                when (sesion.rol) {
+                    Rol.MAESTRA -> if (it == sesion.id) Route.CHAT_ADMIN_MAESTRA else Route.chatMaestra(it)
+                    Rol.ADMIN -> Route.adminChatTeacher(it)
+                    else -> Route.chatPadre(it)
+                }
+            )
             onChatAbierto()
         }
     }
@@ -65,7 +72,7 @@ fun SonrisasNavHost(
         startDestination = destinoInicial
     ) {
         /* --- ADMIN odo vive en AdminNavGraph ---*/
-        adminGraph(nav = nav, onSalir = onSalir)
+        adminGraph(nav = nav, miId = sesion.id, onSalir = onSalir)
 
         // --- MAESTRA ---
         composable(Route.INICIO_MAESTRA) {
@@ -144,6 +151,7 @@ fun SonrisasNavHost(
 
             ChatListScreen(
                 estado = viewModel.estadoConversaciones,
+                onChatDireccion = { nav.navigate(Route.CHAT_ADMIN_MAESTRA) },
                 onConversacionClick = { child -> nav.navigate(Route.chatMaestra(child.id)) },
                 onReintentar = { viewModel.cargarConversaciones() },
                 onTab = { indice ->
@@ -151,6 +159,32 @@ fun SonrisasNavHost(
                         0 -> nav.navigate(Route.INICIO_MAESTRA) { launchSingleTop = true }
                         1 -> nav.navigate(Route.NINOS) { launchSingleTop = true }
                         2 -> {}
+                    }
+                }
+            )
+        }
+
+        composable(Route.CHAT_ADMIN_MAESTRA) {
+            val viewModel: MaestraViewModel = hiltViewModel()
+            val miId = sesion.id
+            LaunchedEffect(miId) { viewModel.cargarMensajesDireccion() }
+
+            // Teachers can't delete; photos and the aviso toggle come with ChatScreen.
+            ChatMaestraScreen(
+                estado = viewModel.estadoMensajes,
+                currentUserId = miId,
+                titulo = "Dirección",
+                subtitulo = "Administración de la estancia",
+                onAtras = { nav.popBackStack() },
+                onEnviar = { texto, esAviso -> viewModel.enviarMensaje(miId, texto, esAviso) },
+                onEnviarFoto = { uri -> viewModel.enviarFoto(miId, uri) },
+                onEliminar = null,
+                onReintentar = { viewModel.cargarMensajesDireccion() },
+                onTab = { indice ->
+                    when (indice) {
+                        0 -> nav.navigate(Route.INICIO_MAESTRA) { launchSingleTop = true }
+                        1 -> nav.navigate(Route.NINOS) { launchSingleTop = true }
+                        2 -> nav.navigate(Route.CHAT_LISTA_MAESTRA) { launchSingleTop = true }
                     }
                 }
             )

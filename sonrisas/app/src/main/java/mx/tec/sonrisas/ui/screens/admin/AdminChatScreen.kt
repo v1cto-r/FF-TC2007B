@@ -15,10 +15,8 @@ fun AdminChatScreen(
     subtitulo: String? = null,
     modifier: Modifier = Modifier,
     onAtras: () -> Unit = {},
-    onEnviar: (String) -> Unit = {},
+    onEnviar: (texto: String, esAviso: Boolean) -> Unit = { _, _ -> },
     onEnviarFoto: (Uri) -> Unit = {},
-    onToggleImportante: (Message) -> Unit = {},
-    onEliminar: (Message) -> Unit = {},
     onReintentar: () -> Unit = {}
 ) {
     ChatScreen(
@@ -32,8 +30,8 @@ fun AdminChatScreen(
         onAtras = onAtras,
         onEnviar = onEnviar,
         onEnviarFoto = onEnviarFoto,
-        onToggleImportante = onToggleImportante,
-        onEliminar = onEliminar,
+        // Messages in teacher↔admin chats can never be deleted.
+        onEliminar = null,
         onReintentar = onReintentar
     )
 }

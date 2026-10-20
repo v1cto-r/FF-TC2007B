@@ -67,10 +67,8 @@ fun NavGraphBuilder.orgGraph(
         OrgChatScreen(
             estado = vm.estadoMensajes,
             currentUserId = "org",
-            onEnviar = { texto -> vm.enviarMensaje(chatId, texto) },
+            onEnviar = { texto, esAviso -> vm.enviarMensaje(chatId, texto, esAviso) },
             onEnviarFoto = { uri -> vm.enviarFoto(chatId, uri, context) },
-            onToggleImportante = { msg -> vm.toggleImportant(msg.id) },
-            onEliminar = { msg -> vm.eliminarMensaje(msg) },
             onReintentar = { vm.cargarMensajes(chatId) },
             onTab = { indice -> nav.irATabOrg(indice) }
         )

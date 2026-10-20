@@ -10,6 +10,9 @@ object Route {
 
     const val CHAT_LISTA_MAESTRA = "chat_lista_maestra"
 
+    // The teacher's chat with the estancia admin (its chat id is the teacher's own user id).
+    const val CHAT_ADMIN_MAESTRA = "maestra_chat_admin"
+
     const val CHAT_MAESTRA = "chat_maestra/{ninoId}"
     fun chatMaestra(ninoId: String): String = "chat_maestra/${Uri.encode(ninoId)}"
 

@@ -126,11 +126,10 @@ class AdminViewModel @Inject constructor(
         viewModelScope.launch {
             estadoMensajes = UiState.Cargando
             try {
-                val yo = sesionRepository.get().sesion.first()?.id.orEmpty()
                 launch {
                     try { chatRepository.refresh(chatId) } catch (e: Exception) {}
                 }
-                chatRepository.observeMessagesForTeacher(chatId, yo).collect { mensajes ->
+                chatRepository.observeMessages(chatId).collect { mensajes ->
                     estadoMensajes = if (mensajes.isEmpty()) UiState.Vacio else UiState.Exito(mensajes)
                 }
             } catch (e: Exception) {
@@ -140,7 +139,7 @@ class AdminViewModel @Inject constructor(
         }
     }
 
-    fun enviarMensaje(chatId: String, texto: String) {
+    fun enviarMensaje(chatId: String, texto: String, esAviso: Boolean = false) {
         viewModelScope.launch {
             try {
                 val autor = sesionRepository.get().sesion.first()?.id ?: "admin"
@@ -150,7 +149,7 @@ class AdminViewModel @Inject constructor(
                         authorId = autor,
                         content = texto,
                         sentAt = LocalDateTime.now(),
-                        isAviso = false
+                        isAviso = esAviso
                     )
                 )
             } catch (e: Exception) {
@@ -165,26 +164,6 @@ class AdminViewModel @Inject constructor(
             val autor = sesionRepository.get().sesion.first()?.id.orEmpty()
             try {
                 chatRepository.sendPhoto(chatId, autor, foto.first, foto.second)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    fun toggleImportant(messageId: String) {
-        viewModelScope.launch {
-            try {
-                chatRepository.toggleImportant(messageId)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    fun eliminarMensaje(message: Message) {
-        viewModelScope.launch {
-            try {
-                chatRepository.deleteMessage(message.id)
             } catch (e: Exception) {
                 e.printStackTrace()
             }

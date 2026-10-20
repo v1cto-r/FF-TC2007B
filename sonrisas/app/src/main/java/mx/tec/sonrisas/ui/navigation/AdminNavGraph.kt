@@ -39,6 +39,7 @@ private fun NavBackStackEntry.adminViewModel(nav: NavHostController): AdminViewM
 
 fun NavGraphBuilder.adminGraph(
     nav: NavHostController,
+    miId: String,
     onSalir: () -> Unit
 ) {
     // --- Pestañas ---
@@ -112,14 +113,12 @@ fun NavGraphBuilder.adminGraph(
         LaunchedEffect(Unit) { vm.cargarMensajes(chatId) }
         AdminChatScreen(
             estado = vm.estadoMensajes,
-            currentUserId = "admin",
+            currentUserId = miId,
             titulo = "Chat con Organización",
             subtitulo = "Comunicación institucional",
             onAtras = { nav.popBackStack() },
-            onEnviar = { texto -> vm.enviarMensaje(chatId, texto) },
+            onEnviar = { texto, esAviso -> vm.enviarMensaje(chatId, texto, esAviso) },
             onEnviarFoto = { uri -> vm.enviarFoto(chatId, uri, context) },
-            onToggleImportante = { msg -> vm.toggleImportant(msg.id) },
-            onEliminar = { msg -> vm.eliminarMensaje(msg) },
             onReintentar = { vm.cargarMensajes(chatId) }
         )
     }
@@ -142,21 +141,19 @@ fun NavGraphBuilder.adminGraph(
         val teacherId = entry.arguments?.getString("teacherId").orEmpty()
         val vm = entry.adminViewModel(nav)
         val context = LocalContext.current
-        val chatId = "admin_teacher_$teacherId"
-        LaunchedEffect(teacherId) { vm.cargarMensajes(chatId) }
+        // The chat id of a teacher↔admin chat is the teacher's user id.
+        LaunchedEffect(teacherId) { vm.cargarMensajes(teacherId) }
         val maestroNombre = (vm.estado as? UiState.Exito)?.datos?.maestros?.firstOrNull { it.id == teacherId }?.nombre ?: "Profesor/a"
 
         AdminChatScreen(
             estado = vm.estadoMensajes,
-            currentUserId = "admin",
+            currentUserId = miId,
             titulo = maestroNombre,
             subtitulo = "Chat con docente",
             onAtras = { nav.popBackStack() },
-            onEnviar = { texto -> vm.enviarMensaje(chatId, texto) },
-            onEnviarFoto = { uri -> vm.enviarFoto(chatId, uri, context) },
-            onToggleImportante = { msg -> vm.toggleImportant(msg.id) },
-            onEliminar = { msg -> vm.eliminarMensaje(msg) },
-            onReintentar = { vm.cargarMensajes(chatId) }
+            onEnviar = { texto, esAviso -> vm.enviarMensaje(teacherId, texto, esAviso) },
+            onEnviarFoto = { uri -> vm.enviarFoto(teacherId, uri, context) },
+            onReintentar = { vm.cargarMensajes(teacherId) }
         )
     }
 

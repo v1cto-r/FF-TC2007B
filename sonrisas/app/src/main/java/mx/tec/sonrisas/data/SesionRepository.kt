@@ -25,7 +25,8 @@ class SesionRepository @Inject constructor(
     private val socket: ChatSocket,
     private val messageDao: MessageDao,
     private val childDao: ChildDao,
-    private val push: PushRepository
+    private val push: PushRepository,
+    private val admin: AdminRepository
 ) {
     private val _sesion = MutableStateFlow<Sesion?>(null)
     val sesion: StateFlow<Sesion?> = _sesion.asStateFlow()
@@ -59,6 +60,7 @@ class SesionRepository @Inject constructor(
 
     suspend fun salir() {
         socket.disconnect()
+        socket.peerChatIds = { emptyList() }
         _sesion.value = null
         push.unregister()
         auth.logout()
@@ -85,6 +87,11 @@ class SesionRepository @Inject constructor(
                     childRepository.refreshFromServer(parentName = if (rol == Rol.PADRE) me.fullName else "")
                 }
             } catch (e: IOException) {
+            }
+            socket.peerChatIds = when (rol) {
+                Rol.MAESTRA -> { { listOf(me.sub) } }
+                Rol.ADMIN -> { { admin.teacherIds() } }
+                else -> { { emptyList() } }
             }
             socket.connect()
             push.register()

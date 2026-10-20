@@ -54,6 +54,13 @@ class AdminRepository @Inject constructor(
         )
     }
 
+    /** Ids of the estancia's teachers: each one is also the id of that teacher's chat with the admin. */
+    suspend fun teacherIds(): List<String> = auth.authed { token ->
+        val me = api.get<MeDto>("/auth/me", token)
+        val estancia = me.estanciaId ?: return@authed emptyList()
+        api.get<List<UserDto>>("/users?role=${RolApi.DOCENTE}&estancia_id=$estancia", token).map { it.id }
+    }
+
     /** POST /users. Devuelve la contraseña temporal, que la API solo muestra en esta respuesta. */
     suspend fun crearUsuario(correo: String, nombreCompleto: String, rol: String): UserCreatedDto =
         auth.authed {

@@ -13,10 +13,8 @@ fun OrgChatScreen(
     currentUserId: String,
     modifier: Modifier = Modifier,
     onAtras: (() -> Unit)? = null,
-    onEnviar: (String) -> Unit = {},
+    onEnviar: (texto: String, esAviso: Boolean) -> Unit = { _, _ -> },
     onEnviarFoto: (Uri) -> Unit = {},
-    onToggleImportante: (Message) -> Unit = {},
-    onEliminar: (Message) -> Unit = {},
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
@@ -33,8 +31,7 @@ fun OrgChatScreen(
         onAtras = onAtras,
         onEnviar = onEnviar,
         onEnviarFoto = onEnviarFoto,
-        onToggleImportante = onToggleImportante,
-        onEliminar = onEliminar,
+        onEliminar = null,
         onReintentar = onReintentar
     )
 }
