@@ -130,29 +130,64 @@ fun PerfilNinoScreen(
                                 Spacer(Modifier.height(14.dp))
                                 Box(Modifier.fillMaxWidth().height(1.dp).background(BordeCampo))
                                 Spacer(Modifier.height(10.dp))
-                                Row(
+
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text(
-                                            text = "Adulto de ${nino.fullName.substringBefore(" ")}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = TextoGris
-                                        )
-                                        Text(
-                                            text = nino.parentName,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = TextoOscuro
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Column(Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Padre / Tutor Registrado",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = TextoGris
+                                            )
+                                            Text(
+                                                text = nino.parentName,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = TextoOscuro
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = Icons.Outlined.Phone,
+                                            contentDescription = "Llamar",
+                                            tint = Coral,
+                                            modifier = Modifier.size(20.dp)
                                         )
                                     }
-                                    Icon(
-                                        imageVector = Icons.Outlined.Phone,
-                                        contentDescription = "Llamar",
-                                        tint = Coral,
-                                        modifier = Modifier.size(20.dp)
-                                    )
+
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Column(Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Cumpleaños / Fecha de Nacimiento",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = TextoGris
+                                            )
+                                            Text(
+                                                text = nino.birthdate,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = TextoOscuro
+                                            )
+                                        }
+                                    }
+
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Column(Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Alergias o Cuidados Especiales",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = TextoGris
+                                            )
+                                            Text(
+                                                text = nino.allergies ?: "Sin alergias registradas",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = TextoOscuro
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }

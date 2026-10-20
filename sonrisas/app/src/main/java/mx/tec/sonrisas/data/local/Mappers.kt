@@ -1,5 +1,6 @@
 package mx.tec.sonrisas.data.local
 
+import mx.tec.sonrisas.data.local.dao.MessageDao
 import mx.tec.sonrisas.data.local.entities.ActivityRecordEntity
 import mx.tec.sonrisas.data.local.entities.CheckInEmbed
 import mx.tec.sonrisas.data.local.entities.CheckOutEmbed
@@ -35,7 +36,13 @@ fun ChildEntity.toDomain() = Child(
     fullName = fullName,
     daycareCenter = daycareCenter,
     group = GroupEnum.valueOf(group),
-    parentName = parentName
+    parentName = parentName,
+    birthdate = birthdate,
+    gender = gender,
+    allergies = allergies,
+    bloodType = bloodType,
+    emergencyContactPhone = emergencyContactPhone,
+    profileCompletedAt = profileCompletedAt
 )
 
 fun Child.toEntity() = ChildEntity(
@@ -43,7 +50,13 @@ fun Child.toEntity() = ChildEntity(
     fullName = fullName,
     daycareCenter = daycareCenter,
     group = group.name,
-    parentName = parentName
+    parentName = parentName,
+    birthdate = birthdate,
+    gender = gender,
+    allergies = allergies,
+    bloodType = bloodType,
+    emergencyContactPhone = emergencyContactPhone,
+    profileCompletedAt = profileCompletedAt
 )
 
 // --- Injury / Feeding ---
@@ -55,13 +68,15 @@ private fun Injury.toEmbed() = InjuryEmbed(bodyPart = bodyPart, description = de
 private fun FeedingEmbed.toDomain() = Feeding(
     breakfast = AmountEnum.valueOf(breakfast),
     snack = AmountEnum.valueOf(snack),
-    lunch = AmountEnum.valueOf(lunch)
+    lunch = AmountEnum.valueOf(lunch),
+    afternoonSnack = AmountEnum.valueOf(afternoonSnack)
 )
 
 private fun Feeding.toEmbed() = FeedingEmbed(
     breakfast = breakfast.name,
     snack = snack.name,
-    lunch = lunch.name
+    lunch = lunch.name,
+    afternoonSnack = afternoonSnack.name
 )
 
 // --- CheckInRecord / Stay / CheckOutRecord ---
@@ -214,7 +229,7 @@ fun NoticeEntity.toDomain() = Notice(id = id, name = name, description = descrip
 
 fun Notice.toEntity() = NoticeEntity(id = id, name = name, description = description, date = date)
 
-// --- Message ---
+/// --- Message ---
 
 fun MessageEntity.toDomain() = Message(
     id = id,
@@ -224,7 +239,12 @@ fun MessageEntity.toDomain() = Message(
     sentAt = sentAt,
     sent = sent,
     synced = synced,
-    isAviso = isAviso
+    isAviso = isAviso,
+    deleted = deleted,
+    deletePending = deletePending,
+    createdAtMs = createdAtMs,
+    attachmentFileId = attachmentFileId,
+    sendError = sendError
 )
 
 fun Message.toEntity() = MessageEntity(
@@ -235,5 +255,45 @@ fun Message.toEntity() = MessageEntity(
     sentAt = sentAt,
     sent = sent,
     synced = synced,
-    isAviso = isAviso
+    isAviso = isAviso,
+    deleted = deleted,
+    deletePending = deletePending,
+    createdAtMs = createdAtMs,
+    attachmentFileId = attachmentFileId,
+    sendError = sendError
 )
+
+// --- PickupAuthorization ---
+
+fun mx.tec.sonrisas.data.local.entities.PickupAuthorizationEntity.toDomain() = mx.tec.sonrisas.domain.PickupAuthorization(
+    id = id,
+    childId = childId,
+    childName = childName,
+    date = date,
+    authorizedPersonName = authorizedPersonName,
+    relationship = relationship,
+    phone = phone,
+    identificationType = identificationType,
+    notes = notes,
+    registeredByParentName = registeredByParentName
+)
+
+fun mx.tec.sonrisas.domain.PickupAuthorization.toEntity() = mx.tec.sonrisas.data.local.entities.PickupAuthorizationEntity(
+    id = id,
+    childId = childId,
+    childName = childName,
+    date = date,
+    authorizedPersonName = authorizedPersonName,
+    relationship = relationship,
+    phone = phone,
+    identificationType = identificationType,
+    notes = notes,
+    registeredByParentName = registeredByParentName
+)
+
+suspend fun MessageDao.saveFromServer(messages: List<Message>) {
+    messages.forEach { incoming ->
+        val local = getById(incoming.id)
+        save(incoming.copy(deleted = local?.deleted ?: false, deletePending = local?.deletePending ?: false).toEntity())
+    }
+}

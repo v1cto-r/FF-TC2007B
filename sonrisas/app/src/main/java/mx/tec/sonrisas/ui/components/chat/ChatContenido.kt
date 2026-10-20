@@ -24,7 +24,9 @@ fun ChatContenido(
     textoVacio: String,
     onReintentar: () -> Unit,
     modifier: Modifier = Modifier,
-    avatarRes: Int? = null
+    avatarRes: Int? = null,
+    onToggleImportante: (Message) -> Unit = {},
+    onEliminar: ((Message) -> Unit)? = null
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when (estado) {
@@ -45,8 +47,9 @@ fun ChatContenido(
             is UiState.Exito -> {
                 val mensajes = estado.datos
                 val lista = rememberLazyListState()
+                val keyboardPadding = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
 
-                LaunchedEffect(mensajes.size) {
+                LaunchedEffect(mensajes.size, keyboardPadding) {
                     if (mensajes.isNotEmpty()) lista.animateScrollToItem(mensajes.lastIndex)
                 }
 
@@ -57,18 +60,13 @@ fun ChatContenido(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(mensajes) { mensaje ->
-                        if (mensaje.isAviso) {
-                            AvisoGeneral(
-                                texto = mensaje.content,
-                                hora = formatearHora(mensaje.sentAt)
-                            )
-                        } else {
-                            BurbujaChat(
-                                message = mensaje,
-                                esMio = mensaje.authorId == currentUserId,
-                                avatarRes = avatarRes
-                            )
-                        }
+                        BurbujaChat(
+                            message = mensaje,
+                            esMio = mensaje.authorId == currentUserId,
+                            avatarRes = avatarRes,
+                            onToggleImportante = onToggleImportante,
+                            onEliminar = onEliminar
+                        )
                     }
                 }
             }

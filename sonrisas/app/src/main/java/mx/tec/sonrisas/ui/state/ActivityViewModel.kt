@@ -27,6 +27,9 @@ class ActivityViewModel @Inject constructor(
     var estado by mutableStateOf<UiState<DailyLog?>>(UiState.Cargando)
         private set
 
+    val hayIngreso: Boolean
+        get() = (estado as? UiState.Exito)?.datos != null
+
     fun cargar(childId: String) {
         viewModelScope.launch {
             estado = UiState.Cargando
@@ -44,7 +47,7 @@ class ActivityViewModel @Inject constructor(
         viewModelScope.launch {
             val log = dailyLogRepository.observeToday(childId).first() ?: return@launch
             dailyLogRepository.saveActivity(ActivityRecord(dailyLogId = log.id, name = nombre))
-            val autor = sesionRepository.sesion.first()?.usuario ?: "maestra"
+            val autor = sesionRepository.sesion.first()?.id ?: "maestra"
             chatRepository.send(
                 Message(
                     chatId = childId,

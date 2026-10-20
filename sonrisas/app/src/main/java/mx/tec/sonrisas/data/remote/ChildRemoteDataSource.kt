@@ -1,16 +1,40 @@
 package mx.tec.sonrisas.data.remote
 
 import javax.inject.Inject
+import mx.tec.sonrisas.data.AuthRepository
 import mx.tec.sonrisas.domain.Child
+import mx.tec.sonrisas.domain.GroupEnum
 
 interface ChildRemoteDataSource {
+    suspend fun fetchAll(parentName: String): List<Child>
     suspend fun save(child: Child)
     suspend fun delete(child: Child)
+    suspend fun submitProfile(childId: String, birthDate: String, allergies: List<String>): ChildDto
 }
 
-// TODO: implement once the API exists. Never called today because
-// NetworkMonitor.isOnline() always returns false.
-class ChildRemoteDataSourceImpl @Inject constructor() : ChildRemoteDataSource {
+class ChildRemoteDataSourceImpl @Inject constructor(
+    private val api: ApiClient,
+    private val auth: AuthRepository
+) : ChildRemoteDataSource {
+    override suspend fun fetchAll(parentName: String): List<Child> =
+        auth.authed { api.get<List<ChildDto>>("/children", it) }.map { dto ->
+            Child(
+                id = dto.id,
+                fullName = dto.fullName,
+                daycareCenter = "Estancia Mariposa",
+                group = GroupEnum.P,
+                parentName = parentName,
+                birthdate = dto.birthDate ?: "Sin fecha registrada",
+                allergies = if (dto.allergies.isNotEmpty()) dto.allergies.joinToString(", ") else "Sin alergias registradas",
+                profileCompletedAt = dto.profileCompletedAt
+            )
+        }
+
+    override suspend fun submitProfile(childId: String, birthDate: String, allergies: List<String>): ChildDto {
+        val body = ChildProfilePatchBody(birthDate = birthDate, allergies = allergies)
+        return auth.authed { api.patch<ChildProfilePatchBody, ChildDto>("/children/$childId/profile", body, it) }
+    }
+
     override suspend fun save(child: Child): Unit = TODO("Pending: API integration")
     override suspend fun delete(child: Child): Unit = TODO("Pending: API integration")
 }

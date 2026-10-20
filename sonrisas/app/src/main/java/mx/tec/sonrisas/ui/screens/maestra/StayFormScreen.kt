@@ -55,6 +55,7 @@ fun StayFormScreen(
     var breakfast by remember(stayExistente) { mutableStateOf(stayExistente?.feeding?.breakfast ?: AmountEnum.NONE) }
     var snack by remember(stayExistente) { mutableStateOf(stayExistente?.feeding?.snack ?: AmountEnum.NONE) }
     var lunch by remember(stayExistente) { mutableStateOf(stayExistente?.feeding?.lunch ?: AmountEnum.NONE) }
+    var afternoonSnack by remember(stayExistente) { mutableStateOf(stayExistente?.feeding?.afternoonSnack ?: AmountEnum.NONE) }
     var feedingNotes by remember(stayExistente) { mutableStateOf(stayExistente?.feedingNotes ?: "") }
     var slept by remember(stayExistente) { mutableStateOf(stayExistente?.slept ?: false) }
     var napMinutes by remember(stayExistente) { mutableStateOf(stayExistente?.napMinutes ?: 0) }
@@ -110,6 +111,7 @@ fun StayFormScreen(
                 CampoOpciones("Desayuno", breakfast, AmountEnum.entries, { breakfast = it }, { it.etiqueta() })
                 CampoOpciones("Colación", snack, AmountEnum.entries, { snack = it }, { it.etiqueta() })
                 CampoOpciones("Comida", lunch, AmountEnum.entries, { lunch = it }, { it.etiqueta() })
+                CampoOpciones("Merienda", afternoonSnack, AmountEnum.entries, { afternoonSnack = it }, { it.etiqueta() })
                 CampoTexto("Observaciones de alimentación", feedingNotes, { feedingNotes = it })
 
                 Titulo("Descanso")
@@ -147,7 +149,7 @@ fun StayFormScreen(
                     onClick = {
                         onGuardar(
                             Stay(
-                                feeding = Feeding(breakfast, snack, lunch),
+                                feeding = Feeding(breakfast, snack, lunch, afternoonSnack),
                                 feedingNotes = feedingNotes.ifBlank { null },
                                 slept = slept,
                                 napMinutes = if (slept) napMinutes else null,

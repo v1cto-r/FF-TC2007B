@@ -21,6 +21,9 @@ class StayViewModel @Inject constructor(
     var estado by mutableStateOf<UiState<DailyLog?>>(UiState.Cargando)
         private set
 
+    val hayIngreso: Boolean
+        get() = (estado as? UiState.Exito)?.datos != null
+
     fun cargar(childId: String) {
         viewModelScope.launch {
             estado = UiState.Cargando

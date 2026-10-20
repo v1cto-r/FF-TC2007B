@@ -29,7 +29,8 @@ data class InjuryEmbed(
 data class FeedingEmbed(
     val breakfast: String,
     val snack: String,
-    val lunch: String
+    val lunch: String,
+    val afternoonSnack: String
 )
 
 data class CheckInEmbed(

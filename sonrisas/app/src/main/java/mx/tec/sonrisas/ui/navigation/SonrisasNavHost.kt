@@ -8,20 +8,29 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import mx.tec.sonrisas.domain.Child
+import mx.tec.sonrisas.domain.GroupEnum
 import mx.tec.sonrisas.domain.Rol
 import mx.tec.sonrisas.domain.Sesion
+import mx.tec.sonrisas.domain.WeeklySummary
 import mx.tec.sonrisas.ui.screens.maestra.ActivityFormScreen
+import mx.tec.sonrisas.ui.screens.maestra.BroadcastFormScreen
 import mx.tec.sonrisas.ui.screens.maestra.ChatListScreen
 import mx.tec.sonrisas.ui.screens.maestra.ChatMaestraScreen
 import mx.tec.sonrisas.ui.screens.maestra.CheckInFormScreen
 import mx.tec.sonrisas.ui.screens.maestra.CheckOutFormScreen
-import mx.tec.sonrisas.ui.screens.maestra.BroadcastFormScreen
 import mx.tec.sonrisas.ui.screens.maestra.InicioMaestraScreen
 import mx.tec.sonrisas.ui.screens.maestra.NinosScreen
 import mx.tec.sonrisas.ui.screens.maestra.PerfilNinoScreen
 import mx.tec.sonrisas.ui.screens.maestra.StayFormScreen
+import mx.tec.sonrisas.ui.screens.padre.CambiarContrasenaScreen
 import mx.tec.sonrisas.ui.screens.padre.ChatPadreScreen
 import mx.tec.sonrisas.ui.screens.padre.InicioPadreScreen
+import mx.tec.sonrisas.ui.screens.padre.OnboardingHijoScreen
+import mx.tec.sonrisas.ui.screens.padre.PadreAutorizarTerceroScreen
+import mx.tec.sonrisas.ui.screens.padre.PadreBitacoraScreen
+import mx.tec.sonrisas.ui.screens.padre.PadrePerfilNinoScreen
+import mx.tec.sonrisas.ui.screens.padre.PadreResumenSemanalScreen
 import mx.tec.sonrisas.ui.state.ActivityViewModel
 import mx.tec.sonrisas.ui.state.CheckInViewModel
 import mx.tec.sonrisas.ui.state.CheckOutViewModel
@@ -33,15 +42,30 @@ import mx.tec.sonrisas.ui.state.UiState
 @Composable
 fun SonrisasNavHost(
     sesion: Sesion,
+    chatPendiente: String?,
+    onChatAbierto: () -> Unit,
     onSalir: () -> Unit
 ) {
     val nav = rememberNavController()
-    val destinoInicial = if (sesion.rol == Rol.MAESTRA) Route.INICIO_MAESTRA else Route.INICIO_PADRE
+    val destinoInicial = when (sesion.rol) {
+        Rol.MAESTRA -> Route.INICIO_MAESTRA
+        Rol.PADRE -> Route.INICIO_PADRE
+        else -> Route.INICIO_PADRE
+    }
+
+    // A tapped push notification opens that child's chat: the teacher's or the parent's, depending on who is logged in.
+    LaunchedEffect(chatPendiente) {
+        chatPendiente?.let {
+            nav.navigate(if (sesion.rol == Rol.MAESTRA) Route.chatMaestra(it) else Route.chatPadre(it))
+            onChatAbierto()
+        }
+    }
 
     NavHost(
         navController = nav,
         startDestination = destinoInicial
     ) {
+        // --- MAESTRA ---
         composable(Route.INICIO_MAESTRA) {
             val viewModel: MaestraViewModel = hiltViewModel()
             LaunchedEffect(Unit) { viewModel.cargarInicio() }
@@ -70,31 +94,15 @@ fun SonrisasNavHost(
 
             NinosScreen(
                 estado = viewModel.estadoNinos,
-                onNinoClick = { child -> nav.navigate(Route.perfilNino(child.id)) },
+                onNinoClick = { nino ->
+                    nav.navigate(Route.perfilNino(nino.id))
+                },
                 onReintentar = { viewModel.cargarNinos() },
                 onTab = { indice ->
                     when (indice) {
                         0 -> nav.navigate(Route.INICIO_MAESTRA) { launchSingleTop = true }
                         1 -> {}
                         2 -> nav.navigate(Route.CHAT_LISTA_MAESTRA) { launchSingleTop = true }
-                    }
-                }
-            )
-        }
-
-        composable(Route.CHAT_LISTA_MAESTRA) {
-            val viewModel: MaestraViewModel = hiltViewModel()
-            LaunchedEffect(Unit) { viewModel.cargarConversaciones() }
-
-            ChatListScreen(
-                estado = viewModel.estadoConversaciones,
-                onConversacionClick = { child -> nav.navigate(Route.chatMaestra(child.id)) },
-                onReintentar = { viewModel.cargarConversaciones() },
-                onTab = { indice ->
-                    when (indice) {
-                        0 -> nav.navigate(Route.INICIO_MAESTRA) { launchSingleTop = true }
-                        1 -> nav.navigate(Route.NINOS) { launchSingleTop = true }
-                        2 -> {}
                     }
                 }
             )
@@ -122,7 +130,25 @@ fun SonrisasNavHost(
                     when (indice) {
                         0 -> nav.navigate(Route.INICIO_MAESTRA) { launchSingleTop = true }
                         1 -> nav.navigate(Route.NINOS) { launchSingleTop = true }
-                        2 -> nav.navigate(Route.chatMaestra(ninoId)) { launchSingleTop = true }
+                        2 -> nav.navigate(Route.CHAT_LISTA_MAESTRA) { launchSingleTop = true }
+                    }
+                }
+            )
+        }
+
+        composable(Route.CHAT_LISTA_MAESTRA) {
+            val viewModel: MaestraViewModel = hiltViewModel()
+            LaunchedEffect(Unit) { viewModel.cargarConversaciones() }
+
+            ChatListScreen(
+                estado = viewModel.estadoConversaciones,
+                onConversacionClick = { child -> nav.navigate(Route.chatMaestra(child.id)) },
+                onReintentar = { viewModel.cargarConversaciones() },
+                onTab = { indice ->
+                    when (indice) {
+                        0 -> nav.navigate(Route.INICIO_MAESTRA) { launchSingleTop = true }
+                        1 -> nav.navigate(Route.NINOS) { launchSingleTop = true }
+                        2 -> {}
                     }
                 }
             )
@@ -135,8 +161,8 @@ fun SonrisasNavHost(
             val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
             val viewModel: MaestraViewModel = hiltViewModel()
             LaunchedEffect(ninoId) {
-                viewModel.cargarMensajes(ninoId)
                 viewModel.cargarPerfilNino(ninoId)
+                viewModel.cargarMensajes(ninoId)
             }
             val nino = (viewModel.estadoPerfilNino as? UiState.Exito)?.datos?.child
 
@@ -147,6 +173,8 @@ fun SonrisasNavHost(
                 subtitulo = nino?.fullName,
                 onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(ninoId, texto) },
+                onEnviarFoto = { uri -> viewModel.enviarFoto(ninoId, uri) },
+                onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
                 onReintentar = { viewModel.cargarMensajes(ninoId) },
                 onTab = { indice ->
                     when (indice) {
@@ -165,13 +193,12 @@ fun SonrisasNavHost(
             val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
             val viewModel: CheckInViewModel = hiltViewModel()
             LaunchedEffect(ninoId) { viewModel.cargar(ninoId) }
-            val existente = (viewModel.estado as? UiState.Exito)?.datos?.checkIn
 
             CheckInFormScreen(
                 nombreMaestra = sesion.nombre,
+                checkInExistente = (viewModel.estado as? UiState.Exito)?.datos?.checkIn,
                 onAtras = { nav.popBackStack() },
-                onGuardar = { checkIn -> viewModel.guardar(ninoId, checkIn) { nav.popBackStack() } },
-                checkInExistente = existente
+                onGuardar = { checkIn -> viewModel.guardar(ninoId, checkIn) { nav.popBackStack() } }
             )
         }
 
@@ -182,11 +209,10 @@ fun SonrisasNavHost(
             val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
             val viewModel: StayViewModel = hiltViewModel()
             LaunchedEffect(ninoId) { viewModel.cargar(ninoId) }
-            val estadoActual = viewModel.estado
 
             StayFormScreen(
-                stayExistente = (estadoActual as? UiState.Exito)?.datos?.stay,
-                hayIngreso = estadoActual is UiState.Exito,
+                stayExistente = (viewModel.estado as? UiState.Exito)?.datos?.stay,
+                hayIngreso = viewModel.hayIngreso,
                 onAtras = { nav.popBackStack() },
                 onGuardar = { stay -> viewModel.guardar(ninoId, stay) { nav.popBackStack() } },
                 onIrACheckIn = { nav.navigate(Route.checkIn(ninoId)) { popUpTo(Route.STAY) { inclusive = true } } }
@@ -202,7 +228,7 @@ fun SonrisasNavHost(
             LaunchedEffect(ninoId) { viewModel.cargar(ninoId) }
 
             ActivityFormScreen(
-                hayIngreso = viewModel.estado is UiState.Exito,
+                hayIngreso = viewModel.hayIngreso,
                 onAtras = { nav.popBackStack() },
                 onGuardar = { nombre -> viewModel.guardar(ninoId, nombre) { nav.popBackStack() } },
                 onIrACheckIn = { nav.navigate(Route.checkIn(ninoId)) { popUpTo(Route.ACTIVITY) { inclusive = true } } }
@@ -219,6 +245,7 @@ fun SonrisasNavHost(
 
             CheckOutFormScreen(
                 nombreMaestra = sesion.nombre,
+                autorizacionHoy = viewModel.autorizacionHoy,
                 onAtras = { nav.popBackStack() },
                 onGuardar = { checkOut -> viewModel.guardar(ninoId, checkOut) { nav.popBackStack() } }
             )
@@ -246,23 +273,184 @@ fun SonrisasNavHost(
             )
         }
 
+        // --- PADRE ONBOARDING & RUTAS ---
+        composable(Route.CAMBIAR_CONTRASENA) {
+            val viewModel: PadreViewModel = hiltViewModel()
+            LaunchedEffect(Unit) { viewModel.cargarInicio() }
+
+            CambiarContrasenaScreen(
+                onGuardarContrasena = { _ ->
+                    val primerHijoId = viewModel.ninos.firstOrNull()?.id ?: ""
+                    if (primerHijoId.isNotBlank()) {
+                        nav.navigate(Route.onboardingHijo(primerHijoId)) {
+                            popUpTo(Route.CAMBIAR_CONTRASENA) { inclusive = true }
+                        }
+                    } else {
+                        nav.navigate(Route.INICIO_PADRE) {
+                            popUpTo(Route.CAMBIAR_CONTRASENA) { inclusive = true }
+                        }
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Route.ONBOARDING_HIJO,
+            arguments = listOf(navArgument("ninoId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
+            val viewModel: PadreViewModel = hiltViewModel()
+            LaunchedEffect(Unit) { viewModel.cargarInicio() }
+            val nino = viewModel.ninos.firstOrNull { it.id == ninoId } ?: Child(id = ninoId, fullName = "Alumno", daycareCenter = "Estancia Mariposa", group = GroupEnum.P, parentName = sesion.nombre)
+
+            OnboardingHijoScreen(
+                child = nino,
+                onGuardarInformacion = { birthdate, allergies, actaUri ->
+                    viewModel.actualizarDatosHijo(ninoId, birthdate, allergies, actaUri) {
+                        nav.navigate(Route.INICIO_PADRE) {
+                            popUpTo(Route.ONBOARDING_HIJO) { inclusive = true }
+                        }
+                    }
+                }
+            )
+        }
+
         composable(Route.INICIO_PADRE) {
             val viewModel: PadreViewModel = hiltViewModel()
             LaunchedEffect(Unit) { viewModel.cargarInicio() }
+
+            val hijoIncompleto = viewModel.ninos.firstOrNull { !it.profileCompleted }
+            LaunchedEffect(hijoIncompleto) {
+                if (hijoIncompleto != null) {
+                    nav.navigate(Route.onboardingHijo(hijoIncompleto.id)) {
+                        popUpTo(Route.INICIO_PADRE) { inclusive = true }
+                    }
+                }
+            }
 
             InicioPadreScreen(
                 estado = viewModel.estadoActividades,
                 nombrePadre = sesion.nombre,
                 ninos = viewModel.ninos.map { it.fullName.substringBefore(" ") },
                 ninoSeleccionado = viewModel.ninoSeleccionadoIndex,
+                autorizacionHoy = viewModel.autorizacionHoy,
                 onSeleccionarNino = { viewModel.seleccionarNino(it) },
+                onAbrirPerfilNino = { indice ->
+                    viewModel.ninos.getOrNull(indice)?.id?.let { id ->
+                        nav.navigate(Route.padrePerfilNino(id))
+                    }
+                },
+                onAutorizarTercero = {
+                    viewModel.ninoActualId?.let { id ->
+                        nav.navigate(Route.padreAutorizarTercero(id))
+                    }
+                },
                 onReintentar = { viewModel.cargarInicio() },
                 onTab = { indice ->
                     when (indice) {
                         0 -> {}
-                        1 -> viewModel.ninoActualId?.let { nav.navigate(Route.chatPadre(it)) { launchSingleTop = true } }
+                        1 -> nav.navigate(Route.BITACORA_PADRE) { launchSingleTop = true }
+                        2 -> viewModel.ninoActualId?.let { nav.navigate(Route.chatPadre(it)) { launchSingleTop = true } }
                     }
                 }
+            )
+        }
+
+        composable(Route.BITACORA_PADRE) {
+            val viewModel: PadreViewModel = hiltViewModel()
+            LaunchedEffect(Unit) {
+                viewModel.cargarInicio()
+            }
+            LaunchedEffect(viewModel.ninoActualId) {
+                viewModel.ninoActualId?.let { viewModel.cargarResumenSemanal(it) }
+            }
+
+            val ninoId = viewModel.ninoActualId ?: ""
+            val ninoNombre = viewModel.ninos.getOrNull(viewModel.ninoSeleccionadoIndex)?.fullName ?: "Alumno/a"
+            val resumen = viewModel.resumenSemanal ?: WeeklySummary(childId = ninoId, childName = ninoNombre)
+
+            PadreBitacoraScreen(
+                resumen = resumen,
+                ninos = viewModel.ninos.map { it.fullName.substringBefore(" ") },
+                ninoSeleccionado = viewModel.ninoSeleccionadoIndex,
+                onSeleccionarNino = {
+                    viewModel.seleccionarNino(it)
+                    viewModel.ninos.getOrNull(it)?.id?.let { id -> viewModel.cargarResumenSemanal(id) }
+                },
+                onAbrirPerfilNino = { indice ->
+                    viewModel.ninos.getOrNull(indice)?.id?.let { id ->
+                        nav.navigate(Route.padrePerfilNino(id))
+                    }
+                },
+                onTab = { indice ->
+                    when (indice) {
+                        0 -> nav.navigate(Route.INICIO_PADRE) { launchSingleTop = true }
+                        1 -> {}
+                        2 -> {
+                            val targetId = viewModel.ninoActualId ?: viewModel.ninos.firstOrNull()?.id ?: ""
+                            if (targetId.isNotBlank()) {
+                                nav.navigate(Route.chatPadre(targetId)) { launchSingleTop = true }
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Route.PADRE_AUTORIZAR_TERCERO,
+            arguments = listOf(navArgument("ninoId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
+            val viewModel: PadreViewModel = hiltViewModel()
+            LaunchedEffect(ninoId) { viewModel.cargarAutorizacionHoy(ninoId) }
+            val nino = viewModel.ninos.firstOrNull { it.id == ninoId }
+
+            PadreAutorizarTerceroScreen(
+                childId = ninoId,
+                childName = nino?.fullName ?: "Alumno/a",
+                parentName = sesion.nombre,
+                autorizacionExistente = viewModel.autorizacionHoy,
+                onAtras = { nav.popBackStack() },
+                onGuardar = { autorizacion ->
+                    viewModel.guardarAutorizacionTercero(autorizacion) {
+                        nav.popBackStack()
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Route.PADRE_PERFIL_NINO,
+            arguments = listOf(navArgument("ninoId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
+            val viewModel: PadreViewModel = hiltViewModel()
+            LaunchedEffect(Unit) { viewModel.cargarInicio() }
+            val nino = viewModel.ninos.firstOrNull { it.id == ninoId } ?: Child(id = ninoId, fullName = "Alumno", daycareCenter = "Estancia Mariposa", group = GroupEnum.P, parentName = sesion.nombre)
+
+            PadrePerfilNinoScreen(
+                child = nino,
+                onAtras = { nav.popBackStack() },
+                onSolicitarCambio = { mensaje ->
+                    viewModel.enviarMensaje(mensaje)
+                }
+            )
+        }
+
+        composable(
+            route = Route.RESUMEN_SEMANAL_PADRE,
+            arguments = listOf(navArgument("ninoId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
+            val viewModel: PadreViewModel = hiltViewModel()
+            LaunchedEffect(ninoId) { viewModel.cargarResumenSemanal(ninoId) }
+
+            val resumen = viewModel.resumenSemanal ?: WeeklySummary(childId = ninoId, childName = "Alumno/a")
+
+            PadreResumenSemanalScreen(
+                resumen = resumen,
+                onCerrar = { nav.popBackStack() }
             )
         }
 
@@ -281,11 +469,15 @@ fun SonrisasNavHost(
                 subtitulo = nino?.let { "Sobre ${it.fullName.substringBefore(" ")}" },
                 onAtras = { nav.popBackStack() },
                 onEnviar = { texto -> viewModel.enviarMensaje(texto) },
+                onEnviarFoto = { uri -> viewModel.enviarFoto(uri) },
+                onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
+                onEliminar = { mensaje -> viewModel.deleteMessage(mensaje.id) },
                 onReintentar = { viewModel.cargarMensajes(ninoId) },
                 onTab = { indice ->
                     when (indice) {
                         0 -> nav.navigate(Route.INICIO_PADRE) { launchSingleTop = true }
-                        1 -> {}
+                        1 -> nav.navigate(Route.BITACORA_PADRE) { launchSingleTop = true }
+                        2 -> {}
                     }
                 }
             )

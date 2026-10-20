@@ -14,5 +14,10 @@ data class MessageEntity(
     val sentAt: LocalDateTime,
     val sent: Boolean,
     val synced: Boolean,
-    val isAviso: Boolean
+    val isAviso: Boolean,
+    val deleted: Boolean = false,
+    val deletePending: Boolean = false,
+    val createdAtMs: Long? = null,
+    val attachmentFileId: String? = null,
+    val sendError: String? = null
 )

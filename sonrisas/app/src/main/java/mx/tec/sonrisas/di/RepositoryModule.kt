@@ -13,6 +13,8 @@ import mx.tec.sonrisas.data.DailyLogRepository
 import mx.tec.sonrisas.data.DailyLogRepositoryImpl
 import mx.tec.sonrisas.data.NoticeRepository
 import mx.tec.sonrisas.data.NoticeRepositoryImpl
+import mx.tec.sonrisas.data.PickupAuthorizationRepository
+import mx.tec.sonrisas.data.PickupAuthorizationRepositoryImpl
 import mx.tec.sonrisas.data.remote.ChildRemoteDataSource
 import mx.tec.sonrisas.data.remote.ChildRemoteDataSourceImpl
 import mx.tec.sonrisas.data.remote.DailyLogRemoteDataSource
@@ -46,6 +48,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindChatRepository(impl: ChatRepositoryImpl): ChatRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPickupAuthorizationRepository(impl: PickupAuthorizationRepositoryImpl): PickupAuthorizationRepository
 
     @Binds
     abstract fun bindChildRemoteDataSource(impl: ChildRemoteDataSourceImpl): ChildRemoteDataSource

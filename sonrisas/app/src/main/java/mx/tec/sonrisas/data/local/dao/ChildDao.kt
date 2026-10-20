@@ -19,6 +19,9 @@ interface ChildDao {
     @Upsert
     suspend fun save(child: ChildEntity)
 
+    @Query("DELETE FROM children")
+    suspend fun clear()
+
     @Delete
     suspend fun delete(child: ChildEntity)
 }

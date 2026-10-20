@@ -14,6 +14,7 @@ import mx.tec.sonrisas.data.local.dao.ChildDao
 import mx.tec.sonrisas.data.local.dao.DailyLogDao
 import mx.tec.sonrisas.data.local.dao.MessageDao
 import mx.tec.sonrisas.data.local.dao.NoticeDao
+import mx.tec.sonrisas.data.local.dao.PickupAuthorizationDao
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -40,4 +41,7 @@ object DatabaseModule {
 
     @Provides
     fun provideMessageDao(db: SonrisasDatabase): MessageDao = db.messageDao()
+
+    @Provides
+    fun providePickupAuthorizationDao(db: SonrisasDatabase): PickupAuthorizationDao = db.pickupAuthorizationDao()
 }

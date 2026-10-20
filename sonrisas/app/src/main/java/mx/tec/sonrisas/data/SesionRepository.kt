@@ -1,47 +1,89 @@
 package mx.tec.sonrisas.data
 
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import mx.tec.sonrisas.data.chat.ChatSocket
+import mx.tec.sonrisas.data.local.dao.ChildDao
+import mx.tec.sonrisas.data.local.dao.MessageDao
+import mx.tec.sonrisas.data.push.PushRepository
+import mx.tec.sonrisas.data.remote.ApiClient
+import mx.tec.sonrisas.data.remote.MeDto
 import mx.tec.sonrisas.domain.Rol
 import mx.tec.sonrisas.domain.Sesion
 
+class RolNoSoportadoException : Exception("Esta cuenta no puede usar la app. Inicia sesión desde la plataforma web.")
+
 @Singleton
-class SesionRepository @Inject constructor() {
-
+class SesionRepository @Inject constructor(
+    private val auth: AuthRepository,
+    private val api: ApiClient,
+    private val childRepository: ChildRepository,
+    private val socket: ChatSocket,
+    private val messageDao: MessageDao,
+    private val childDao: ChildDao,
+    private val push: PushRepository
+) {
     private val _sesion = MutableStateFlow<Sesion?>(null)
-    val sesion: Flow<Sesion?> = _sesion.asStateFlow()
+    val sesion: StateFlow<Sesion?> = _sesion.asStateFlow()
 
-    fun entrar(correo: String, contrasena: String): Boolean {
-        val correoLimpio = correo.trim().lowercase()
-        val passwordLimpia = contrasena.trim()
+    val haySesionGuardada: Boolean get() = auth.hasStoredSession
 
-        val sesionValida = when {
-            (correoLimpio == "maestra@sonrisas.edu.mx" || correoLimpio == "maestra") && passwordLimpia.isNotEmpty() -> {
-                Sesion(usuario = "maestra@sonrisas.edu.mx", nombre = "Maestra Laura", rol = Rol.MAESTRA)
-            }
-            (correoLimpio == "padre@sonrisas.edu.mx" || correoLimpio == "padre") && passwordLimpia.isNotEmpty() -> {
-                Sesion(usuario = "padre@sonrisas.edu.mx", nombre = "María López", rol = Rol.PADRE)
-            }
-            correoLimpio.contains("maestra") && passwordLimpia.isNotEmpty() -> {
-                Sesion(usuario = correoLimpio, nombre = "Maestra Laura", rol = Rol.MAESTRA)
-            }
-            correoLimpio.contains("padre") && passwordLimpia.isNotEmpty() -> {
-                Sesion(usuario = correoLimpio, nombre = "María López", rol = Rol.PADRE)
-            }
-            else -> null
-        }
-
-        if (sesionValida != null) {
-            _sesion.value = sesionValida
-            return true
-        }
-        return false
+    suspend fun entrar(correo: String, contrasena: String) {
+        auth.login(correo, contrasena)
+        abrirSesion()
     }
 
-    fun salir() {
+    suspend fun restaurar(): Boolean {
+        if (!auth.hasStoredSession) return false
+        return try {
+            abrirSesion()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun cambiarContrasena(actual: String, nueva: String) {
+        auth.changePassword(actual, nueva)
+        abrirSesion()
+    }
+
+    fun alPrimerPlano() {
+        if (_sesion.value?.pendiente == false) socket.reconnectNow()
+    }
+
+    suspend fun salir() {
+        socket.disconnect()
         _sesion.value = null
+        push.unregister()
+        auth.logout()
+        messageDao.clear()
+        childDao.clear()
+    }
+
+    private suspend fun abrirSesion() {
+        val me = auth.authed { api.get<MeDto>("/auth/me", it) }
+        val rol = when (me.role) {
+            "DOCENTE" -> Rol.MAESTRA
+            "PADRE" -> Rol.PADRE
+            else -> {
+                auth.logout()
+                throw RolNoSoportadoException()
+            }
+        }
+        val sesion = Sesion(me.sub, me.email, me.fullName, rol, me.pending)
+        if (!me.pending) {
+            try {
+                childRepository.refreshFromServer(parentName = if (rol == Rol.PADRE) me.fullName else "")
+            } catch (e: IOException) {
+            }
+            socket.connect()
+            push.register()
+        }
+        _sesion.value = sesion
     }
 }
