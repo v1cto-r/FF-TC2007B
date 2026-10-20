@@ -46,8 +46,7 @@ fun BurbujaChat(
     esMio: Boolean,
     modifier: Modifier = Modifier,
     avatarRes: Int? = null,
-    onToggleImportante: ((Message) -> Unit)? = null,
-    // null = this user can't delete (the API only lets the parent do it).
+    // null = this user can't delete (parent, or the estancia admin in child chats).
     onEliminar: ((Message) -> Unit)? = null
 ) {
     var menuAbierto by remember { mutableStateOf(false) }
@@ -101,10 +100,10 @@ fun BurbujaChat(
                         color = if (message.isAviso) colorBordeFijado else Color.Transparent,
                         shape = forma
                     )
-                    .pointerInput(message.id) {
-                        detectTapGestures(
-                            onLongPress = { menuAbierto = true }
-                        )
+                    .pointerInput(message.id, onEliminar != null) {
+                        if (onEliminar != null) {
+                            detectTapGestures(onLongPress = { menuAbierto = true })
+                        }
                     }
                     .padding(12.dp)
             ) {
@@ -146,26 +145,6 @@ fun BurbujaChat(
                 expanded = menuAbierto,
                 onDismissRequest = { menuAbierto = false }
             ) {
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = if (message.isAviso) "Desfijar mensaje" else "Fijar mensaje",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.PushPin,
-                            contentDescription = null,
-                            tint = Coral,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    onClick = {
-                        menuAbierto = false
-                        onToggleImportante?.invoke(message)
-                    }
-                )
                 if (onEliminar != null) {
                     DropdownMenuItem(
                         text = {
