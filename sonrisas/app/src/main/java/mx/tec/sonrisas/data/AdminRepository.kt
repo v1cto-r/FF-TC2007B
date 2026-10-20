@@ -93,6 +93,16 @@ class AdminRepository @Inject constructor(
         }
     }
 
+    /** DELETE /users/{id}: soft delete (status DELETED). The server signs the user out on every device at once. */
+    suspend fun eliminarUsuario(id: String) {
+        auth.authed { api.delete("/users/$id", it) }
+    }
+
+    /** DELETE /children/{id}: soft delete. Their logs, messages and documents are archived with them. */
+    suspend fun eliminarNino(id: String) {
+        auth.authed { api.delete("/children/$id", it) }
+    }
+
     /** PUT /notices/{id}. salonId = null publica en toda la estancia. */
     suspend fun guardarAviso(id: String, estanciaId: String, salonId: String?, titulo: String, descripcion: String, fecha: String) {
         auth.authed {

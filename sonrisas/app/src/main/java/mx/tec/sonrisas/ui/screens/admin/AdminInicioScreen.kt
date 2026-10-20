@@ -37,7 +37,7 @@ fun AdminInicioScreen(
     modifier: Modifier = Modifier,
     onCrearGrupo: () -> Unit = {},
     onInscripcion: () -> Unit = {},
-    onCrearMaestra: () -> Unit = {},
+    onMaestras: () -> Unit = {},
     onCrearPadre: () -> Unit = {},
     onSalonClick: (SalonUi) -> Unit = {},
     onCerrarSesion: (() -> Unit)? = null,
@@ -122,11 +122,11 @@ fun AdminInicioScreen(
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     AccionRapida(
-                        texto = "Crear maestra",
+                        texto = "Maestras",
                         icono = Icons.Outlined.PersonAdd,
                         colorIcono = Verde,
                         colorFondo = VerdeSuave,
-                        onClick = onCrearMaestra,
+                        onClick = onMaestras,
                         modifier = Modifier.weight(1f)
                     )
                     AccionRapida(

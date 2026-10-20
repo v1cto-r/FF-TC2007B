@@ -180,3 +180,29 @@ fun AdminCredencialDialog(
         }
     )
 }
+
+/** Confirmación antes de dar de baja a alguien. */
+@Composable
+fun AdminConfirmarBajaDialog(
+    titulo: String,
+    mensaje: String,
+    onConfirmar: () -> Unit,
+    onCancelar: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onCancelar,
+        containerColor = Color.White,
+        title = { Text(titulo, style = MaterialTheme.typography.titleMedium, color = TextoOscuro) },
+        text = { Text(mensaje, style = MaterialTheme.typography.bodyMedium, color = TextoGris) },
+        confirmButton = {
+            TextButton(onClick = onConfirmar) {
+                Text("Eliminar", style = MaterialTheme.typography.labelLarge, color = Coral, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancelar) {
+                Text("Cancelar", style = MaterialTheme.typography.labelLarge, color = TextoGris)
+            }
+        }
+    )
+}

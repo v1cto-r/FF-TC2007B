@@ -66,6 +66,7 @@ object Route {
 
     const val ADMIN_PADRES = "admin_padres"
     const val ADMIN_AVISOS = "admin_avisos"
+    const val ADMIN_MAESTRAS = "admin_maestras"
     const val ADMIN_CREAR_MAESTRA = "admin_crear_maestra"
     const val ADMIN_CREAR_PADRE = "admin_crear_padre"
 

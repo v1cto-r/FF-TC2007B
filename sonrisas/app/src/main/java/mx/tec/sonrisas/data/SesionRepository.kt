@@ -49,6 +49,17 @@ class SesionRepository @Inject constructor(
 
     val haySesionGuardada: Boolean get() = auth.hasStoredSession
 
+    init {
+        // Deleted or archived by an admin: the server closes the chat socket and refuses the refresh token
+        scope.launch {
+            auth.revocada.collect {
+                if (_sesion.value == null) return@collect
+                terminarSesion()
+                borrarDatosLocales()   // the server already dropped this device's push registration
+            }
+        }
+    }
+
     suspend fun entrar(correo: String, contrasena: String) {
         auth.login(correo, contrasena)
         abrirSesion()
@@ -92,11 +103,20 @@ class SesionRepository @Inject constructor(
     suspend fun registrosSinEnviar(): Int = dailyLogRepository.countPending()
 
     suspend fun salir() {
+        terminarSesion()
+        push.unregister()
+        auth.logout()
+        borrarDatosLocales()
+    }
+
+    /** Leaves the UI at Login right away. */
+    private fun terminarSesion() {
         socket.disconnect()
         socket.peerChatIds = { emptyList() }
         _sesion.value = null
-        push.unregister()
-        auth.logout()
+    }
+
+    private suspend fun borrarDatosLocales() {
         messageDao.clear()
         childDao.clear()
         pickupAuthorizationDao.clear()

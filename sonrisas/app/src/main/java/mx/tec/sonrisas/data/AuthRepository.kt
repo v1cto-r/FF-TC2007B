@@ -7,6 +7,9 @@ import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.decodeFromString
@@ -36,6 +39,10 @@ class AuthRepository @Inject constructor(
     // one refresh at a time: concurrent rotations look like token reuse to the server
     private val mutex = Mutex()
     private var sessionToken: String? = null
+
+    // The server refused the refresh token: the account was deleted, archived or signed out remotely
+    private val _revocada = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val revocada: SharedFlow<Unit> = _revocada.asSharedFlow()
 
     val hasStoredSession: Boolean get() = prefs.getString(KEY_REFRESH, null) != null
 
@@ -80,7 +87,10 @@ class AuthRepository @Inject constructor(
         val pair: TokenPairDto = try {
             api.post("/auth/refresh", RefreshBody(refresh))
         } catch (e: ApiException) {
-            if (e.code == 401) forget()
+            if (e.code == 401) {
+                forget()
+                _revocada.tryEmit(Unit)
+            }
             throw e
         }
         return store(pair).accessToken

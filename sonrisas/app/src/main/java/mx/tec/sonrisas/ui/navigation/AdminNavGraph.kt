@@ -53,7 +53,7 @@ fun NavGraphBuilder.adminGraph(
                 alumnosSinSalon = datos.alumnosSinSalon.size,
                 onCrearGrupo = { nav.navigate(Route.ADMIN_CREAR_GRUPO) },
                 onInscripcion = { nav.navigate(Route.ADMIN_INSCRIPCION) },
-                onCrearMaestra = { nav.navigate(Route.ADMIN_CREAR_MAESTRA) },
+                onMaestras = { nav.navigate(Route.ADMIN_MAESTRAS) },
                 onCrearPadre = { nav.navigate(Route.ADMIN_CREAR_PADRE) },
                 onSalonClick = { salon -> nav.navigate(Route.adminDetalleSalon(salon.id)) },
                 onCerrarSesion = onSalir,
@@ -250,6 +250,22 @@ fun NavGraphBuilder.adminGraph(
 
     // --- Cuentas ---
 
+    composable(Route.ADMIN_MAESTRAS) { entry ->
+        val vm = entry.adminViewModel(nav)
+        LaunchedEffect(Unit) { vm.limpiarError() }
+        ConEstado(estado = vm.estado, onReintentar = vm::cargar) { datos ->
+            AdminMaestrasScreen(
+                maestros = datos.maestros,
+                salones = datos.salones,
+                guardando = vm.guardando,
+                errorMensaje = vm.errorMensaje,
+                onAtras = { nav.popBackStack() },
+                onNuevaMaestra = { nav.navigate(Route.ADMIN_CREAR_MAESTRA) },
+                onEliminar = { maestro -> vm.eliminarMaestra(maestro.id) }
+            )
+        }
+    }
+
     composable(Route.ADMIN_CREAR_MAESTRA) { entry ->
         val vm = entry.adminViewModel(nav)
         LaunchedEffect(Unit) { vm.limpiarError() }
@@ -313,13 +329,19 @@ fun NavGraphBuilder.adminGraph(
     ) { entry ->
         val padreId = entry.arguments?.getString("padreId").orEmpty()
         val vm = entry.adminViewModel(nav)
+        LaunchedEffect(Unit) { vm.limpiarError() }
         ConEstado(estado = vm.estado, onReintentar = vm::cargar) { datos ->
             val padre = datos.padres.firstOrNull { it.id == padreId }
             if (padre != null) {
                 AdminDetallePadreScreen(
                     padre = padre,
+                    guardando = vm.guardando,
+                    errorMensaje = vm.errorMensaje,
                     onAtras = { nav.popBackStack() },
-                    onAgregarNino = { nav.navigate(Route.adminAgregarNino(padreId)) }
+                    onAgregarNino = { nav.navigate(Route.adminAgregarNino(padreId)) },
+                    onEliminarNino = { hijo -> vm.eliminarNino(hijo.id) },
+                    // Once deleted the padre leaves the list, and the branch below pops back
+                    onEliminarPadre = { vm.eliminarPadre(padreId) }
                 )
             } else {
                 LaunchedEffect(Unit) { nav.popBackStack() }

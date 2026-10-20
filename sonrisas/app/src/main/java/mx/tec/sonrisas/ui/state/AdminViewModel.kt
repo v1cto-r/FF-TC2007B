@@ -108,6 +108,27 @@ class AdminViewModel @Inject constructor(
             repo.guardarNino(UUID.randomUUID().toString(), snap.estanciaId, nombreNino, salonId, padreId)
         }
 
+    // --- Bajas (soft delete) ---
+
+    /** Takes her off her salones first: the API refuses to delete a docente who still teaches one. */
+    fun eliminarMaestra(maestroId: String) = ejecutar {
+        val snap = requerir()
+        snap.salones.filter { it.docenteId == maestroId && it.status == null }.forEach { s ->
+            repo.guardarSalon(s.id, snap.estanciaId, s.name, s.groupType, null)
+        }
+        repo.eliminarUsuario(maestroId)
+    }
+
+    fun eliminarNino(ninoId: String) = ejecutar {
+        repo.eliminarNino(ninoId)
+    }
+
+    /** Removes their children first: the API refuses to delete a padre who still has any. */
+    fun eliminarPadre(padreId: String) = ejecutar {
+        requerir().ninos.filter { it.parentId == padreId && it.status == null }.forEach { repo.eliminarNino(it.id) }
+        repo.eliminarUsuario(padreId)
+    }
+
     // --- Internos ---
 
     private suspend fun moverNinos(snap: AdminSnapshot, ids: Set<String>, salonId: String) {
