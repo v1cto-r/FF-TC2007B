@@ -102,13 +102,12 @@ class MaestraViewModel @Inject constructor(
             }
         }
 
+    /** Polled while the home screen is open (RefrescoPeriodico). */
+    suspend fun refrescar() = sesionRepository.refrescarDatos()
+
     fun cargarNinos() {
         viewModelScope.launch {
-            try {
-                pickupAuthorizationRepository.refreshFromServer()
-            } catch (e: Exception) {
-                e.printStackTrace()  // offline: the copy in Room is shown
-            }
+            refrescar()  // never throws: offline, the copy in Room is shown
         }
         viewModelScope.launch {
             estadoNinos = UiState.Cargando
@@ -128,6 +127,7 @@ class MaestraViewModel @Inject constructor(
 
     fun cargarInicio() {
         viewModelScope.launch {
+            launch { refrescar() }  // notices included; the list below updates from Room
             launch {
                 try {
                     misNinos.collect { lista ->

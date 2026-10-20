@@ -13,6 +13,7 @@ import mx.tec.sonrisas.domain.GroupEnum
 import mx.tec.sonrisas.domain.Rol
 import mx.tec.sonrisas.domain.Sesion
 import mx.tec.sonrisas.domain.WeeklySummary
+import mx.tec.sonrisas.ui.components.RefrescoPeriodico
 import mx.tec.sonrisas.ui.screens.maestra.ActivityFormScreen
 import mx.tec.sonrisas.ui.screens.maestra.BroadcastFormScreen
 import mx.tec.sonrisas.ui.screens.maestra.ChatListScreen
@@ -83,6 +84,7 @@ fun SonrisasNavHost(
         composable(Route.INICIO_MAESTRA) {
             val viewModel: MaestraViewModel = hiltViewModel()
             LaunchedEffect(Unit) { viewModel.cargarInicio() }
+            RefrescoPeriodico(onRefrescar = viewModel::refrescar)
 
             InicioMaestraScreen(
                 estado = viewModel.estadoEventos,
@@ -274,6 +276,10 @@ fun SonrisasNavHost(
 
             ActivityFormScreen(
                 hayIngreso = viewModel.hayIngreso,
+                fotos = viewModel.fotos,
+                leyendoFoto = viewModel.leyendoFoto,
+                onTomarFoto = viewModel::agregarFoto,
+                onQuitarFoto = viewModel::quitarFoto,
                 onAtras = { nav.popBackStack() },
                 onGuardar = { nombre -> viewModel.guardar(ninoId, nombre) { nav.popBackStack() } },
                 onIrACheckIn = { nav.navigate(Route.checkIn(ninoId)) { popUpTo(Route.ACTIVITY) { inclusive = true } } }
@@ -382,6 +388,7 @@ fun SonrisasNavHost(
         composable(Route.INICIO_PADRE) {
             val viewModel: PadreViewModel = hiltViewModel()
             LaunchedEffect(Unit) { viewModel.cargarInicio() }
+            RefrescoPeriodico(onRefrescar = viewModel::refrescar)
 
             val hijoIncompleto = viewModel.ninos.firstOrNull { !it.profileCompleted }
             LaunchedEffect(hijoIncompleto) {

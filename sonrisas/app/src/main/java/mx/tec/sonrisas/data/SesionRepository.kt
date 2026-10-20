@@ -3,12 +3,17 @@ package mx.tec.sonrisas.data
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import mx.tec.sonrisas.data.chat.ChatSocket
 import mx.tec.sonrisas.data.local.dao.ChildDao
 import mx.tec.sonrisas.data.local.dao.MessageDao
+import mx.tec.sonrisas.data.local.dao.NoticeDao
 import mx.tec.sonrisas.data.local.dao.PickupAuthorizationDao
 import mx.tec.sonrisas.data.push.PushRepository
 import mx.tec.sonrisas.data.remote.ApiClient
@@ -27,6 +32,8 @@ class SesionRepository @Inject constructor(
     private val dailyLogRepository: DailyLogRepository,
     private val pickupAuthorizationRepository: PickupAuthorizationRepository,
     private val pickupAuthorizationDao: PickupAuthorizationDao,
+    private val noticeRepository: NoticeRepository,
+    private val noticeDao: NoticeDao,
     private val socket: ChatSocket,
     private val messageDao: MessageDao,
     private val childDao: ChildDao,
@@ -34,6 +41,9 @@ class SesionRepository @Inject constructor(
     private val admin: AdminRepository,
     private val estancias: EstanciaRemoteDataSource
 ) {
+    // Background refreshes that outlive any screen (coming back to the foreground)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private val _sesion = MutableStateFlow<Sesion?>(null)
     val sesion: StateFlow<Sesion?> = _sesion.asStateFlow()
 
@@ -61,8 +71,25 @@ class SesionRepository @Inject constructor(
 
     fun alPrimerPlano() {
         val actual = _sesion.value ?: return
-        if (!actual.pendiente) socket.reconnectNow()
+        if (actual.pendiente) return
+        socket.reconnectNow()
+        scope.launch { refrescarDatos(actual.rol, RECENT_DAYS) }
     }
+
+    /**
+     * What the teacher and the parent share: daily logs, pickup authorizations and notices. Each one
+     * on its own and never throwing: an unreachable server (or one missing an endpoint) only means the
+     * copy in Room stays as it was.
+     */
+    suspend fun refrescarDatos(rol: Rol? = _sesion.value?.rol, dias: Long = RECENT_DAYS) {
+        if (rol != Rol.PADRE && rol != Rol.MAESTRA) return
+        runCatching { dailyLogRepository.refreshFromServer(dias) }
+        runCatching { pickupAuthorizationRepository.refreshFromServer() }
+        runCatching { noticeRepository.refreshFromServer() }
+    }
+
+    /** Records on this phone not uploaded yet; logging out throws them away. */
+    suspend fun registrosSinEnviar(): Int = dailyLogRepository.countPending()
 
     suspend fun salir() {
         socket.disconnect()
@@ -73,6 +100,9 @@ class SesionRepository @Inject constructor(
         messageDao.clear()
         childDao.clear()
         pickupAuthorizationDao.clear()
+        noticeDao.clear()
+        // The next account on this phone must neither see these nor upload them under its own name
+        dailyLogRepository.clearLocal()
     }
 
     private suspend fun abrirSesion() {
@@ -92,11 +122,9 @@ class SesionRepository @Inject constructor(
             if (rol == Rol.PADRE || rol == Rol.MAESTRA) {
                 try {
                     childRepository.refreshFromServer(parentName = if (rol == Rol.PADRE) me.fullName else "")
-                    dailyLogRepository.refreshFromServer()
-                    // Never blocks the session: a server without this endpoint yet must not stop the login
-                    runCatching { pickupAuthorizationRepository.refreshFromServer() }
                 } catch (e: IOException) {
                 }
+                refrescarDatos(rol, LOGIN_DAYS)
             } else {
                 // ADMIN / ORG have no child chats: stale children would make the socket fetch chats it can't open.
                 childDao.clear()
@@ -111,5 +139,11 @@ class SesionRepository @Inject constructor(
             push.register()
         }
         _sesion.value = sesion
+    }
+
+    private companion object {
+        // On login the history the parent's weekly summary uses; afterwards only what may have changed
+        const val LOGIN_DAYS = 90L
+        const val RECENT_DAYS = 7L
     }
 }

@@ -1,5 +1,8 @@
 package mx.tec.sonrisas.ui.navigation
 
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -21,6 +24,21 @@ import mx.tec.sonrisas.ui.state.SesionViewModel
 fun SonrisasApp(chatPendiente: String? = null, onChatAbierto: () -> Unit = {}) {
     val sesionViewModel: SesionViewModel = hiltViewModel()
     val estado by sesionViewModel.estado.collectAsStateWithLifecycle()
+
+    sesionViewModel.sinEnviarAlSalir?.let { pendientes ->
+        AlertDialog(
+            onDismissRequest = sesionViewModel::cancelarSalida,
+            title = { Text("Hay registros sin enviar") },
+            text = {
+                Text(
+                    "$pendientes ${if (pendientes == 1) "registro todavía no llega" else "registros todavía no llegan"} " +
+                        "a la escuela. Si cierras sesión ahora se perderán. Conéctate a internet y espera a que se envíen."
+                )
+            },
+            confirmButton = { TextButton(onClick = sesionViewModel::confirmarSalida) { Text("Cerrar sesión de todos modos") } },
+            dismissButton = { TextButton(onClick = sesionViewModel::cancelarSalida) { Text("Esperar") } }
+        )
+    }
 
     when (val actual = estado) {
         SesionEstado.Cargando -> EstadoCargando()

@@ -22,6 +22,9 @@ interface ActivityRecordDao {
     @Query("SELECT * FROM activity_records WHERE deleted = 1")
     suspend fun getPendingDeletes(): List<ActivityRecordEntity>
 
+    @Query("SELECT COUNT(*) FROM activity_records WHERE synced = 0")
+    suspend fun countUnsynced(): Int
+
     @Query("SELECT id FROM activity_records WHERE synced = 0")
     suspend fun getUnsyncedIds(): List<String>
 
@@ -33,6 +36,19 @@ interface ActivityRecordDao {
 
     @Query("DELETE FROM activity_records WHERE synced = 1 AND dailyLogId IN (:dailyLogIds) AND id NOT IN (:keepIds)")
     suspend fun deleteSyncedExcept(dailyLogIds: List<String>, keepIds: List<String>)
+
+    @Query("SELECT * FROM activity_records WHERE id = :id")
+    suspend fun getById(id: String): ActivityRecordEntity?
+
+    // A photo reached the server; modifiedAt is left alone, it isn't an edit
+    @Query("UPDATE activity_records SET pendingImagePaths = :paths WHERE id = :id")
+    suspend fun setPendingImagePaths(id: String, paths: List<String>)
+
+    @Query("SELECT childId FROM daily_logs WHERE id = :dailyLogId")
+    suspend fun childIdOf(dailyLogId: String): String?
+
+    @Query("DELETE FROM activity_records")
+    suspend fun clear()
 
     @Query("UPDATE activity_records SET deleted = 1, synced = 0, modifiedAt = :modifiedAt WHERE id = :id")
     suspend fun markDeleted(id: String, modifiedAt: Long)

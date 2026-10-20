@@ -7,8 +7,6 @@ import mx.tec.sonrisas.domain.GroupEnum
 
 interface ChildRemoteDataSource {
     suspend fun fetchAll(parentName: String): List<Child>
-    suspend fun save(child: Child)
-    suspend fun delete(child: Child)
     suspend fun submitProfile(childId: String, birthDate: String, allergies: List<String>): ChildDto
 }
 
@@ -34,7 +32,4 @@ class ChildRemoteDataSourceImpl @Inject constructor(
         val body = ChildProfilePatchBody(birthDate = birthDate, allergies = allergies)
         return auth.authed { api.patch<ChildProfilePatchBody, ChildDto>("/children/$childId/profile", body, it) }
     }
-
-    override suspend fun save(child: Child): Unit = TODO("Pending: API integration")
-    override suspend fun delete(child: Child): Unit = TODO("Pending: API integration")
 }

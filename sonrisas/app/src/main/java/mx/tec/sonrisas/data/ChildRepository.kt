@@ -25,8 +25,7 @@ interface ChildRepository {
 @Singleton
 class ChildRepositoryImpl @Inject constructor(
     private val dao: ChildDao,
-    private val remote: ChildRemoteDataSource,
-    private val networkMonitor: NetworkMonitor
+    private val remote: ChildRemoteDataSource
 ) : ChildRepository {
 
     override fun observeAll(): Flow<List<Child>> =
@@ -35,12 +34,14 @@ class ChildRepositoryImpl @Inject constructor(
     override fun observeById(id: String): Flow<Child?> =
         dao.observeById(id).map { row -> row?.toDomain() }
 
+    // The server is changed through its own calls (the parent's profile goes in submitProfile);
+    // this only updates the local copy so the screens show it right away
     override suspend fun save(child: Child) {
-        if (networkMonitor.isOnline()) remote.save(child) else dao.save(child.toEntity())
+        dao.save(child.toEntity())
     }
 
     override suspend fun delete(child: Child) {
-        if (networkMonitor.isOnline()) remote.delete(child) else dao.delete(child.toEntity())
+        dao.delete(child.toEntity())
     }
 
     override suspend fun refreshFromServer(parentName: String) {

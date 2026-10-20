@@ -166,19 +166,13 @@ class PadreViewModel @Inject constructor(
         }
     }
 
+    /** Polled while the home screen is open (RefrescoPeriodico). */
+    suspend fun refrescar() = sesionRepository.refrescarDatos()
+
     fun cargarInicio() {
         viewModelScope.launch {
             // Brings down what the teacher registered; the screen updates on its own from Room
-            try {
-                dailyLogRepository.refreshFromServer()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-            try {
-                pickupAuthorizationRepository.refreshFromServer()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            refrescar()
         }
         viewModelScope.launch {
             estadoActividades = UiState.Cargando
@@ -219,7 +213,8 @@ class PadreViewModel @Inject constructor(
                                                 ActividadUi(
                                                     tipo = TipoActividadUi.Actividad,
                                                     titulo = actividad.name,
-                                                    detalle = "Actividad registrada hoy"
+                                                    detalle = "Actividad registrada hoy",
+                                                    fotos = actividad.images
                                                 )
                                             )
                                         }

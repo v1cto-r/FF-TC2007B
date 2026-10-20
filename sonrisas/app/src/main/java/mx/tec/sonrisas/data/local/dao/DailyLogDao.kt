@@ -42,6 +42,12 @@ interface DailyLogDao {
     @Query("UPDATE daily_logs SET check_out_idPhotoLocalPath = NULL WHERE id = :id AND check_out_idPhotoFileId = :fileId")
     suspend fun markIdPhotoUploaded(id: String, fileId: String)
 
+    @Query("SELECT COUNT(*) FROM daily_logs WHERE synced = 0")
+    suspend fun countUnsynced(): Int
+
+    @Query("DELETE FROM daily_logs")
+    suspend fun clear()
+
     @Query("UPDATE daily_logs SET deleted = 1, synced = 0, modifiedAt = :modifiedAt WHERE id = :id")
     suspend fun markDeleted(id: String, modifiedAt: Long)
 

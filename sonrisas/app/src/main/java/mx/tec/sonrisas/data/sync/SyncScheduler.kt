@@ -30,6 +30,10 @@ class SyncScheduler @Inject constructor(
         WorkManager.getInstance(context).enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
     }
 
+    fun cancel() {
+        WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+    }
+
     private companion object {
         const val WORK_NAME = "daily-log-sync"
     }

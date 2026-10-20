@@ -1,5 +1,8 @@
 package mx.tec.sonrisas.ui.state
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,10 +45,28 @@ class SesionViewModel @Inject constructor(
         }
     }
 
+    // Records not uploaded yet that logging out would throw away: waiting for the user to confirm
+    var sinEnviarAlSalir by mutableStateOf<Int?>(null)
+        private set
+
     fun salir() {
         viewModelScope.launch {
-            biometricStorageManager.cancelarBiometrico()
-            repository.salir()
+            val pendientes = repository.registrosSinEnviar()
+            if (pendientes > 0) sinEnviarAlSalir = pendientes else salirAhora()
         }
+    }
+
+    fun confirmarSalida() {
+        sinEnviarAlSalir = null
+        viewModelScope.launch { salirAhora() }
+    }
+
+    fun cancelarSalida() {
+        sinEnviarAlSalir = null
+    }
+
+    private suspend fun salirAhora() {
+        biometricStorageManager.cancelarBiometrico()
+        repository.salir()
     }
 }

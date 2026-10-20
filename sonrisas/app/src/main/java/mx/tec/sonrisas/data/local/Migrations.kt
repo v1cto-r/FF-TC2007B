@@ -28,3 +28,10 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         )
     }
 }
+
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Activity photos waiting on this phone to be uploaded
+        db.execSQL("ALTER TABLE `activity_records` ADD COLUMN `pendingImagePaths` TEXT NOT NULL DEFAULT ''")
+    }
+}

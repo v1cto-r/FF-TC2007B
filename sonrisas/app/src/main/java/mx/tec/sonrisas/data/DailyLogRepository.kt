@@ -39,7 +39,18 @@ interface DailyLogRepository {
     suspend fun saveActivity(activity: ActivityRecord)
     suspend fun deleteActivity(activity: ActivityRecord)
 
-    suspend fun refreshFromServer()
+    /** Brings down the logs of the last [days] days (what other devices saved). */
+    suspend fun refreshFromServer(days: Long = DEFAULT_REFRESH_DAYS)
+
+    /** Records saved here that haven't reached the server yet. */
+    suspend fun countPending(): Int
+
+    /** On logout: stops the upload and forgets every log, activity and photo on this phone. */
+    suspend fun clearLocal()
+
+    companion object {
+        const val DEFAULT_REFRESH_DAYS = 30L
+    }
 }
 
 @Singleton
@@ -49,7 +60,8 @@ class DailyLogRepositoryImpl @Inject constructor(
     private val db: SonrisasDatabase,
     private val remote: DailyLogRemoteDataSource,
     private val syncScheduler: SyncScheduler,
-    private val syncLock: DailyLogSyncLock
+    private val syncLock: DailyLogSyncLock,
+    private val photoStore: PendingPhotoStore
 ) : DailyLogRepository {
 
     override fun observeByChild(childId: String): Flow<List<DailyLog>> =
@@ -90,8 +102,21 @@ class DailyLogRepositoryImpl @Inject constructor(
         syncScheduler.requestSync()
     }
 
-    override suspend fun refreshFromServer() = syncLock.mutex.withLock {
-        val fromDate = LocalDate.now().minusDays(REFRESH_DAYS)
+    override suspend fun countPending(): Int = dailyLogDao.countUnsynced() + activityDao.countUnsynced()
+
+    override suspend fun clearLocal() {
+        syncScheduler.cancel()
+        syncLock.mutex.withLock {
+            db.withTransaction {
+                activityDao.clear()
+                dailyLogDao.clear()
+            }
+        }
+        photoStore.deleteAll()
+    }
+
+    override suspend fun refreshFromServer(days: Long) = syncLock.mutex.withLock {
+        val fromDate = LocalDate.now().minusDays(days)
         val serverLogs = remote.fetchDailyLogs(fromDate)
         db.withTransaction {
             // Local changes not uploaded yet win: overwriting them would lose the teacher's edits.
@@ -111,9 +136,5 @@ class DailyLogRepositoryImpl @Inject constructor(
             activityDao.deleteSyncedExcept(logs.map { (_, log) -> log.id }, activities.map { it.id })
             activityDao.saveAll(activities.filter { it.id !in pendingActivityIds }.map { it.toEntity() })
         }
-    }
-
-    private companion object {
-        const val REFRESH_DAYS = 30L
     }
 }

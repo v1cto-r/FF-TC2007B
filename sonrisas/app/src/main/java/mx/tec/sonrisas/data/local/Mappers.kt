@@ -224,6 +224,7 @@ fun ActivityRecordEntity.toDomain() = ActivityRecord(
     dailyLogId = dailyLogId,
     name = name,
     images = images,
+    pendingImagePaths = pendingImagePaths,
     synced = synced
 )
 
@@ -232,6 +233,7 @@ fun ActivityRecord.toEntity() = ActivityRecordEntity(
     dailyLogId = dailyLogId,
     name = name,
     images = images,
+    pendingImagePaths = pendingImagePaths,
     synced = synced
 )
 

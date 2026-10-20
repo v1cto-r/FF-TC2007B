@@ -10,6 +10,7 @@ import dagger.assisted.AssistedInject
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.sync.withLock
+import mx.tec.sonrisas.data.PendingPhotoStore
 import mx.tec.sonrisas.data.local.dao.ActivityRecordDao
 import mx.tec.sonrisas.data.local.dao.DailyLogDao
 import mx.tec.sonrisas.data.local.toDomain
@@ -59,6 +60,7 @@ class DailyLogSyncWorker @AssistedInject constructor(
         }
         for (row in activityDao.getPendingUpserts()) {
             attempt("upload activity ${row.id}") {
+                uploadActivityPhotos(row.id, row.dailyLogId)
                 remote.saveActivity(row.toDomain())
                 activityDao.markSynced(row.id, row.modifiedAt)
             }
@@ -77,6 +79,23 @@ class DailyLogSyncWorker @AssistedInject constructor(
         }
         dailyLogDao.markIdPhotoUploaded(row.id, fileId)
         photo.delete()
+    }
+
+    /** Each photo is uploaded and taken off the list on its own, so a retry only sends what is missing. */
+    private suspend fun uploadActivityPhotos(activityId: String, dailyLogId: String) {
+        val pending = activityDao.getById(activityId)?.pendingImagePaths ?: return
+        if (pending.isEmpty()) return
+        val childId = activityDao.childIdOf(dailyLogId) ?: return
+        var left = pending
+        for (path in pending) {
+            val photo = File(path)
+            if (photo.exists()) {
+                files.uploadImage(PendingPhotoStore.fileIdOf(path), ACTIVITY_IMAGE, childId, "image/jpeg", photo.readBytes())
+            }
+            left = left - path
+            activityDao.setPendingImagePaths(activityId, left)
+            photo.delete()
+        }
     }
 
     /**
@@ -101,6 +120,7 @@ class DailyLogSyncWorker @AssistedInject constructor(
     private companion object {
         const val TAG = "DailyLogSync"
         const val PICKUP_ID_PHOTO = "PICKUP_ID_PHOTO"
+        const val ACTIVITY_IMAGE = "ACTIVITY_IMAGE"
         // 401: session expired or logged out; 404: an activity whose log hasn't been uploaded yet
         val RETRYABLE = setOf(401, 404, 408, 429)
     }
