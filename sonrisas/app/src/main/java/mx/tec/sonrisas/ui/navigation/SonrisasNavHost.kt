@@ -291,8 +291,15 @@ fun SonrisasNavHost(
             CheckOutFormScreen(
                 nombreMaestra = sesion.nombre,
                 autorizacionHoy = viewModel.autorizacionHoy,
+                fotoIdentificacion = viewModel.fotoIdentificacion,
+                leyendoFoto = viewModel.leyendoFoto,
+                error = viewModel.error,
+                onTomarFoto = viewModel::tomarFotoIdentificacion,
+                onDescartarFoto = viewModel::descartarFotoIdentificacion,
                 onAtras = { nav.popBackStack() },
-                onGuardar = { checkOut -> viewModel.guardar(ninoId, checkOut) { nav.popBackStack() } }
+                onGuardar = { checkOut, autorizacion ->
+                    viewModel.guardar(ninoId, checkOut, autorizacion) { nav.popBackStack() }
+                }
             )
         }
 
@@ -462,20 +469,21 @@ fun SonrisasNavHost(
         ) { backStackEntry ->
             val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
             val viewModel: PadreViewModel = hiltViewModel()
-            LaunchedEffect(ninoId) { viewModel.cargarAutorizacionHoy(ninoId) }
+            LaunchedEffect(ninoId) { viewModel.cargarAutorizaciones(ninoId) }
             val nino = viewModel.ninos.firstOrNull { it.id == ninoId }
 
             PadreAutorizarTerceroScreen(
                 childId = ninoId,
                 childName = nino?.fullName ?: "Alumno/a",
-                parentName = sesion.nombre,
-                autorizacionExistente = viewModel.autorizacionHoy,
+                autorizaciones = viewModel.autorizaciones,
+                guardando = viewModel.guardandoAutorizacion,
+                error = viewModel.errorAutorizacion,
+                conflicto = viewModel.conflictoAutorizacion,
                 onAtras = { nav.popBackStack() },
-                onGuardar = { autorizacion ->
-                    viewModel.guardarAutorizacionTercero(autorizacion) {
-                        nav.popBackStack()
-                    }
-                }
+                onGuardar = { autorizacion, onListo -> viewModel.guardarAutorizacionTercero(autorizacion, onListo = onListo) },
+                onReemplazar = { onListo -> viewModel.reemplazarAutorizacion(onListo) },
+                onDescartarConflicto = viewModel::descartarConflicto,
+                onCancelar = viewModel::cancelarAutorizacion
             )
         }
 

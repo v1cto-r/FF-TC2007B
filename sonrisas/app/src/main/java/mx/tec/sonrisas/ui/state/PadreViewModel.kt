@@ -9,9 +9,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.IOException
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.time.OffsetDateTime
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -62,8 +65,18 @@ class PadreViewModel @Inject constructor(
     var autorizacionHoy by mutableStateOf<PickupAuthorization?>(null)
         private set
 
-    // Why the last authorization wasn't saved (offline, or it overlaps another one)
+    // Why the last authorization wasn't saved or cancelled
     var errorAutorizacion by mutableStateOf<String?>(null)
+        private set
+
+    var autorizaciones by mutableStateOf<List<PickupAuthorization>>(emptyList())
+        private set
+
+    var guardandoAutorizacion by mutableStateOf(false)
+        private set
+
+    // Overlaps one that already exists: waiting for the parent to confirm replacing it
+    var conflictoAutorizacion by mutableStateOf<PickupAuthorization?>(null)
         private set
 
     var resumenSemanal by mutableStateOf<WeeklySummary?>(null)
@@ -210,6 +223,19 @@ class PadreViewModel @Inject constructor(
                                                 )
                                             )
                                         }
+                                        log.checkOut?.let { salida ->
+                                            val autorizado = salida.pickupAuthorizationId != null
+                                            tarjetas.add(
+                                                ActividadUi(
+                                                    tipo = TipoActividadUi.Salida,
+                                                    titulo = "Recogió: ${salida.pickedUpByName}",
+                                                    detalle = if (autorizado) "Persona autorizada · identificación verificada"
+                                                        else "Entregado por ${salida.releasedByStaffName}",
+                                                    hora = salida.checkOutTime.format(HORA),
+                                                    fotos = listOfNotNull(salida.idPhotoFileId.takeIf { autorizado })
+                                                )
+                                            )
+                                        }
                                         tarjetas
                                     }
                                 }
@@ -237,19 +263,51 @@ class PadreViewModel @Inject constructor(
         }
     }
 
+    private var autorizacionesJob: Job? = null
+
+    /** The child's authorizations still in force, for the screen where the parent manages them. */
+    fun cargarAutorizaciones(childId: String) {
+        viewModelScope.launch {
+            try {
+                pickupAuthorizationRepository.refreshFromServer()
+            } catch (e: Exception) {
+                e.printStackTrace()  // offline: the copy in Room is shown
+            }
+        }
+        autorizacionesJob?.cancel()
+        autorizacionesJob = viewModelScope.launch {
+            pickupAuthorizationRepository.observeAllByChild(childId).collect { todas ->
+                autorizaciones = todas.filter { it.isCurrent() }
+            }
+        }
+    }
+
     fun guardarAutorizacionTercero(autorizacion: PickupAuthorization, reemplazar: Boolean = false, onListo: () -> Unit) {
         viewModelScope.launch {
+            guardandoAutorizacion = true
             errorAutorizacion = try {
                 when (pickupAuthorizationRepository.save(autorizacion, reemplazar)) {
                     is PickupSaveResult.Saved -> null.also { onListo() }
-                    is PickupSaveResult.Conflict -> "Ya hay otra persona autorizada en alguno de esos días"
-                    PickupSaveResult.Offline -> "Sin conexión: la autorización no se envió a la escuela"
+                    is PickupSaveResult.Conflict -> null.also { conflictoAutorizacion = autorizacion }
+                    PickupSaveResult.Offline -> "Sin conexión: la autorización no se envió a la escuela. Intenta de nuevo."
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 "No se pudo guardar la autorización"
             }
+            guardandoAutorizacion = false
         }
+    }
+
+    /** The parent confirmed: the new authorization cancels the ones it overlaps. */
+    fun reemplazarAutorizacion(onListo: () -> Unit) {
+        val pendiente = conflictoAutorizacion ?: return
+        conflictoAutorizacion = null
+        guardarAutorizacionTercero(pendiente, reemplazar = true, onListo = onListo)
+    }
+
+    fun descartarConflicto() {
+        conflictoAutorizacion = null
     }
 
     fun cancelarAutorizacion(autorizacion: PickupAuthorization) {
@@ -257,6 +315,8 @@ class PadreViewModel @Inject constructor(
             errorAutorizacion = try {
                 pickupAuthorizationRepository.cancel(autorizacion)
                 null
+            } catch (e: IOException) {
+                "Sin conexión: no se pudo cancelar. Intenta de nuevo."
             } catch (e: Exception) {
                 e.printStackTrace()
                 "No se pudo cancelar la autorización"
@@ -365,3 +425,5 @@ class PadreViewModel @Inject constructor(
         }
     }
 }
+
+private val HORA = DateTimeFormatter.ofPattern("h:mm a")

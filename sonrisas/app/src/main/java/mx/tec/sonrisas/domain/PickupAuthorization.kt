@@ -28,6 +28,10 @@ data class PickupAuthorization(
     val identificationType: String = "INE",
     val notes: String? = null
 ) {
+    /** Still in force: recurring ones until cancelled, THIS_WEEK ones until their week ends. */
+    fun isCurrent(today: LocalDate = LocalDate.now()): Boolean =
+        kind == PickupKind.RECURRING || !startDate.isBefore(weekStart(today))
+
     fun appliesOn(date: LocalDate): Boolean {
         if (date.dayOfWeek !in weekdays) return false
         return when (kind) {

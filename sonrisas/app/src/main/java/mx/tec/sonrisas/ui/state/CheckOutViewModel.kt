@@ -13,9 +13,9 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import mx.tec.sonrisas.data.DailyLogRepository
+import mx.tec.sonrisas.data.PendingPhotoStore
 import mx.tec.sonrisas.data.PickupAuthorizationRepository
-import mx.tec.sonrisas.data.PickupIdPhotoStore
-import mx.tec.sonrisas.data.StoredIdPhoto
+import mx.tec.sonrisas.data.StoredPhoto
 import mx.tec.sonrisas.domain.CheckOutRecord
 import mx.tec.sonrisas.domain.DailyLog
 import mx.tec.sonrisas.domain.PickupAuthorization
@@ -24,7 +24,7 @@ import mx.tec.sonrisas.domain.PickupAuthorization
 class CheckOutViewModel @Inject constructor(
     private val dailyLogRepository: DailyLogRepository,
     private val pickupAuthorizationRepository: PickupAuthorizationRepository,
-    private val idPhotoStore: PickupIdPhotoStore,
+    private val photoStore: PendingPhotoStore,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -34,8 +34,17 @@ class CheckOutViewModel @Inject constructor(
     var autorizacionHoy by mutableStateOf<PickupAuthorization?>(null)
         private set
 
+    /** The ID of whoever picks up, when it is someone the parent authorized. */
+    var fotoIdentificacion by mutableStateOf<StoredPhoto?>(null)
+        private set
+
+    var leyendoFoto by mutableStateOf(false)
+        private set
+
     var error by mutableStateOf<String?>(null)
         private set
+
+    private var guardado = false
 
     fun cargar(childId: String) {
         viewModelScope.launch {
@@ -62,28 +71,52 @@ class CheckOutViewModel @Inject constructor(
         }
     }
 
-    /** The camera shot of the ID of whoever picks the child up; its fields go into the CheckOutRecord. */
-    fun guardarFotoIdentificacion(uri: Uri, onLista: (StoredIdPhoto) -> Unit) {
+    fun tomarFotoIdentificacion(uri: Uri) {
         viewModelScope.launch {
-            val foto = context.leerFoto(uri)
+            leyendoFoto = true
+            val foto = context.leerYBorrarFoto(uri)
+            leyendoFoto = false
             if (foto == null) {
                 error = "No se pudo leer la foto"
                 return@launch
             }
-            onLista(idPhotoStore.keep(foto.second))
+            fotoIdentificacion?.let { photoStore.delete(it.path) }  // retaken: the old one goes
+            fotoIdentificacion = photoStore.keep(foto.second)
+            error = null
         }
     }
 
-    fun guardar(childId: String, checkOut: CheckOutRecord, onListo: () -> Unit) {
-        if (checkOut.pickupAuthorizationId != null && checkOut.idPhotoFileId == null) {
+    fun descartarFotoIdentificacion() {
+        fotoIdentificacion?.let { photoStore.delete(it.path) }
+        fotoIdentificacion = null
+    }
+
+    /**
+     * With [autorizacion], the child leaves with that authorized person and the ID photo is attached;
+     * without it, it's a regular check-out (the parent or whoever the teacher writes down).
+     */
+    fun guardar(childId: String, checkOut: CheckOutRecord, autorizacion: PickupAuthorization?, onListo: () -> Unit) {
+        val foto = fotoIdentificacion
+        if (autorizacion != null && foto == null) {
             error = "Toma una foto de la identificación de quien recoge"
             return
         }
         error = null
+        val registro = if (autorizacion != null && foto != null) {
+            checkOut.copy(pickupAuthorizationId = autorizacion.id, idPhotoFileId = foto.fileId, idPhotoLocalPath = foto.path)
+        } else {
+            descartarFotoIdentificacion()
+            checkOut
+        }
         viewModelScope.launch {
             val actual = dailyLogRepository.observeToday(childId).first() ?: return@launch
-            dailyLogRepository.save(actual.copy(checkOut = checkOut))
+            dailyLogRepository.save(actual.copy(checkOut = registro))
+            guardado = true
             onListo()
         }
+    }
+
+    override fun onCleared() {
+        if (!guardado) descartarFotoIdentificacion()  // left without saving: nothing will upload it
     }
 }
