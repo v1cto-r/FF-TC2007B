@@ -9,9 +9,10 @@ from app.database.models import RoleAction, User, UserRole
 # This is the coarse gate. Which rows a user may touch is decided by Access (scopes) and permissions.py.
 DEFAULT_ROLE_ACTIONS = {
     UserRole.ORG: ["estancia:*", "user:*", "session:revoke", "salon:read", "child:read", "daily_log:read",
-                   "notice:read", "message:read", "file:*", "document:read"],
+                   "notice:read", "message:read", "message:write", "file:*", "document:read"],
     UserRole.ADMIN: ["estancia:read", "estancia:write", "salon:*", "child:*", "daily_log:read", "daily_log:write",
-                     "notice:*", "message:read", "user:*", "session:revoke", "file:*", "document:read"],
+                     "notice:*", "message:read", "message:write", "message:delete", "user:*", "session:revoke", "file:*",
+                     "document:read"],
     UserRole.DOCENTE: ["estancia:read", "salon:read", "child:read", "daily_log:*", "notice:*", "message:read", "message:write",
                        "file:*", "document:read"],
     UserRole.PADRE: ["estancia:read", "salon:read", "child:read", "daily_log:read", "notice:read", "message:read",

@@ -26,7 +26,7 @@ class NoticeOut(RecordOut):
 
 
 class MessageIn(BaseModel):
-    child_id: uuid.UUID
+    chat_id: uuid.UUID  # a child's id, a DOCENTE's (their chat with the admin) or an ADMIN's (their chat with ORG)
     content: Text
     sent_at: AwareDatetime
     is_aviso: bool = False
@@ -34,7 +34,7 @@ class MessageIn(BaseModel):
 
 
 class MessageOut(RecordOut):
-    child_id: uuid.UUID
+    chat_id: uuid.UUID
     author_id: uuid.UUID | None
     content: str
     sent_at: datetime

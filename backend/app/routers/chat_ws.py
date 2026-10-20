@@ -13,7 +13,8 @@ from app.auth.dependency import authorize
 from app.auth.token import TokenClaims, decode_session_token, session_token_expiry
 from app.chat.hub import hub, notify_offline
 from app.config import settings
-from app.chat.service import recipients, render, send_message
+from app.chat.members import find_chat
+from app.chat.service import render, send_message
 from app.rate_limit import hit
 from app.schemas.comms import MessageFrame
 
@@ -43,7 +44,7 @@ def _handle_message(factory, claims: TokenClaims, frame: MessageFrame) -> tuple[
             hit(db, f"chat:{claims.sub}", MESSAGES_PER_MINUTE, 60)
             msg, created = send_message(db, access, frame.id, frame)
             out = render(db, [msg])[0].model_dump(mode="json")
-            people = recipients(db, msg.child_id) if created else set()
+            people = find_chat(db, msg.chat_id).people if created else set()
         except HTTPException as e:
             db.rollback()
             return _error(str(frame.id), e.status_code, str(e.detail)), None, set()

@@ -75,6 +75,7 @@ def create_upload(body: FileCreate, response: Response, access: Access = Depends
     f = File(id=body.id, bucket=bucket, kind=kind, purpose=body.purpose, content_type=body.content_type,
              size=body.size, original_name=body.original_name, upload_state=UploadState.PENDING,
              uploaded_by=access.user_id, estancia_id=target.estancia_id, child_id=target.child_id,
+             peer_id=target.peer_id,
              key=f"{body.purpose.value.lower()}/{target.owner_id}/{body.id}.{ext}")
     db.add(f)
     db.commit()
@@ -116,7 +117,7 @@ def get_file(file_id: uuid.UUID, access: Access = Depends(require_access("file:r
              storage: StorageService = Depends(get_storage), db: Session = Depends(get_db)):
     """Metadata plus a signed GET URL. DELETED files are only served to ORG."""
     f = db.get(File, file_id)
-    if f is None or f.upload_state != UploadState.READY or not can_read_file(access, f):
+    if f is None or f.upload_state != UploadState.READY or not can_read_file(db, access, f):
         raise HTTPException(404, "File not found")
     limit = storage.policy.rate_limits.download.per_minute
     if limit:

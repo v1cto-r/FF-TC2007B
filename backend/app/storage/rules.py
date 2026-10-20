@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.access import Access
+from app.chat.members import find_chat, open_chat
 from app.database.lifecycle import ensure_writable
 from app.database.models import (
     ActivityImage, Child, ChildDocument, Estancia, File, FilePurpose, Message, RecordStatus, UploadState, User,
@@ -17,7 +18,6 @@ from app.database.models import (
 # purposes tied to a child -> roles that may upload them
 CHILD_UPLOADERS = {
     FilePurpose.ACTIVITY_IMAGE: {"DOCENTE"},
-    FilePurpose.MESSAGE_ATTACHMENT: {"PADRE", "DOCENTE"},
     FilePurpose.CHILD_PHOTO: {"PADRE"},
     FilePurpose.CHILD_DOCUMENT: {"PADRE"},
 }
@@ -28,9 +28,21 @@ class UploadTarget:
     estancia_id: uuid.UUID | None
     child_id: uuid.UUID | None
     owner_id: uuid.UUID  # first folder of the object key
+    peer_id: uuid.UUID | None = None
 
 
 def authorize_upload(db: Session, access: Access, purpose: FilePurpose, target_id: uuid.UUID | None) -> UploadTarget:
+    if purpose == FilePurpose.MESSAGE_ATTACHMENT:  # anyone who can write in the chat
+        if target_id is None:
+            raise HTTPException(422, "target_id (the chat) is required")
+        chat = open_chat(db, access, target_id)
+        if access.user_id not in chat.people:
+            raise HTTPException(403, "You can read this chat but not write in it")
+        ensure_writable(chat.record)
+        if chat.child is not None:
+            return UploadTarget(chat.estancia_id, chat.child.id, chat.child.id)
+        return UploadTarget(chat.estancia_id, None, chat.peer.id, chat.peer.id)
+
     if purpose in CHILD_UPLOADERS:
         if access.role not in CHILD_UPLOADERS[purpose]:
             raise HTTPException(403, f"{access.role} can't upload {purpose.value}")
@@ -60,26 +72,31 @@ def authorize_upload(db: Session, access: Access, purpose: FilePurpose, target_i
     return UploadTarget(estancia_id, None, access.user_id)
 
 
-def can_read_file(access: Access, f: File) -> bool:
+def can_read_file(db: Session, access: Access, f: File) -> bool:
     if access.is_org:
         return True
     if f.status == RecordStatus.DELETED:
         return False
     if f.child_id is not None:
         return access.can_see_child(f.child_id)
+    if f.peer_id is not None:  # a photo of a DOCENTE / ADMIN chat: only its people
+        chat = find_chat(db, f.peer_id)
+        return chat is not None and access.user_id in chat.people
     if f.purpose == FilePurpose.USER_AVATAR and f.uploaded_by == access.user_id:
         return True
     return f.estancia_id is not None and access.can_see_estancia(f.estancia_id)
 
 
 def load_attachable(db: Session, file_id: uuid.UUID, purpose: FilePurpose, *, child_id: uuid.UUID | None = None,
-                    estancia_id: uuid.UUID | None = None, uploader: uuid.UUID | None = None) -> File:
+                    estancia_id: uuid.UUID | None = None, peer_id: uuid.UUID | None = None,
+                    uploader: uuid.UUID | None = None) -> File:
     """A file the caller may hang on a record: uploaded and checked, of the right purpose, for the right
-    child / estancia (and uploaded by `uploader`, when given)."""
+    child / estancia / peer chat (and uploaded by `uploader`, when given)."""
     f = db.get(File, file_id)
     ok = (f is not None and f.status is None and f.upload_state == UploadState.READY and f.purpose == purpose
           and (child_id is None or f.child_id == child_id)
           and (estancia_id is None or f.estancia_id == estancia_id)
+          and (peer_id is None or f.peer_id == peer_id)
           and (uploader is None or f.uploaded_by == uploader))
     if not ok:
         raise HTTPException(422, f"File {file_id} can't be used here")

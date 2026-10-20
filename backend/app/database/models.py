@@ -341,20 +341,26 @@ class Notice(Record, Base):
 
 
 class Message(Record, Base):
-  """Room: MessageEntity. chatId is the child's id, so there is one chat per child. Never edited."""
+  """Room: MessageEntity. Never edited. The chat is either a child (parent, docente, admin) or a user
+  (`peer_id`): a DOCENTE's id is their chat with the estancia's admin, an ADMIN's id their chat with ORG."""
 
   __tablename__ = 'messages'
   __table_args__ = _args(live_unique('uq_messages_attachment_live', 'attachment_file_id'))
 
-  child_id: Mapped[uuid.UUID] = _uuid_fk(f'{SCHEMA}.children.id', ondelete='RESTRICT', index=True)
+  child_id: Mapped[uuid.UUID | None] = _uuid_fk(f'{SCHEMA}.children.id', nullable=True, ondelete='RESTRICT', index=True)
+  peer_id: Mapped[uuid.UUID | None] = _uuid_fk(f'{SCHEMA}.users.id', nullable=True, ondelete='RESTRICT', index=True)
   author_id: Mapped[uuid.UUID | None] = _uuid_fk(f'{SCHEMA}.users.id', nullable=True, ondelete='SET NULL')
   content: Mapped[str] = mapped_column(Text, nullable=False)
   sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
   is_aviso: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
   attachment_file_id: Mapped[uuid.UUID | None] = _file_fk(name='fk_messages_attachment_file_id')
 
-  child: Mapped[Child] = relationship()
-  author: Mapped[User | None] = relationship()
+  child: Mapped[Child | None] = relationship()
+  author: Mapped[User | None] = relationship(foreign_keys=[author_id])
+
+  @property
+  def chat_id(self) -> uuid.UUID:
+    return self.child_id or self.peer_id
 
 
 # --- Files (bytes live in rustfs/S3; this table is the registry the API authorizes from) ----
@@ -377,6 +383,7 @@ class File(Record, Base):
   # What the file belongs to. Authorization reads these, never the object key.
   estancia_id: Mapped[uuid.UUID | None] = _uuid_fk(f'{SCHEMA}.estancias.id', nullable=True, ondelete='RESTRICT', index=True)
   child_id: Mapped[uuid.UUID | None] = _uuid_fk(f'{SCHEMA}.children.id', nullable=True, ondelete='RESTRICT', index=True)
+  peer_id: Mapped[uuid.UUID | None] = _uuid_fk(f'{SCHEMA}.users.id', nullable=True, ondelete='RESTRICT', index=True)  # a peer chat's photo
 
 
 class ChildDocument(Record, Base):

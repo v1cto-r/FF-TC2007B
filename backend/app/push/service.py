@@ -63,7 +63,7 @@ class PushService:
     def _send(self, user_ids: set[uuid.UUID], frame: dict) -> None:
         try:
             message = frame["message"]
-            data = {"type": "message", "child_id": str(message["child_id"]), "message_id": str(message["id"])}
+            data = {"type": "message", "chat_id": str(message["chat_id"]), "message_id": str(message["id"])}
             with self._factory() as db:
                 tokens = list(db.scalars(
                     select(DeviceToken.token).join(User, User.id == DeviceToken.user_id)
