@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.auth.access import Access
 from app.auth.dependency import require_access
@@ -33,7 +33,8 @@ def _visible_or_404(db: Session, access: Access, child_id: uuid.UUID) -> Child:
 def list_children(salon_id: uuid.UUID | None = None, estancia_id: uuid.UUID | None = None,
                   parent_id: uuid.UUID | None = None, include_deleted: bool = False,
                   access: Access = Depends(require_access("child:read")), db: Session = Depends(get_db)):
-    stmt = lifecycle.apply_visibility(select(Child).order_by(Child.full_name), Child, access, include_deleted)
+    stmt = lifecycle.apply_visibility(
+        select(Child).options(selectinload(Child.parent)).order_by(Child.full_name), Child, access, include_deleted)
     if not access.is_org:
         stmt = stmt.where(Child.id.in_(access.children))
     for column, value in ((Child.salon_id, salon_id), (Child.estancia_id, estancia_id), (Child.parent_id, parent_id)):

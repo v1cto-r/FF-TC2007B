@@ -214,6 +214,11 @@ class Child(Record, Base):
   salon: Mapped[Salon | None] = relationship(back_populates="children")
   parent: Mapped[User | None] = relationship(back_populates="children", foreign_keys=[parent_id])
 
+  @property
+  def parent_name(self) -> str | None:
+    """Shown to whoever can see the child, so a DOCENTE gets it without reading /users."""
+    return self.parent.full_name if self.parent else None
+
 
 # --- Daily log (Room: DailyLogEntity with embedded check-in / stay / check-out) -----------
 # The 1:1 stage tables are queried by daily_log_id (not mapped as relationships): a soft-deleted

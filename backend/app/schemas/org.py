@@ -83,6 +83,7 @@ class ChildOut(RecordOut):
     estancia_id: uuid.UUID
     salon_id: uuid.UUID | None
     parent_id: uuid.UUID | None
+    parent_name: str | None = None  # read-only, the full_name of parent_id
     full_name: str
     birth_date: date | None  # null only for children enrolled before the field existed
     allergies: list[str]

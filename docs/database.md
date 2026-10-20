@@ -363,7 +363,8 @@ Who can *reach* which rows (`app/auth/access.py`, resolved from the database on 
 | **PADRE** | its children (`children.parent_id`), their salones, and its estancia (`users.estancia_id`). |
 
 A child has exactly one parent account (`children.parent_id`); a parent can have several children. DOCENTEs and PADREs
-get `users.estancia_id` from the admin who created them. `DELETED` rows drop out of these sets; `ARCHIVED` ones stay.
+get `users.estancia_id` from the admin who created them. Every `/children` response carries `parent_name` (read-only, the parent's
+`full_name`), so a DOCENTE sees who the parent is without `user:read`. `DELETED` rows drop out of these sets; `ARCHIVED` ones stay.
 
 What each role may *do* with what it reaches is the `role_actions` table (see [auth.md](auth.md)) plus a few rules
 written in code (only the parent or the admin deletes chat messages, only the docente of the salon uploads activity photos...).

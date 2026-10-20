@@ -150,6 +150,19 @@ def test_admin_enrols_and_links_a_child(client, world, auth):
     assert r.status_code == 200 and r.json()["salon_id"] == str(world.s1.id)  # moved between salones
 
 
+
+def test_docente_sees_the_parent_name_without_reading_users(client, world, auth):
+    cid = uuid.uuid4()
+    assert put(client, f"/children/{cid}", auth(world.admin1), estancia_id=str(world.e1.id), salon_id=str(world.s1.id),
+               full_name="Sin Padre", birth_date="2022-05-01").status_code == 201
+    h = auth(world.d1)
+    names = {c["id"]: c["parent_name"] for c in client.get("/children", headers=h).json()}
+    assert names == {str(world.c1.id): world.p1.full_name, str(world.c2.id): world.p1.full_name, str(cid): None}
+    assert client.get(f"/children/{world.c1.id}", headers=h).json()["parent_name"] == world.p1.full_name
+    # the user directory stays closed to docentes
+    assert client.get("/users?role=PADRE", headers=h).status_code == 403
+    assert client.get(f"/users/{world.p1.id}", headers=h).status_code == 403
+
 def test_child_validation(client, world, auth):
     h = auth(world.admin1)
     base = dict(estancia_id=str(world.e1.id), full_name="x", birth_date="2022-05-01")
