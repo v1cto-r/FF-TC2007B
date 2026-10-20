@@ -23,8 +23,10 @@ import mx.tec.sonrisas.ui.screens.maestra.InicioMaestraScreen
 import mx.tec.sonrisas.ui.screens.maestra.NinosScreen
 import mx.tec.sonrisas.ui.screens.maestra.PerfilNinoScreen
 import mx.tec.sonrisas.ui.screens.maestra.StayFormScreen
+import mx.tec.sonrisas.ui.screens.padre.CambiarContrasenaScreen
 import mx.tec.sonrisas.ui.screens.padre.ChatPadreScreen
 import mx.tec.sonrisas.ui.screens.padre.InicioPadreScreen
+import mx.tec.sonrisas.ui.screens.padre.OnboardingHijoScreen
 import mx.tec.sonrisas.ui.screens.padre.PadreAutorizarTerceroScreen
 import mx.tec.sonrisas.ui.screens.padre.PadreBitacoraScreen
 import mx.tec.sonrisas.ui.screens.padre.PadrePerfilNinoScreen
@@ -167,6 +169,7 @@ fun SonrisasNavHost(
                 viewModel.cargarMensajes(ninoId)
             }
             val nino = (viewModel.estadoPerfilNino as? UiState.Exito)?.datos?.child
+
             ChatMaestraScreen(
                 estado = viewModel.estadoMensajes,
                 currentUserId = sesion.usuario,
@@ -274,10 +277,60 @@ fun SonrisasNavHost(
             )
         }
 
-        // --- PADRE ---
+        // --- PADRE ONBOARDING & RUTAS ---
+        composable(Route.CAMBIAR_CONTRASENA) {
+            val viewModel: PadreViewModel = hiltViewModel()
+            LaunchedEffect(Unit) { viewModel.cargarInicio() }
+
+            CambiarContrasenaScreen(
+                onGuardarContrasena = { _ ->
+                    val primerHijoId = viewModel.ninos.firstOrNull()?.id ?: ""
+                    if (primerHijoId.isNotBlank()) {
+                        nav.navigate(Route.onboardingHijo(primerHijoId)) {
+                            popUpTo(Route.CAMBIAR_CONTRASENA) { inclusive = true }
+                        }
+                    } else {
+                        nav.navigate(Route.INICIO_PADRE) {
+                            popUpTo(Route.CAMBIAR_CONTRASENA) { inclusive = true }
+                        }
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Route.ONBOARDING_HIJO,
+            arguments = listOf(navArgument("ninoId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
+            val viewModel: PadreViewModel = hiltViewModel()
+            LaunchedEffect(Unit) { viewModel.cargarInicio() }
+            val nino = viewModel.ninos.firstOrNull { it.id == ninoId } ?: Child(id = ninoId, fullName = "Alumno", daycareCenter = "Estancia Mariposa", group = GroupEnum.P, parentName = sesion.nombre)
+
+            OnboardingHijoScreen(
+                child = nino,
+                onGuardarInformacion = { birthdate, allergies, actaUri ->
+                    viewModel.actualizarDatosHijo(ninoId, birthdate, allergies, actaUri) {
+                        nav.navigate(Route.INICIO_PADRE) {
+                            popUpTo(Route.ONBOARDING_HIJO) { inclusive = true }
+                        }
+                    }
+                }
+            )
+        }
+
         composable(Route.INICIO_PADRE) {
             val viewModel: PadreViewModel = hiltViewModel()
             LaunchedEffect(Unit) { viewModel.cargarInicio() }
+
+            val hijoIncompleto = viewModel.ninos.firstOrNull { !it.profileCompleted }
+            LaunchedEffect(hijoIncompleto) {
+                if (hijoIncompleto != null) {
+                    nav.navigate(Route.onboardingHijo(hijoIncompleto.id)) {
+                        popUpTo(Route.INICIO_PADRE) { inclusive = true }
+                    }
+                }
+            }
 
             InicioPadreScreen(
                 estado = viewModel.estadoActividades,
@@ -413,6 +466,7 @@ fun SonrisasNavHost(
             val viewModel: PadreViewModel = hiltViewModel()
             LaunchedEffect(ninoId) { viewModel.cargarMensajes(ninoId) }
             val nino = viewModel.ninos.firstOrNull { it.id == ninoId }
+
             ChatPadreScreen(
                 estado = viewModel.estadoMensajes,
                 currentUserId = sesion.usuario,

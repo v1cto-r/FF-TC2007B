@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDateTime
+import java.time.OffsetDateTime
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -22,6 +23,8 @@ import mx.tec.sonrisas.data.DailyLogRepository
 import mx.tec.sonrisas.data.NoticeRepository
 import mx.tec.sonrisas.data.PickupAuthorizationRepository
 import mx.tec.sonrisas.data.SesionRepository
+import mx.tec.sonrisas.data.remote.ChildRemoteDataSource
+import mx.tec.sonrisas.data.remote.FileRemoteDataSource
 import mx.tec.sonrisas.domain.Child
 import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.domain.PickupAuthorization
@@ -38,6 +41,8 @@ class PadreViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val pickupAuthorizationRepository: PickupAuthorizationRepository,
     private val sesionRepository: SesionRepository,
+    private val childRemoteDataSource: ChildRemoteDataSource,
+    private val fileRemoteDataSource: FileRemoteDataSource,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -229,6 +234,38 @@ class PadreViewModel @Inject constructor(
     fun seleccionarNino(indice: Int) {
         ninoSeleccionadoIndex = indice
         cargarInicio()
+    }
+
+    fun actualizarDatosHijo(childId: String, birthdate: String, allergies: String, actaUri: Uri?, onListo: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                if (actaUri != null) {
+                    fileRemoteDataSource.uploadChildDocument(childId, context)
+                }
+
+                val alergiasList = if (allergies.isNotBlank() && allergies.lowercase() != "ninguna" && allergies.lowercase() != "ninguno") {
+                    allergies.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                } else {
+                    emptyList()
+                }
+
+                val updatedDto = childRemoteDataSource.submitProfile(childId, birthdate, alergiasList)
+
+                val ninoExistente = ninos.firstOrNull { it.id == childId }
+                if (ninoExistente != null) {
+                    val ninoActualizado = ninoExistente.copy(
+                        birthdate = birthdate,
+                        allergies = allergies,
+                        profileCompletedAt = updatedDto.profileCompletedAt ?: OffsetDateTime.now().toString()
+                    )
+                    childRepository.save(ninoActualizado)
+                }
+
+                onListo()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     fun cargarMensajes(chatId: String) {

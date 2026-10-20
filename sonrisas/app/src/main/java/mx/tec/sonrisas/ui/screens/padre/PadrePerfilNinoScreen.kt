@@ -6,11 +6,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.outlined.Cake
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.MedicalInformation
-import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -146,26 +144,6 @@ fun PadrePerfilNinoScreen(
                                 Text(child.allergies ?: "Ninguna registrada", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = TextoOscuro)
                             }
                         }
-
-                        // Tipo de Sangre
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.AutoMirrored.Outlined.Assignment, contentDescription = null, tint = Coral, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text("Tipo de Sangre", style = MaterialTheme.typography.bodySmall, color = TextoGris)
-                                Text(child.bloodType ?: "Sin especificar", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = TextoOscuro)
-                            }
-                        }
-
-                        // Teléfono de Emergencia
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.Phone, contentDescription = null, tint = Coral, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text("Contacto de Emergencia", style = MaterialTheme.typography.bodySmall, color = TextoGris)
-                                Text(child.emergencyContactPhone ?: "Sin registrar", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = TextoOscuro)
-                            }
-                        }
                     }
                 }
 
@@ -189,7 +167,7 @@ fun PadrePerfilNinoScreen(
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            text = "Envía una solicitud a la maestra para solicitar el cambio de cumpleaños, teléfono o alergias.",
+                            text = "Envía una solicitud a la maestra para solicitar el cambio de cumpleaños o alergias.",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextoGris
                         )
@@ -242,7 +220,7 @@ fun PadrePerfilNinoScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Escribe el dato que deseas cambiar (ejemplo: 'Cambiar teléfono a 555-987-6543' o 'Alergia a penicilina'):",
+                        text = "Escribe el dato que deseas cambiar (ejemplo: 'Alergia a penicilina' o 'Cambiar fecha de nacimiento a 15/05/2021'):",
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextoGris
                     )
