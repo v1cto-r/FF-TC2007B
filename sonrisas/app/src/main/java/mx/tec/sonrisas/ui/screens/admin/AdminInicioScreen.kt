@@ -7,10 +7,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.GroupAdd
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.HowToReg
+import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import mx.tec.sonrisas.ui.components.AccionRapida
 import mx.tec.sonrisas.ui.components.BottomBar
+import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.components.TituloSeccion
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.*
@@ -37,11 +38,13 @@ fun AdminInicioScreen(
     modifier: Modifier = Modifier,
     onCrearGrupo: () -> Unit = {},
     onInscripcion: () -> Unit = {},
-    onChatOrg: () -> Unit = {},
+    onCrearMaestra: () -> Unit = {},
+    onCrearPadre: () -> Unit = {},
     onSalonClick: (SalonUi) -> Unit = {},
     onTab: (Int) -> Unit = {},
     onSalir: (() -> Unit)? = null
 ) {
+    FlagSecureDisable()
     val salonesSinMaestra = salones.filter { it.maestro == null }
 
     Scaffold(
@@ -81,13 +84,13 @@ fun AdminInicioScreen(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "${salones.size} salones",
+                            text = if (salones.size == 1) "1 salón" else "${salones.size} salones",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
                         Text(
-                            text = "${salones.sumOf { it.alumnos.size }} alumnos en total",
+                            text = "${salones.sumOf { it.alumnos.size }} alumnos en salones",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.White.copy(alpha = 0.9f)
                         )
@@ -116,15 +119,22 @@ fun AdminInicioScreen(
                         modifier = Modifier.weight(1f)
                     )
                 }
-
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     AccionRapida(
-                        texto = "Chat con Organización",
-                        icono = Icons.Outlined.ChatBubbleOutline,
+                        texto = "Crear maestra",
+                        icono = Icons.Outlined.PersonAdd,
                         colorIcono = Verde,
-                        colorFondo = Color.White,
-                        onClick = onChatOrg,
+                        colorFondo = VerdeSuave,
+                        onClick = onCrearMaestra,
+                        modifier = Modifier.weight(1f)
+                    )
+                    AccionRapida(
+                        texto = "Crear padre",
+                        icono = Icons.Outlined.People,
+                        colorIcono = Coral,
+                        colorFondo = CoralSuave,
+                        onClick = onCrearPadre,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -202,17 +212,6 @@ private fun AdminInicioPreview() {
             salones = AdminMuestra.salones,
             alumnosSinSalon = AdminMuestra.alumnosSinSalon.size,
             onSalir = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun AdminInicioSinPendientesPreview() {
-    SonrisasTheme {
-        AdminInicioScreen(
-            salones = AdminMuestra.salones.filter { it.maestro != null },
-            alumnosSinSalon = 0
         )
     }
 }

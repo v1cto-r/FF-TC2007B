@@ -175,6 +175,23 @@ class MaestraViewModel @Inject constructor(
         }
     }
 
+    /** Teacher↔admin chat: the chat id is the teacher's own id, and nothing is hidden by week. */
+    fun cargarMensajesDireccion() {
+        viewModelScope.launch {
+            estadoMensajes = UiState.Cargando
+            try {
+                val yo = sesionRepository.sesion.first()?.id.orEmpty()
+                launch { refrescarMensajes(yo) }
+                chatRepository.observeMessages(yo).collect { mensajes ->
+                    estadoMensajes = if (mensajes.isEmpty()) UiState.Vacio else UiState.Exito(mensajes)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                estadoMensajes = UiState.Error("Error al cargar chat: ${e.message}")
+            }
+        }
+    }
+
     private suspend fun refrescarMensajes(chatId: String) {
         try {
             chatRepository.refresh(chatId)
@@ -227,7 +244,7 @@ class MaestraViewModel @Inject constructor(
     fun enviarMensaje(chatId: String, texto: String, esAviso: Boolean = false) {
         viewModelScope.launch {
             try {
-                val autor = sesionRepository.sesion.first()?.id ?: "maestra"
+                val autor = sesionRepository.sesion.first()?.id ?: ""
                 chatRepository.send(
                     Message(
                         chatId = chatId,
@@ -259,7 +276,7 @@ class MaestraViewModel @Inject constructor(
 
     fun enviarActividadATodos(titulo: String, mensaje: String, onListo: () -> Unit) {
         viewModelScope.launch {
-            val autor = sesionRepository.sesion.first()?.id ?: "maestra"
+            val autor = sesionRepository.sesion.first()?.id ?: ""
             val presentes = misNinos.first().filter { it.presente }
             presentes.forEach { nino ->
                 chatRepository.send(
@@ -277,7 +294,7 @@ class MaestraViewModel @Inject constructor(
 
     fun enviarAvisoATodos(titulo: String, mensaje: String, onListo: () -> Unit) {
         viewModelScope.launch {
-            val autor = sesionRepository.sesion.first()?.id ?: "maestra"
+            val autor = sesionRepository.sesion.first()?.id ?: ""
             val todos = childRepository.observeAll().first()
             todos.forEach { child ->
                 chatRepository.send(

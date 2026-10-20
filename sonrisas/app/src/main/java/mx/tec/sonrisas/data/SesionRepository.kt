@@ -27,6 +27,7 @@ class SesionRepository @Inject constructor(
     private val messageDao: MessageDao,
     private val childDao: ChildDao,
     private val push: PushRepository,
+    private val admin: AdminRepository,
     private val estancias: EstanciaRemoteDataSource
 ) {
     private val _sesion = MutableStateFlow<Sesion?>(null)
@@ -55,7 +56,8 @@ class SesionRepository @Inject constructor(
     }
 
     fun alPrimerPlano() {
-        if (_sesion.value?.pendiente == false) socket.reconnectNow()
+        val actual = _sesion.value ?: return
+        if (!actual.pendiente) socket.reconnectNow()
     }
 
     suspend fun salir() {
@@ -89,7 +91,8 @@ class SesionRepository @Inject constructor(
                 }
             }
             socket.peerChatIds = when (rol) {
-                Rol.ADMIN -> { { listOf(me.sub) } }
+                Rol.MAESTRA -> { { listOf(me.sub) } }
+                Rol.ADMIN -> { { admin.teacherIds() + me.sub } }
                 Rol.ORG -> { { estancias.fetchEstancias().mapNotNull { it.adminUserId } } }
                 else -> { { emptyList() } }
             }

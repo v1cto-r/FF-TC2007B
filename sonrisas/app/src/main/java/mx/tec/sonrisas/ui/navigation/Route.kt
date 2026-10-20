@@ -10,6 +10,9 @@ object Route {
 
     const val CHAT_LISTA_MAESTRA = "chat_lista_maestra"
 
+    // The teacher's chat with the estancia admin (its chat id is the teacher's own user id).
+    const val CHAT_ADMIN_MAESTRA = "maestra_chat_admin"
+
     const val CHAT_MAESTRA = "chat_maestra/{ninoId}"
     fun chatMaestra(ninoId: String): String = "chat_maestra/${Uri.encode(ninoId)}"
 
@@ -58,8 +61,27 @@ object Route {
     const val ADMIN_AGREGAR_ALUMNOS = "admin_agregar_alumnos/{salonId}"
     fun adminAgregarAlumnos(salonId: String): String = "admin_agregar_alumnos/${Uri.encode(salonId)}"
 
+    const val ADMIN_ASIGNAR_MAESTRA = "admin_asignar_maestra/{salonId}"
+    fun adminAsignarMaestra(salonId: String): String = "admin_asignar_maestra/${Uri.encode(salonId)}"
+
+    const val ADMIN_PADRES = "admin_padres"
+    const val ADMIN_AVISOS = "admin_avisos"
+    const val ADMIN_CREAR_MAESTRA = "admin_crear_maestra"
+    const val ADMIN_CREAR_PADRE = "admin_crear_padre"
+
+    const val ADMIN_DETALLE_PADRE = "admin_padre/{padreId}"
+    fun adminDetallePadre(padreId: String): String = "admin_padre/${Uri.encode(padreId)}"
+
+    const val ADMIN_AGREGAR_NINO = "admin_agregar_nino/{padreId}"
+    fun adminAgregarNino(padreId: String): String = "admin_agregar_nino/${Uri.encode(padreId)}"
+
+    // --- ADMIN CHAT ---
+    const val ADMIN_CHAT_LIST = "admin_chat_list"
     // The admin's chat with the organization (its chat id is the admin's own user id).
     const val ADMIN_CHAT_ORG = "admin_chat_org"
+    const val ADMIN_CHAT_TEACHERS = "admin_chat_teachers"
+    const val ADMIN_CHAT_TEACHER = "admin_chat_teacher/{teacherId}"
+    fun adminChatTeacher(teacherId: String): String = "admin_chat_teacher/${Uri.encode(teacherId)}"
 
     // --- ORGANIZACIÓN ---
     const val ORG_INICIO = "org_inicio"

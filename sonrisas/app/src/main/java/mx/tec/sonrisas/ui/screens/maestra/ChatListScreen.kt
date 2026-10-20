@@ -40,6 +40,7 @@ import mx.tec.sonrisas.ui.theme.*
 fun ChatListScreen(
     estado: UiState<List<ConversacionUi>>,
     modifier: Modifier = Modifier,
+    onChatDireccion: () -> Unit = {},
     onConversacionClick: (Child) -> Unit = {},
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
@@ -52,6 +53,34 @@ fun ChatListScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             TopBarAtras(titulo = "Chats", subtitulo = "Conversaciones con los padres")
+
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clickable { onChatDireccion() },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AvatarCircular(tamano = 44.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "Chat con Dirección",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = TextoOscuro
+                        )
+                        Text(
+                            text = "Comunicación con la administración de la estancia",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextoGris
+                        )
+                    }
+                }
+            }
 
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (estado) {
