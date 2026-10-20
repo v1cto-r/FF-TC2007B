@@ -46,6 +46,7 @@ fun InicioMaestraScreen(
     onActividad: () -> Unit = {},
     onAviso: () -> Unit = {},
     onReintentar: () -> Unit = {},
+    onCerrarSesion: (() -> Unit)? = null,
     onTab: (Int) -> Unit = {}
 ) {
     FlagSecureDisable()
@@ -58,7 +59,8 @@ fun InicioMaestraScreen(
             TopBarAtras(
                 titulo = "Hola, Maestra Laura",
                 subtitulo = if (grupo != null) grupo.etiqueta() else null,
-                mostrarAvatar = true
+                mostrarAvatar = true,
+                onCerrarSesion = onCerrarSesion
             )
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (estado) {

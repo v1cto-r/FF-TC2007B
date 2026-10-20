@@ -16,7 +16,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,8 +40,8 @@ fun AdminInicioScreen(
     onCrearMaestra: () -> Unit = {},
     onCrearPadre: () -> Unit = {},
     onSalonClick: (SalonUi) -> Unit = {},
-    onTab: (Int) -> Unit = {},
-    onSalir: (() -> Unit)? = null
+    onCerrarSesion: (() -> Unit)? = null,
+    onTab: (Int) -> Unit = {}
 ) {
     FlagSecureDisable()
     val salonesSinMaestra = salones.filter { it.maestro == null }
@@ -56,7 +55,8 @@ fun AdminInicioScreen(
             TopBarAtras(
                 titulo = "Hola, Administrador",
                 subtitulo = "Panel de administración",
-                mostrarAvatar = true
+                mostrarAvatar = true,
+                onCerrarSesion = onCerrarSesion
             )
 
             Column(
@@ -163,22 +163,6 @@ fun AdminInicioScreen(
                         }
                     }
                 }
-
-                // Cerrar sesión
-                if (onSalir != null) {
-                    Spacer(Modifier.height(24.dp))
-                    TextButton(
-                        onClick = onSalir,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) {
-                        Text(
-                            text = "Cerrar sesión",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Coral
-                        )
-                    }
-                    Spacer(Modifier.height(8.dp))
-                }
             }
         }
     }
@@ -210,8 +194,7 @@ private fun AdminInicioPreview() {
     SonrisasTheme {
         AdminInicioScreen(
             salones = AdminMuestra.salones,
-            alumnosSinSalon = AdminMuestra.alumnosSinSalon.size,
-            onSalir = {}
+            alumnosSinSalon = AdminMuestra.alumnosSinSalon.size
         )
     }
 }

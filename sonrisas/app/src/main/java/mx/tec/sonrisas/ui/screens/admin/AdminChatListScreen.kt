@@ -35,6 +35,7 @@ fun AdminChatListScreen(
     onChatOrg: () -> Unit = {},
     onMaestroClick: (MaestroUi) -> Unit = {},
     onReintentar: () -> Unit = {},
+    onCerrarSesion: (() -> Unit)? = null,
     onTab: (Int) -> Unit = {}
 ) {
     FlagSecureDisable()
@@ -44,7 +45,12 @@ fun AdminChatListScreen(
         bottomBar = { BottomBar(tabs = TabsAdmin, seleccionado = 4, onSeleccionar = onTab) }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            TopBarAtras(titulo = "Chats", subtitulo = "Organización y maestras", mostrarAvatar = true)
+            TopBarAtras(
+                titulo = "Chats",
+                subtitulo = "Organización y maestras",
+                mostrarAvatar = true,
+                onCerrarSesion = onCerrarSesion
+            )
 
             // The org chat is pinned: always first, whatever the latest message.
             FilaChat(

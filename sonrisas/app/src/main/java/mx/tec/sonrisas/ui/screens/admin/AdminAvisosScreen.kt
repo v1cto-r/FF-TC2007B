@@ -28,6 +28,7 @@ import mx.tec.sonrisas.ui.theme.*
 fun AdminAvisosScreen(
     avisos: List<AvisoUi>,
     modifier: Modifier = Modifier,
+    onCerrarSesion: (() -> Unit)? = null,
     onTab: (Int) -> Unit = {}
 ) {
     FlagSecureDisable()
@@ -37,7 +38,12 @@ fun AdminAvisosScreen(
         bottomBar = { BottomBar(tabs = TabsAdmin, seleccionado = 3, onSeleccionar = onTab) }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            TopBarAtras(titulo = "Avisos", subtitulo = "Comunicados de la estancia", mostrarAvatar = true)
+            TopBarAtras(
+                titulo = "Avisos",
+                subtitulo = "Comunicados de la estancia",
+                mostrarAvatar = true,
+                onCerrarSesion = onCerrarSesion
+            )
 
             if (avisos.isEmpty()) {
                 EstadoVacio(

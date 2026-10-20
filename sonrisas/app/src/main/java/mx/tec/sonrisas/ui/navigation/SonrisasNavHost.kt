@@ -92,6 +92,7 @@ fun SonrisasNavHost(
                 onActividad = { nav.navigate(Route.ACTIVIDAD_MASIVA) },
                 onAviso = { nav.navigate(Route.AVISO_MASIVO) },
                 onReintentar = { viewModel.cargarInicio() },
+                onCerrarSesion = onSalir,
                 onTab = { indice ->
                     when (indice) {
                         0 -> {}
@@ -402,6 +403,7 @@ fun SonrisasNavHost(
                     }
                 },
                 onReintentar = { viewModel.cargarInicio() },
+                onCerrarSesion = onSalir,
                 onTab = { indice ->
                     when (indice) {
                         0 -> {}
@@ -438,6 +440,7 @@ fun SonrisasNavHost(
                         nav.navigate(Route.padrePerfilNino(id))
                     }
                 },
+                onCerrarSesion = onSalir,
                 onTab = { indice ->
                     when (indice) {
                         0 -> nav.navigate(Route.INICIO_PADRE) { launchSingleTop = true }

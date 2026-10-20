@@ -56,8 +56,8 @@ fun NavGraphBuilder.adminGraph(
                 onCrearMaestra = { nav.navigate(Route.ADMIN_CREAR_MAESTRA) },
                 onCrearPadre = { nav.navigate(Route.ADMIN_CREAR_PADRE) },
                 onSalonClick = { salon -> nav.navigate(Route.adminDetalleSalon(salon.id)) },
-                onTab = { indice -> nav.irATabAdmin(indice) },
-                onSalir = onSalir
+                onCerrarSesion = onSalir,
+                onTab = { indice -> nav.irATabAdmin(indice) }
             )
         }
     }
@@ -69,6 +69,7 @@ fun NavGraphBuilder.adminGraph(
                 salones = datos.salones,
                 onSalonClick = { salon -> nav.navigate(Route.adminDetalleSalon(salon.id)) },
                 onCrearGrupo = { nav.navigate(Route.ADMIN_CREAR_GRUPO) },
+                onCerrarSesion = onSalir,
                 onTab = { indice -> nav.irATabAdmin(indice) }
             )
         }
@@ -81,6 +82,7 @@ fun NavGraphBuilder.adminGraph(
                 padres = datos.padres,
                 onPadreClick = { padre -> nav.navigate(Route.adminDetallePadre(padre.id)) },
                 onNuevoPadre = { nav.navigate(Route.ADMIN_CREAR_PADRE) },
+                onCerrarSesion = onSalir,
                 onTab = { indice -> nav.irATabAdmin(indice) }
             )
         }
@@ -91,6 +93,7 @@ fun NavGraphBuilder.adminGraph(
         ConEstado(estado = vm.estado, onReintentar = vm::cargar) { datos ->
             AdminAvisosScreen(
                 avisos = datos.avisos,
+                onCerrarSesion = onSalir,
                 onTab = { indice -> nav.irATabAdmin(indice) }
             )
         }
@@ -119,6 +122,7 @@ fun NavGraphBuilder.adminGraph(
             onChatOrg = { nav.navigate(Route.ADMIN_CHAT_ORG) },
             onMaestroClick = { maestro -> nav.navigate(Route.adminChatTeacher(maestro.id)) },
             onReintentar = vm::cargar,
+            onCerrarSesion = onSalir,
             onTab = { indice -> nav.irATabAdmin(indice) }
         )
     }

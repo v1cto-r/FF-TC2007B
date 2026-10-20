@@ -28,6 +28,7 @@ fun AdminPadresScreen(
     modifier: Modifier = Modifier,
     onPadreClick: (PadreUi) -> Unit = {},
     onNuevoPadre: () -> Unit = {},
+    onCerrarSesion: (() -> Unit)? = null,
     onTab: (Int) -> Unit = {}
 ) {
     FlagSecureDisable()
@@ -49,7 +50,8 @@ fun AdminPadresScreen(
             TopBarAtras(
                 titulo = "Padres",
                 subtitulo = if (padres.size == 1) "1 familia" else "${padres.size} familias",
-                mostrarAvatar = true
+                mostrarAvatar = true,
+                onCerrarSesion = onCerrarSesion
             )
 
             if (padres.isEmpty()) {
