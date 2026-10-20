@@ -3,7 +3,6 @@ package mx.tec.sonrisas.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
@@ -14,6 +13,7 @@ import androidx.navigation.navArgument
 import mx.tec.sonrisas.data.RolApi
 import mx.tec.sonrisas.ui.screens.admin.*
 import mx.tec.sonrisas.ui.state.AdminViewModel
+import mx.tec.sonrisas.ui.state.ChatViewModel
 import mx.tec.sonrisas.ui.state.UiState
 
 /** Pestañas de la barra inferior: 0 = Inicio, 1 = Salones, 2 = Padres, 3 = Avisos, 4 = Chat. */
@@ -98,40 +98,46 @@ fun NavGraphBuilder.adminGraph(
 
     // --- Chat Admin ---
 
-    composable(Route.ADMIN_CHAT_LIST) {
+    composable(Route.ADMIN_CHAT_LIST) { entry ->
+        val vm = entry.adminViewModel(nav)
+        val chat: ChatViewModel = hiltViewModel()
+        LaunchedEffect(Unit) { if (vm.estado !is UiState.Exito) vm.cargar() }
+        val estadoMaestros: UiState<List<MaestroUi>> = when (val e = vm.estado) {
+            is UiState.Exito -> if (e.datos.maestros.isEmpty()) UiState.Vacio else UiState.Exito(e.datos.maestros)
+            is UiState.Error -> e
+            UiState.Vacio -> UiState.Vacio
+            UiState.Cargando -> UiState.Cargando
+        }
+        // Chat ids: the admin's own id (org chat) and each teacher's id.
+        val chatIds = listOf(miId) + ((vm.estado as? UiState.Exito)?.datos?.maestros?.map { it.id } ?: emptyList())
+        LaunchedEffect(chatIds) { chat.observarUltimosMensajes(chatIds) }
+
         AdminChatListScreen(
+            estado = estadoMaestros,
+            miId = miId,
+            ultimosMensajes = chat.ultimosMensajes,
             onChatOrg = { nav.navigate(Route.ADMIN_CHAT_ORG) },
-            onChatProfesores = { nav.navigate(Route.ADMIN_CHAT_TEACHERS) },
+            onMaestroClick = { maestro -> nav.navigate(Route.adminChatTeacher(maestro.id)) },
+            onReintentar = vm::cargar,
             onTab = { indice -> nav.irATabAdmin(indice) }
         )
     }
 
-    composable(Route.ADMIN_CHAT_ORG) { entry ->
-        val vm = entry.adminViewModel(nav)
-        val context = LocalContext.current
-        val chatId = miId // org↔admin chat: its id is the admin's own user id
-        LaunchedEffect(chatId) { vm.cargarMensajes(chatId) }
+    composable(Route.ADMIN_CHAT_ORG) {
+        // Org↔admin chat: its id is the admin's own user id.
+        val chat: ChatViewModel = hiltViewModel()
+        LaunchedEffect(miId) { chat.cargarMensajes(miId) }
         AdminChatScreen(
-            estado = vm.estadoMensajes,
+            estado = chat.estadoMensajes,
             currentUserId = miId,
-            titulo = "Chat con Organización",
+            titulo = "Organización",
             subtitulo = "Comunicación institucional",
             onAtras = { nav.popBackStack() },
-            onEnviar = { texto, esAviso -> vm.enviarMensaje(chatId, texto, esAviso) },
-            onEnviarFoto = { uri -> vm.enviarFoto(chatId, uri, context) },
-            onReintentar = { vm.cargarMensajes(chatId) }
+            onEnviar = { texto, esAviso -> chat.enviarMensaje(miId, texto, esAviso) },
+            onEnviarFoto = { uri -> chat.enviarFoto(miId, uri) },
+            onReintentar = { chat.cargarMensajes(miId) },
+            onTab = { indice -> nav.irATabAdmin(indice) }
         )
-    }
-
-    composable(Route.ADMIN_CHAT_TEACHERS) { entry ->
-        val vm = entry.adminViewModel(nav)
-        ConEstado(estado = vm.estado, onReintentar = vm::cargar) { datos ->
-            AdminChatTeacherListScreen(
-                maestros = datos.maestros,
-                onMaestroClick = { maestro -> nav.navigate(Route.adminChatTeacher(maestro.id)) },
-                onAtras = { nav.popBackStack() }
-            )
-        }
     }
 
     composable(
@@ -140,20 +146,21 @@ fun NavGraphBuilder.adminGraph(
     ) { entry ->
         val teacherId = entry.arguments?.getString("teacherId").orEmpty()
         val vm = entry.adminViewModel(nav)
-        val context = LocalContext.current
+        val chat: ChatViewModel = hiltViewModel()
         // The chat id of a teacher↔admin chat is the teacher's user id.
-        LaunchedEffect(teacherId) { vm.cargarMensajes(teacherId) }
+        LaunchedEffect(teacherId) { chat.cargarMensajes(teacherId) }
         val maestroNombre = (vm.estado as? UiState.Exito)?.datos?.maestros?.firstOrNull { it.id == teacherId }?.nombre ?: "Profesor/a"
 
         AdminChatScreen(
-            estado = vm.estadoMensajes,
+            estado = chat.estadoMensajes,
             currentUserId = miId,
             titulo = maestroNombre,
-            subtitulo = "Chat con docente",
+            subtitulo = "Docente",
             onAtras = { nav.popBackStack() },
-            onEnviar = { texto, esAviso -> vm.enviarMensaje(teacherId, texto, esAviso) },
-            onEnviarFoto = { uri -> vm.enviarFoto(teacherId, uri, context) },
-            onReintentar = { vm.cargarMensajes(teacherId) }
+            onEnviar = { texto, esAviso -> chat.enviarMensaje(teacherId, texto, esAviso) },
+            onEnviarFoto = { uri -> chat.enviarFoto(teacherId, uri) },
+            onReintentar = { chat.cargarMensajes(teacherId) },
+            onTab = { indice -> nav.irATabAdmin(indice) }
         )
     }
 

@@ -33,7 +33,6 @@ fun ChatPadreScreen(
         estado = estado,
         currentUserId = currentUserId,
         titulo = titulo,
-        textoVacio = "Escribe un mensaje a la maestra",
         modifier = modifier,
         subtitulo = subtitulo,
         tabs = TabsPadre,

@@ -34,6 +34,7 @@ import mx.tec.sonrisas.ui.screens.padre.PadreResumenSemanalScreen
 import mx.tec.sonrisas.ui.state.ActivityViewModel
 import mx.tec.sonrisas.ui.state.CheckInViewModel
 import mx.tec.sonrisas.ui.state.CheckOutViewModel
+import mx.tec.sonrisas.ui.state.ChatViewModel
 import mx.tec.sonrisas.ui.state.MaestraViewModel
 import mx.tec.sonrisas.ui.state.PadreViewModel
 import mx.tec.sonrisas.ui.state.StayViewModel
@@ -151,10 +152,14 @@ fun SonrisasNavHost(
 
         composable(Route.CHAT_LISTA_MAESTRA) {
             val viewModel: MaestraViewModel = hiltViewModel()
+            val chat: ChatViewModel = hiltViewModel()
             LaunchedEffect(Unit) { viewModel.cargarConversaciones() }
+            // The teacher↔admin chat id is the teacher's own user id.
+            LaunchedEffect(sesion.id) { chat.observarUltimosMensajes(listOf(sesion.id)) }
 
             ChatListScreen(
                 estado = viewModel.estadoConversaciones,
+                ultimoMensajeDireccion = chat.ultimosMensajes[sesion.id],
                 onChatDireccion = { nav.navigate(Route.CHAT_ADMIN_MAESTRA) },
                 onConversacionClick = { child -> nav.navigate(Route.chatMaestra(child.id)) },
                 onReintentar = { viewModel.cargarConversaciones() },
@@ -169,21 +174,21 @@ fun SonrisasNavHost(
         }
 
         composable(Route.CHAT_ADMIN_MAESTRA) {
-            val viewModel: MaestraViewModel = hiltViewModel()
+            // Teacher↔admin chat: its id is the teacher's own user id. Nothing can be deleted.
+            val chat: ChatViewModel = hiltViewModel()
             val miId = sesion.id
-            LaunchedEffect(miId) { viewModel.cargarMensajesDireccion() }
+            LaunchedEffect(miId) { chat.cargarMensajes(miId) }
 
-            // Teachers can't delete; photos and the aviso toggle come with ChatScreen.
             ChatMaestraScreen(
-                estado = viewModel.estadoMensajes,
+                estado = chat.estadoMensajes,
                 currentUserId = miId,
                 titulo = "Dirección",
                 subtitulo = "Administración de la estancia",
                 onAtras = { nav.popBackStack() },
-                onEnviar = { texto, esAviso -> viewModel.enviarMensaje(miId, texto, esAviso) },
-                onEnviarFoto = { uri -> viewModel.enviarFoto(miId, uri) },
+                onEnviar = { texto, esAviso -> chat.enviarMensaje(miId, texto, esAviso) },
+                onEnviarFoto = { uri -> chat.enviarFoto(miId, uri) },
                 onEliminar = null,
-                onReintentar = { viewModel.cargarMensajesDireccion() },
+                onReintentar = { chat.cargarMensajes(miId) },
                 onTab = { indice ->
                     when (indice) {
                         0 -> nav.navigate(Route.INICIO_MAESTRA) { launchSingleTop = true }
@@ -292,12 +297,24 @@ fun SonrisasNavHost(
 
         composable(Route.ACTIVIDAD_MASIVA) {
             val viewModel: MaestraViewModel = hiltViewModel()
+            LaunchedEffect(Unit) { viewModel.cargarNinos() }
+
+            val ninosPresentes = (viewModel.estadoNinos as? UiState.Exito)?.datos?.filter { it.presente }?.map { it.child } ?: emptyList()
+
             BroadcastFormScreen(
-                titulo = "Actividad para todos",
-                descripcionAyuda = "Se enviará como mensaje de chat a los padres de todos los niños presentes hoy.",
-                textoBoton = "Enviar a presentes",
+                titulo = "Actividad",
+                descripcionAyuda = "Registra una actividad o comparte una foto con los familiares.",
+                textoBoton = "Enviar a los presentes",
+                ninosPresentes = ninosPresentes,
                 onAtras = { nav.popBackStack() },
-                onEnviar = { titulo, mensaje -> viewModel.enviarActividadATodos(titulo, mensaje) { nav.popBackStack() } }
+                onEnviarATodos = { titulo, mensaje ->
+                    viewModel.enviarActividadATodos(titulo, mensaje) { nav.popBackStack() }
+                },
+                onEnviarAAdjuntados = { titulo, mensaje, fotoUri, ninosSeleccionados ->
+                    viewModel.enviarActividadASeleccionados(titulo, mensaje, fotoUri, ninosSeleccionados) {
+                        nav.popBackStack()
+                    }
+                }
             )
         }
 

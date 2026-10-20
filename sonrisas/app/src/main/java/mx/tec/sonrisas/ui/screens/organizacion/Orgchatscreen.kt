@@ -32,7 +32,6 @@ fun ChatOrgScreen(
         estado = estado,
         currentUserId = currentUserId,
         titulo = titulo,
-        textoVacio = "Escribe un mensaje al administrador para iniciar la conversación",
         modifier = modifier,
         subtitulo = subtitulo,
         tabs = TabsOrg,
