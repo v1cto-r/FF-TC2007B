@@ -97,16 +97,7 @@ fun PerfilNinoScreen(
 
                     is UiState.Exito -> {
                         val nino = estado.datos.child
-                        val autorizacionHoy = estado.datos.autorizacionHoy
-                        val logHoy = estado.datos.dailyLog
-
-                        val nombreTutor = when {
-                            nino.parentName.isNotBlank() && nino.parentName != "Padre / Tutor" -> nino.parentName
-                            autorizacionHoy != null -> "${autorizacionHoy.authorizedPersonName} (${autorizacionHoy.relationship})"
-                            logHoy?.checkIn?.droppedOffByName?.isNotBlank() == true -> logHoy.checkIn.droppedOffByName
-                            logHoy?.checkOut?.pickedUpByName?.isNotBlank() == true -> logHoy.checkOut.pickedUpByName
-                            else -> "Sin tutor registrado"
-                        }
+                        val nombreTutor = nombreTutor(estado.datos)
 
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -206,17 +197,7 @@ fun PerfilNinoScreen(
                 }
 
                 if (estado is UiState.Exito) {
-                    val nino = estado.datos.child
-                    val autorizacionHoy = estado.datos.autorizacionHoy
-                    val logHoy = estado.datos.dailyLog
-
-                    val nombreTutor = when {
-                        nino.parentName.isNotBlank() && nino.parentName != "Padre / Tutor" -> nino.parentName
-                        autorizacionHoy != null -> "${autorizacionHoy.authorizedPersonName} (${autorizacionHoy.relationship})"
-                        logHoy?.checkIn?.droppedOffByName?.isNotBlank() == true -> logHoy.checkIn.droppedOffByName
-                        logHoy?.checkOut?.pickedUpByName?.isNotBlank() == true -> logHoy.checkOut.pickedUpByName
-                        else -> "Sin tutor registrado"
-                    }
+                    val nombreTutor = nombreTutor(estado.datos)
 
                     val terminado = estado.datos.dailyLog?.checkOut != null
                     Spacer(Modifier.height(20.dp))
@@ -329,6 +310,19 @@ fun PerfilNinoScreen(
 }
 
 @Preview(showBackground = true, showSystemUi = true)
+// The linked parent (from the server), else whoever is authorized or dropped off / picked up today.
+private fun nombreTutor(datos: NinoConEstado): String {
+    val autorizacionHoy = datos.autorizacionHoy
+    val logHoy = datos.dailyLog
+    return when {
+        datos.child.parentName.isNotBlank() -> datos.child.parentName
+        autorizacionHoy != null -> "${autorizacionHoy.authorizedPersonName} (${autorizacionHoy.relationship})"
+        logHoy?.checkIn?.droppedOffByName?.isNotBlank() == true -> logHoy.checkIn.droppedOffByName
+        logHoy?.checkOut?.pickedUpByName?.isNotBlank() == true -> logHoy.checkOut.pickedUpByName
+        else -> "Sin tutor registrado"
+    }
+}
+
 @Composable
 private fun PerfilNinoPreview() {
     SonrisasTheme {

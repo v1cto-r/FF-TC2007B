@@ -16,9 +16,6 @@ interface ChildDao {
     @Query("SELECT * FROM children WHERE id = :id")
     fun observeById(id: String): Flow<ChildEntity?>
 
-    @Query("SELECT * FROM children WHERE id = :id LIMIT 1")
-    suspend fun getById(id: String): ChildEntity?
-
     @Upsert
     suspend fun save(child: ChildEntity)
 
