@@ -13,6 +13,7 @@ import mx.tec.sonrisas.domain.GroupEnum
 import mx.tec.sonrisas.domain.Rol
 import mx.tec.sonrisas.domain.Sesion
 import mx.tec.sonrisas.domain.WeeklySummary
+import mx.tec.sonrisas.ui.components.RefrescoPeriodico
 import mx.tec.sonrisas.ui.screens.maestra.ActivityFormScreen
 import mx.tec.sonrisas.ui.screens.maestra.BroadcastFormScreen
 import mx.tec.sonrisas.ui.screens.maestra.ChatListScreen
@@ -34,6 +35,7 @@ import mx.tec.sonrisas.ui.screens.padre.PadreResumenSemanalScreen
 import mx.tec.sonrisas.ui.state.ActivityViewModel
 import mx.tec.sonrisas.ui.state.CheckInViewModel
 import mx.tec.sonrisas.ui.state.CheckOutViewModel
+import mx.tec.sonrisas.ui.state.ChatViewModel
 import mx.tec.sonrisas.ui.state.MaestraViewModel
 import mx.tec.sonrisas.ui.state.PadreViewModel
 import mx.tec.sonrisas.ui.state.StayViewModel
@@ -50,13 +52,23 @@ fun SonrisasNavHost(
     val destinoInicial = when (sesion.rol) {
         Rol.MAESTRA -> Route.INICIO_MAESTRA
         Rol.PADRE -> Route.INICIO_PADRE
-        else -> Route.INICIO_PADRE
+        Rol.ADMIN -> Route.ADMIN_INICIO
+        Rol.ORG -> Route.ORG_INICIO
     }
 
-    // A tapped push notification opens that child's chat: the teacher's or the parent's, depending on who is logged in.
+    // A tapped push notification carries a chat id. Your own id is your chat with the level above
+    // (teacher → admin, admin → org); a teacher's id is an admin↔teacher chat; ORG only receives admin ids;
+    // anything else is a child chat.
     LaunchedEffect(chatPendiente) {
         chatPendiente?.let {
-            nav.navigate(if (sesion.rol == Rol.MAESTRA) Route.chatMaestra(it) else Route.chatPadre(it))
+            nav.navigate(
+                when (sesion.rol) {
+                    Rol.MAESTRA -> if (it == sesion.id) Route.CHAT_ADMIN_MAESTRA else Route.chatMaestra(it)
+                    Rol.ADMIN -> if (it == sesion.id) Route.ADMIN_CHAT_ORG else Route.adminChatTeacher(it)
+                    Rol.ORG -> Route.orgChatAdmin(it)
+                    else -> Route.chatPadre(it)
+                }
+            )
             onChatAbierto()
         }
     }
@@ -65,10 +77,14 @@ fun SonrisasNavHost(
         navController = nav,
         startDestination = destinoInicial
     ) {
+        adminGraph(nav = nav, miId = sesion.id, onSalir = onSalir)
+        orgGraph(nav = nav, nombre = sesion.nombre, miId = sesion.id, onSalir = onSalir)
+
         // --- MAESTRA ---
         composable(Route.INICIO_MAESTRA) {
             val viewModel: MaestraViewModel = hiltViewModel()
             LaunchedEffect(Unit) { viewModel.cargarInicio() }
+            RefrescoPeriodico(onRefrescar = viewModel::refrescar)
 
             InicioMaestraScreen(
                 estado = viewModel.estadoEventos,
@@ -78,6 +94,7 @@ fun SonrisasNavHost(
                 onActividad = { nav.navigate(Route.ACTIVIDAD_MASIVA) },
                 onAviso = { nav.navigate(Route.AVISO_MASIVO) },
                 onReintentar = { viewModel.cargarInicio() },
+                onCerrarSesion = onSalir,
                 onTab = { indice ->
                     when (indice) {
                         0 -> {}
@@ -138,10 +155,15 @@ fun SonrisasNavHost(
 
         composable(Route.CHAT_LISTA_MAESTRA) {
             val viewModel: MaestraViewModel = hiltViewModel()
+            val chat: ChatViewModel = hiltViewModel()
             LaunchedEffect(Unit) { viewModel.cargarConversaciones() }
+            // The teacher↔admin chat id is the teacher's own user id.
+            LaunchedEffect(sesion.id) { chat.observarUltimosMensajes(listOf(sesion.id)) }
 
             ChatListScreen(
                 estado = viewModel.estadoConversaciones,
+                ultimoMensajeDireccion = chat.ultimosMensajes[sesion.id],
+                onChatDireccion = { nav.navigate(Route.CHAT_ADMIN_MAESTRA) },
                 onConversacionClick = { child -> nav.navigate(Route.chatMaestra(child.id)) },
                 onReintentar = { viewModel.cargarConversaciones() },
                 onTab = { indice ->
@@ -149,6 +171,32 @@ fun SonrisasNavHost(
                         0 -> nav.navigate(Route.INICIO_MAESTRA) { launchSingleTop = true }
                         1 -> nav.navigate(Route.NINOS) { launchSingleTop = true }
                         2 -> {}
+                    }
+                }
+            )
+        }
+
+        composable(Route.CHAT_ADMIN_MAESTRA) {
+            // Teacher↔admin chat: its id is the teacher's own user id. Nothing can be deleted.
+            val chat: ChatViewModel = hiltViewModel()
+            val miId = sesion.id
+            LaunchedEffect(miId) { chat.cargarMensajes(miId) }
+
+            ChatMaestraScreen(
+                estado = chat.estadoMensajes,
+                currentUserId = miId,
+                titulo = "Dirección",
+                subtitulo = "Administración de la estancia",
+                onAtras = { nav.popBackStack() },
+                onEnviar = { texto, esAviso -> chat.enviarMensaje(miId, texto, esAviso) },
+                onEnviarFoto = { uri -> chat.enviarFoto(miId, uri) },
+                onEliminar = null,
+                onReintentar = { chat.cargarMensajes(miId) },
+                onTab = { indice ->
+                    when (indice) {
+                        0 -> nav.navigate(Route.INICIO_MAESTRA) { launchSingleTop = true }
+                        1 -> nav.navigate(Route.NINOS) { launchSingleTop = true }
+                        2 -> nav.navigate(Route.CHAT_LISTA_MAESTRA) { launchSingleTop = true }
                     }
                 }
             )
@@ -168,13 +216,12 @@ fun SonrisasNavHost(
 
             ChatMaestraScreen(
                 estado = viewModel.estadoMensajes,
-                currentUserId = sesion.usuario,
+                currentUserId = sesion.id,
                 titulo = if (nino != null) "${nino.parentName} - ${nino.fullName.substringBefore(" ")}" else "Chat",
                 subtitulo = nino?.fullName,
                 onAtras = { nav.popBackStack() },
-                onEnviar = { texto -> viewModel.enviarMensaje(ninoId, texto) },
+                onEnviar = { texto, esAviso -> viewModel.enviarMensaje(ninoId, texto, esAviso) },
                 onEnviarFoto = { uri -> viewModel.enviarFoto(ninoId, uri) },
-                onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
                 onReintentar = { viewModel.cargarMensajes(ninoId) },
                 onTab = { indice ->
                     when (indice) {
@@ -229,6 +276,10 @@ fun SonrisasNavHost(
 
             ActivityFormScreen(
                 hayIngreso = viewModel.hayIngreso,
+                fotos = viewModel.fotos,
+                leyendoFoto = viewModel.leyendoFoto,
+                onTomarFoto = viewModel::agregarFoto,
+                onQuitarFoto = viewModel::quitarFoto,
                 onAtras = { nav.popBackStack() },
                 onGuardar = { nombre -> viewModel.guardar(ninoId, nombre) { nav.popBackStack() } },
                 onIrACheckIn = { nav.navigate(Route.checkIn(ninoId)) { popUpTo(Route.ACTIVITY) { inclusive = true } } }
@@ -246,19 +297,38 @@ fun SonrisasNavHost(
             CheckOutFormScreen(
                 nombreMaestra = sesion.nombre,
                 autorizacionHoy = viewModel.autorizacionHoy,
+                fotoIdentificacion = viewModel.fotoIdentificacion,
+                leyendoFoto = viewModel.leyendoFoto,
+                error = viewModel.error,
+                onTomarFoto = viewModel::tomarFotoIdentificacion,
+                onDescartarFoto = viewModel::descartarFotoIdentificacion,
                 onAtras = { nav.popBackStack() },
-                onGuardar = { checkOut -> viewModel.guardar(ninoId, checkOut) { nav.popBackStack() } }
+                onGuardar = { checkOut, autorizacion ->
+                    viewModel.guardar(ninoId, checkOut, autorizacion) { nav.popBackStack() }
+                }
             )
         }
 
         composable(Route.ACTIVIDAD_MASIVA) {
             val viewModel: MaestraViewModel = hiltViewModel()
+            LaunchedEffect(Unit) { viewModel.cargarNinos() }
+
+            val ninosPresentes = (viewModel.estadoNinos as? UiState.Exito)?.datos?.filter { it.presente }?.map { it.child } ?: emptyList()
+
             BroadcastFormScreen(
-                titulo = "Actividad para todos",
-                descripcionAyuda = "Se enviará como mensaje de chat a los padres de todos los niños presentes hoy.",
-                textoBoton = "Enviar a presentes",
+                titulo = "Actividad",
+                descripcionAyuda = "Registra una actividad o comparte una foto con los familiares.",
+                textoBoton = "Enviar a los presentes",
+                ninosPresentes = ninosPresentes,
                 onAtras = { nav.popBackStack() },
-                onEnviar = { titulo, mensaje -> viewModel.enviarActividadATodos(titulo, mensaje) { nav.popBackStack() } }
+                onEnviarATodos = { titulo, mensaje ->
+                    viewModel.enviarActividadATodos(titulo, mensaje) { nav.popBackStack() }
+                },
+                onEnviarAAdjuntados = { titulo, mensaje, fotoUri, ninosSeleccionados ->
+                    viewModel.enviarActividadASeleccionados(titulo, mensaje, fotoUri, ninosSeleccionados) {
+                        nav.popBackStack()
+                    }
+                }
             )
         }
 
@@ -318,6 +388,7 @@ fun SonrisasNavHost(
         composable(Route.INICIO_PADRE) {
             val viewModel: PadreViewModel = hiltViewModel()
             LaunchedEffect(Unit) { viewModel.cargarInicio() }
+            RefrescoPeriodico(onRefrescar = viewModel::refrescar)
 
             val hijoIncompleto = viewModel.ninos.firstOrNull { !it.profileCompleted }
             LaunchedEffect(hijoIncompleto) {
@@ -346,6 +417,7 @@ fun SonrisasNavHost(
                     }
                 },
                 onReintentar = { viewModel.cargarInicio() },
+                onCerrarSesion = onSalir,
                 onTab = { indice ->
                     when (indice) {
                         0 -> {}
@@ -382,6 +454,7 @@ fun SonrisasNavHost(
                         nav.navigate(Route.padrePerfilNino(id))
                     }
                 },
+                onCerrarSesion = onSalir,
                 onTab = { indice ->
                     when (indice) {
                         0 -> nav.navigate(Route.INICIO_PADRE) { launchSingleTop = true }
@@ -403,20 +476,21 @@ fun SonrisasNavHost(
         ) { backStackEntry ->
             val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
             val viewModel: PadreViewModel = hiltViewModel()
-            LaunchedEffect(ninoId) { viewModel.cargarAutorizacionHoy(ninoId) }
+            LaunchedEffect(ninoId) { viewModel.cargarAutorizaciones(ninoId) }
             val nino = viewModel.ninos.firstOrNull { it.id == ninoId }
 
             PadreAutorizarTerceroScreen(
                 childId = ninoId,
                 childName = nino?.fullName ?: "Alumno/a",
-                parentName = sesion.nombre,
-                autorizacionExistente = viewModel.autorizacionHoy,
+                autorizaciones = viewModel.autorizaciones,
+                guardando = viewModel.guardandoAutorizacion,
+                error = viewModel.errorAutorizacion,
+                conflicto = viewModel.conflictoAutorizacion,
                 onAtras = { nav.popBackStack() },
-                onGuardar = { autorizacion ->
-                    viewModel.guardarAutorizacionTercero(autorizacion) {
-                        nav.popBackStack()
-                    }
-                }
+                onGuardar = { autorizacion, onListo -> viewModel.guardarAutorizacionTercero(autorizacion, onListo = onListo) },
+                onReemplazar = { onListo -> viewModel.reemplazarAutorizacion(onListo) },
+                onDescartarConflicto = viewModel::descartarConflicto,
+                onCancelar = viewModel::cancelarAutorizacion
             )
         }
 
@@ -465,13 +539,15 @@ fun SonrisasNavHost(
 
             ChatPadreScreen(
                 estado = viewModel.estadoMensajes,
-                currentUserId = sesion.usuario,
+                currentUserId = sesion.id,
                 subtitulo = nino?.let { "Sobre ${it.fullName.substringBefore(" ")}" },
                 onAtras = { nav.popBackStack() },
-                onEnviar = { texto -> viewModel.enviarMensaje(texto) },
+                onEnviar = { texto, esAviso -> viewModel.enviarMensaje(texto, esAviso) },
                 onEnviarFoto = { uri -> viewModel.enviarFoto(uri) },
-                onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
-                onEliminar = { mensaje -> viewModel.deleteMessage(mensaje.id) },
+                // Only the parent (or the estancia admin, in child chats) can delete; teachers can't.
+                onEliminar = if (sesion.rol == Rol.PADRE || sesion.rol == Rol.ADMIN) {
+                    { mensaje -> viewModel.deleteMessage(mensaje.id) }
+                } else null,
                 onReintentar = { viewModel.cargarMensajes(ninoId) },
                 onTab = { indice ->
                     when (indice) {

@@ -38,6 +38,13 @@ suspend fun Context.leerFoto(uri: Uri): Pair<String, ByteArray>? = withContext(D
     "image/jpeg" to salida.toByteArray()
 }
 
+/** Reads a camera shot like [leerFoto] and then deletes the temporary file the camera wrote. */
+suspend fun Context.leerYBorrarFoto(uri: Uri): Pair<String, ByteArray>? {
+    val foto = leerFoto(uri)
+    withContext(Dispatchers.IO) { runCatching { contentResolver.delete(uri, null, null) } }
+    return foto
+}
+
 @HiltViewModel
 class FotoViewModel @Inject constructor(private val chatRepository: ChatRepository) : ViewModel() {
     suspend fun url(fileId: String): String = chatRepository.photoUrl(fileId)

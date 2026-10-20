@@ -26,9 +26,11 @@ import mx.tec.sonrisas.domain.Message
  * 1. Para la Maestra: Los mensajes enviados por la maestra que NO fueron marcados como 'isAviso'
  *    se vuelven invisibles en el lado de la maestra al finalizar la semana actual (permanecen en BD).
  * 2. Para el Padre: Los mensajes de las maestras NO se borran solos (disponibles 24/7).
- * 3. 'isAviso / Importante': Se puede fijar/marcar mediante pulsación larga (estilo WhatsApp)
- *    y jamás se oculta en el lado de la maestra por el paso de la semana.
- * 4. Eliminar mensaje: solo el padre puede hacerlo (regla de la API). Es un soft delete
+ *    Solo aplica a chats de niño: las pantallas maestra↔admin deben usar observeMessagesForParent
+ *    (sin filtro) y solo el chat de un niño usa observeMessagesForTeacher.
+ * 3. 'isAviso': se decide al enviar (el servidor nunca edita mensajes) y jamás se oculta en el
+ *    lado de la maestra por el paso de la semana.
+ * 4. Eliminar mensaje: solo el padre (o el admin de la estancia en chats de niño) puede hacerlo. Es un soft delete
  *    compartido: el mensaje se marca como 'deleted' y desaparece para AMBOS lados, pero
  *    permanece en BD. Si no hay conexión queda 'deletePending' hasta avisar al servidor.
  */
@@ -40,7 +42,6 @@ interface ChatRepository {
     suspend fun send(message: Message)
     suspend fun sendPhoto(chatId: String, authorId: String, contentType: String, bytes: ByteArray)
     suspend fun photoUrl(fileId: String): String
-    suspend fun toggleImportant(messageId: String)
     suspend fun deleteMessage(messageId: String)
 }
 
@@ -58,7 +59,7 @@ class ChatRepositoryImpl @Inject constructor(
         dao.observeByChat(chatId).map { rows ->
             val domainMessages = rows.map { it.toDomain() }.filter { !it.deleted }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                filtrarMensajesInvisiblesMaestra(chatId, currentUserId, domainMessages)
+                filtrarMensajesInvisiblesMaestra(currentUserId, domainMessages)
             } else {
                 domainMessages
             }
@@ -95,11 +96,6 @@ class ChatRepositoryImpl @Inject constructor(
 
     override suspend fun photoUrl(fileId: String): String = files.downloadUrl(fileId)
 
-    override suspend fun toggleImportant(messageId: String) {
-        val entity = dao.getById(messageId) ?: return
-        dao.save(entity.copy(isAviso = !entity.isAviso))
-    }
-
     override suspend fun deleteMessage(messageId: String) {
         val entity = dao.getById(messageId) ?: return
         val told = try {
@@ -112,12 +108,7 @@ class ChatRepositoryImpl @Inject constructor(
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun filtrarMensajesInvisiblesMaestra(chatId: String, currentUserId: String, mensajes: List<Message>): List<Message> {
-        val esChatAdmin = chatId.startsWith("admin_", ignoreCase = true)
-        if (esChatAdmin) {
-            return mensajes
-        }
-
+    private fun filtrarMensajesInvisiblesMaestra(currentUserId: String, mensajes: List<Message>): List<Message> {
         // Lunes a las 00:00:00 de la semana actual
         val inicioSemanaActual = LocalDateTime.now()
             .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))

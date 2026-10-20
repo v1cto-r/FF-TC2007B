@@ -23,9 +23,8 @@ fun ChatMaestraScreen(
     titulo: String = "Chat",
     subtitulo: String? = null,
     onAtras: () -> Unit = {},
-    onEnviar: (texto: String) -> Unit = {},
+    onEnviar: (texto: String, esAviso: Boolean) -> Unit = { _, _ -> },
     onEnviarFoto: (Uri) -> Unit = {},
-    onToggleImportante: (Message) -> Unit = {},
     onEliminar: ((Message) -> Unit)? = null,
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
@@ -34,7 +33,6 @@ fun ChatMaestraScreen(
         estado = estado,
         currentUserId = currentUserId,
         titulo = titulo,
-        textoVacio = "Envía un mensaje para iniciar la conversación",
         modifier = modifier,
         subtitulo = subtitulo,
         tabs = TabsMaestra,
@@ -43,7 +41,6 @@ fun ChatMaestraScreen(
         onAtras = onAtras,
         onEnviar = onEnviar,
         onEnviarFoto = onEnviarFoto,
-        onToggleImportante = onToggleImportante,
         onEliminar = onEliminar,
         onReintentar = onReintentar
     )

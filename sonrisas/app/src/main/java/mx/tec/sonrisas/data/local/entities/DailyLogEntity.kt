@@ -1,5 +1,6 @@
 package mx.tec.sonrisas.data.local.entities
 
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -18,7 +19,12 @@ data class DailyLogEntity(
     @Embedded(prefix = "check_in_") val checkIn: CheckInEmbed,
     @Embedded(prefix = "stay_") val stay: StayEmbed?,
     @Embedded(prefix = "check_out_") val checkOut: CheckOutEmbed?,
-    val synced: Boolean
+    @ColumnInfo(defaultValue = "0") val checkOutCleared: Boolean = false,
+    val synced: Boolean,
+    // Deleted locally, waiting for the server to confirm before the row is removed
+    val deleted: Boolean = false,
+    // Time of the last local change; lets the sync worker tell if the row changed during an upload
+    val modifiedAt: Long = 0
 )
 
 data class InjuryEmbed(
@@ -80,5 +86,8 @@ data class CheckOutEmbed(
     val belongingsComplete: Boolean,
     val notes: String?,
     val pickedUpByName: String,
-    val releasedByStaffName: String
+    val releasedByStaffName: String,
+    val pickupAuthorizationId: String?,
+    val idPhotoFileId: String?,
+    val idPhotoLocalPath: String?
 )

@@ -7,16 +7,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.HowToReg
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -59,6 +60,7 @@ fun InicioPadreScreen(
     onAbrirPerfilNino: (Int) -> Unit = {},
     onAutorizarTercero: () -> Unit = {},
     onReintentar: () -> Unit = {},
+    onCerrarSesion: (() -> Unit)? = null,
     onTab: (Int) -> Unit = {}
 ) {
     FlagSecureDisable()
@@ -92,7 +94,8 @@ fun InicioPadreScreen(
                     ninos = ninos,
                     seleccionado = ninoSeleccionado,
                     onSeleccionar = onSeleccionarNino,
-                    onAbrirPerfil = { onAbrirPerfilNino(it) }
+                    onAbrirPerfil = { onAbrirPerfilNino(it) },
+                    onCerrarSesion = onCerrarSesion
                 )
             }
 
@@ -111,35 +114,33 @@ fun InicioPadreScreen(
                     modifier = Modifier.padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.HowToReg,
-                        contentDescription = null,
-                        tint = Coral,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(if (autorizacionHoy != null) Coral else VerdeSuave, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (autorizacionHoy != null) "✓" else "+",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (autorizacionHoy != null) Color.White else Verde
+                        )
+                    }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            text = if (autorizacionHoy != null) "Tercero Autorizado para Hoy" else "Autorizar entrega a tercero",
-                            style = MaterialTheme.typography.bodyLarge,
+                            text = if (autorizacionHoy != null) "Autorizado hoy: ${autorizacionHoy.authorizedPersonName}" else "Autorizar persona para salida",
+                            style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = TextoOscuro
                         )
                         Text(
-                            text = if (autorizacionHoy != null)
-                                "${autorizacionHoy.authorizedPersonName} (${autorizacionHoy.relationship})"
-                            else
-                                "Registra quién pasará por tu hijo/a hoy",
+                            text = if (autorizacionHoy != null) "Toca para modificar o ver detalles" else "Registra quién recogerá a tu hijo(a) hoy",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextoGris
                         )
                     }
-                    Icon(
-                        imageVector = Icons.Outlined.ChevronRight,
-                        contentDescription = null,
-                        tint = Coral,
-                        modifier = Modifier.size(20.dp)
-                    )
                 }
             }
 
@@ -149,28 +150,27 @@ fun InicioPadreScreen(
                 when (estado) {
                     UiState.Cargando -> EstadoCargando()
 
-                    UiState.Vacio -> Column(Modifier.padding(16.dp)) {
-                        TituloResumen()
-                        Spacer(Modifier.height(8.dp))
-                        EstadoVacio(
-                            titulo = "Sin actividades aún",
-                            subtitulo = "La actividad de hoy aparecerá aquí"
-                        )
-                    }
+                    UiState.Vacio -> EstadoVacio(
+                        titulo = "Sin registros hoy",
+                        subtitulo = "La maestra aún no publica actividades o alimentos para hoy",
+                        modifier = Modifier.padding(16.dp)
+                    )
 
                     is UiState.Error -> EstadoError(
-                        titulo = "Algo salió mal",
-                        mensaje = "No pudimos cargar la información",
+                        titulo = "Error al cargar",
+                        mensaje = estado.mensaje,
                         onReintentar = onReintentar
                     )
 
-                    is UiState.Exito -> LazyColumn(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        item { TituloResumen() }
-                        items(estado.datos) { actividad ->
-                            TarjetaActividad(actividad = actividad)
+                    is UiState.Exito -> {
+                        val tarjetas = estado.datos
+                        LazyColumn(
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(tarjetas) { actividad ->
+                                TarjetaActividad(actividad = actividad)
+                            }
                         }
                     }
                 }
@@ -179,42 +179,24 @@ fun InicioPadreScreen(
     }
 }
 
-@Composable
-private fun TituloResumen() {
-    Text(
-        text = "Resumen del día",
-        style = MaterialTheme.typography.bodyLarge,
-        fontWeight = FontWeight.Bold,
-        color = TextoOscuro
-    )
-}
-
-// Selector con comportamiento inteligente:
-// 1 hijo -> Al hacer clic abre su perfil directamente.
-// 2+ hijos -> Abre el menú desplegable. El ícono ℹ️ abre el perfil de ese hijo específicamente.
+// Selector con menú desplegable para cambiar de niño o cerrar sesión
 @Composable
 private fun SelectorNinoHoy(
     ninos: List<String>,
     seleccionado: Int,
     onSeleccionar: (Int) -> Unit,
-    onAbrirPerfil: (Int) -> Unit = {}
+    onAbrirPerfil: (Int) -> Unit = {},
+    onCerrarSesion: (() -> Unit)? = null
 ) {
     var abierto by remember { mutableStateOf(false) }
     val forma = RoundedCornerShape(50)
-    val soloUnHijo = ninos.size <= 1
 
     Box {
         Row(
             modifier = Modifier
                 .background(Color.White, forma)
                 .border(1.dp, BordeCampo, forma)
-                .clickable {
-                    if (soloUnHijo) {
-                        onAbrirPerfil(0)
-                    } else {
-                        abierto = true
-                    }
-                }
+                .clickable { abierto = true }
                 .padding(start = 10.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -232,57 +214,76 @@ private fun SelectorNinoHoy(
                 fontWeight = FontWeight.SemiBold,
                 color = TextoOscuro
             )
-            if (!soloUnHijo) {
-                Spacer(Modifier.width(2.dp))
-                Icon(
-                    imageVector = Icons.Outlined.KeyboardArrowDown,
-                    contentDescription = "Cambiar niño",
-                    tint = TextoGris,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+            Spacer(Modifier.width(2.dp))
+            Icon(
+                imageVector = Icons.Outlined.KeyboardArrowDown,
+                contentDescription = "Cambiar niño",
+                tint = TextoGris,
+                modifier = Modifier.size(18.dp)
+            )
         }
 
-        if (!soloUnHijo) {
-            DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
-                ninos.forEachIndexed { indice, nombre ->
-                    DropdownMenuItem(
-                        text = {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+        DropdownMenu(
+            expanded = abierto,
+            onDismissRequest = { abierto = false },
+            shape = RoundedCornerShape(16.dp),
+            containerColor = Color.White
+        ) {
+            ninos.forEachIndexed { indice, nombre ->
+                DropdownMenuItem(
+                    text = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = nombre,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextoOscuro,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            IconButton(
+                                onClick = {
+                                    abierto = false
+                                    onAbrirPerfil(indice)
+                                },
+                                modifier = Modifier.size(24.dp)
                             ) {
-                                Text(
-                                    text = nombre,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = TextoOscuro,
-                                    modifier = Modifier.weight(1f)
+                                Icon(
+                                    imageVector = Icons.Outlined.Info,
+                                    contentDescription = "Ver perfil",
+                                    tint = Coral,
+                                    modifier = Modifier.size(18.dp)
                                 )
-                                Spacer(Modifier.width(8.dp))
-                                IconButton(
-                                    onClick = {
-                                        abierto = false
-                                        onAbrirPerfil(indice)
-                                    },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Info,
-                                        contentDescription = "Ver perfil",
-                                        tint = Coral,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
                             }
-                        },
-                        leadingIcon = { AvatarCircular(tamano = 24.dp) },
-                        onClick = {
-                            onSeleccionar(indice)
-                            abierto = false
                         }
-                    )
-                }
+                    },
+                    leadingIcon = { AvatarCircular(tamano = 24.dp) },
+                    onClick = {
+                        onSeleccionar(indice)
+                        abierto = false
+                    }
+                )
+            }
+
+            if (onCerrarSesion != null) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = BordeCampo)
+                DropdownMenuItem(
+                    text = { Text("Cerrar sesión", style = MaterialTheme.typography.bodyMedium, color = Coral, fontWeight = FontWeight.SemiBold) },
+                    onClick = {
+                        abierto = false
+                        onCerrarSesion()
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.Logout,
+                            contentDescription = null,
+                            tint = Coral
+                        )
+                    }
+                )
             }
         }
     }

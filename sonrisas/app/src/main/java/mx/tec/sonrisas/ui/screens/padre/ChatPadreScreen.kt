@@ -23,10 +23,9 @@ fun ChatPadreScreen(
     titulo: String = "Maestra Laura",
     subtitulo: String? = null,
     onAtras: (() -> Unit)? = null,
-    onEnviar: (texto: String) -> Unit = {},
+    onEnviar: (texto: String, esAviso: Boolean) -> Unit = { _, _ -> },
     onEnviarFoto: (Uri) -> Unit = {},
-    onToggleImportante: (Message) -> Unit = {},
-    onEliminar: (Message) -> Unit = {},
+    onEliminar: ((Message) -> Unit)? = null,
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
 ) {
@@ -34,7 +33,6 @@ fun ChatPadreScreen(
         estado = estado,
         currentUserId = currentUserId,
         titulo = titulo,
-        textoVacio = "Escribe un mensaje a la maestra",
         modifier = modifier,
         subtitulo = subtitulo,
         tabs = TabsPadre,
@@ -43,7 +41,6 @@ fun ChatPadreScreen(
         onAtras = onAtras,
         onEnviar = onEnviar,
         onEnviarFoto = onEnviarFoto,
-        onToggleImportante = onToggleImportante,
         onEliminar = onEliminar,
         onReintentar = onReintentar
     )

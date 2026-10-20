@@ -9,9 +9,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.IOException
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.time.OffsetDateTime
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -22,6 +25,7 @@ import mx.tec.sonrisas.data.ChildRepository
 import mx.tec.sonrisas.data.DailyLogRepository
 import mx.tec.sonrisas.data.NoticeRepository
 import mx.tec.sonrisas.data.PickupAuthorizationRepository
+import mx.tec.sonrisas.data.PickupSaveResult
 import mx.tec.sonrisas.data.SesionRepository
 import mx.tec.sonrisas.data.remote.ChildRemoteDataSource
 import mx.tec.sonrisas.data.remote.FileRemoteDataSource
@@ -59,6 +63,20 @@ class PadreViewModel @Inject constructor(
         private set
 
     var autorizacionHoy by mutableStateOf<PickupAuthorization?>(null)
+        private set
+
+    // Why the last authorization wasn't saved or cancelled
+    var errorAutorizacion by mutableStateOf<String?>(null)
+        private set
+
+    var autorizaciones by mutableStateOf<List<PickupAuthorization>>(emptyList())
+        private set
+
+    var guardandoAutorizacion by mutableStateOf(false)
+        private set
+
+    // Overlaps one that already exists: waiting for the parent to confirm replacing it
+    var conflictoAutorizacion by mutableStateOf<PickupAuthorization?>(null)
         private set
 
     var resumenSemanal by mutableStateOf<WeeklySummary?>(null)
@@ -148,7 +166,14 @@ class PadreViewModel @Inject constructor(
         }
     }
 
+    /** Polled while the home screen is open (RefrescoPeriodico). */
+    suspend fun refrescar() = sesionRepository.refrescarDatos()
+
     fun cargarInicio() {
+        viewModelScope.launch {
+            // Brings down what the teacher registered; the screen updates on its own from Room
+            refrescar()
+        }
         viewModelScope.launch {
             estadoActividades = UiState.Cargando
             try {
@@ -163,7 +188,7 @@ class PadreViewModel @Inject constructor(
                             flowOf(emptyList())
                         } else {
                             launch {
-                                pickupAuthorizationRepository.observeTodayByChild(child.id).collect { auth ->
+                                pickupAuthorizationRepository.observeForChildOn(child.id).collect { auth ->
                                     autorizacionHoy = auth
                                 }
                             }
@@ -188,7 +213,21 @@ class PadreViewModel @Inject constructor(
                                                 ActividadUi(
                                                     tipo = TipoActividadUi.Actividad,
                                                     titulo = actividad.name,
-                                                    detalle = "Actividad registrada hoy"
+                                                    detalle = "Actividad registrada hoy",
+                                                    fotos = actividad.images
+                                                )
+                                            )
+                                        }
+                                        log.checkOut?.let { salida ->
+                                            val autorizado = salida.pickupAuthorizationId != null
+                                            tarjetas.add(
+                                                ActividadUi(
+                                                    tipo = TipoActividadUi.Salida,
+                                                    titulo = "Recogió: ${salida.pickedUpByName}",
+                                                    detalle = if (autorizado) "Persona autorizada · identificación verificada"
+                                                        else "Entregado por ${salida.releasedByStaffName}",
+                                                    hora = salida.checkOutTime.format(HORA),
+                                                    fotos = listOfNotNull(salida.idPhotoFileId.takeIf { autorizado })
                                                 )
                                             )
                                         }
@@ -210,7 +249,7 @@ class PadreViewModel @Inject constructor(
     fun cargarAutorizacionHoy(childId: String) {
         viewModelScope.launch {
             try {
-                pickupAuthorizationRepository.observeTodayByChild(childId).collect { auth ->
+                pickupAuthorizationRepository.observeForChildOn(childId).collect { auth ->
                     autorizacionHoy = auth
                 }
             } catch (e: Exception) {
@@ -219,14 +258,63 @@ class PadreViewModel @Inject constructor(
         }
     }
 
-    fun guardarAutorizacionTercero(autorizacion: PickupAuthorization, onListo: () -> Unit) {
+    private var autorizacionesJob: Job? = null
+
+    /** The child's authorizations still in force, for the screen where the parent manages them. */
+    fun cargarAutorizaciones(childId: String) {
         viewModelScope.launch {
             try {
-                pickupAuthorizationRepository.save(autorizacion)
-                autorizacionHoy = autorizacion
-                onListo()
+                pickupAuthorizationRepository.refreshFromServer()
+            } catch (e: Exception) {
+                e.printStackTrace()  // offline: the copy in Room is shown
+            }
+        }
+        autorizacionesJob?.cancel()
+        autorizacionesJob = viewModelScope.launch {
+            pickupAuthorizationRepository.observeAllByChild(childId).collect { todas ->
+                autorizaciones = todas.filter { it.isCurrent() }
+            }
+        }
+    }
+
+    fun guardarAutorizacionTercero(autorizacion: PickupAuthorization, reemplazar: Boolean = false, onListo: () -> Unit) {
+        viewModelScope.launch {
+            guardandoAutorizacion = true
+            errorAutorizacion = try {
+                when (pickupAuthorizationRepository.save(autorizacion, reemplazar)) {
+                    is PickupSaveResult.Saved -> null.also { onListo() }
+                    is PickupSaveResult.Conflict -> null.also { conflictoAutorizacion = autorizacion }
+                    PickupSaveResult.Offline -> "Sin conexión: la autorización no se envió a la escuela. Intenta de nuevo."
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
+                "No se pudo guardar la autorización"
+            }
+            guardandoAutorizacion = false
+        }
+    }
+
+    /** The parent confirmed: the new authorization cancels the ones it overlaps. */
+    fun reemplazarAutorizacion(onListo: () -> Unit) {
+        val pendiente = conflictoAutorizacion ?: return
+        conflictoAutorizacion = null
+        guardarAutorizacionTercero(pendiente, reemplazar = true, onListo = onListo)
+    }
+
+    fun descartarConflicto() {
+        conflictoAutorizacion = null
+    }
+
+    fun cancelarAutorizacion(autorizacion: PickupAuthorization) {
+        viewModelScope.launch {
+            errorAutorizacion = try {
+                pickupAuthorizationRepository.cancel(autorizacion)
+                null
+            } catch (e: IOException) {
+                "Sin conexión: no se pudo cancelar. Intenta de nuevo."
+            } catch (e: Exception) {
+                e.printStackTrace()
+                "No se pudo cancelar la autorización"
             }
         }
     }
@@ -303,16 +391,6 @@ class PadreViewModel @Inject constructor(
         }
     }
 
-    fun toggleImportant(messageId: String) {
-        viewModelScope.launch {
-            try {
-                chatRepository.toggleImportant(messageId)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
     fun deleteMessage(messageId: String) {
         viewModelScope.launch {
             try {
@@ -326,7 +404,7 @@ class PadreViewModel @Inject constructor(
     fun enviarMensaje(texto: String, esAviso: Boolean = false) {
         viewModelScope.launch {
             try {
-                val autor = sesionRepository.sesion.first()?.id ?: "padre"
+                val autor = sesionRepository.sesion.first()?.id ?: ""
                 chatRepository.send(
                     Message(
                         chatId = chatIdActual,
@@ -342,3 +420,5 @@ class PadreViewModel @Inject constructor(
         }
     }
 }
+
+private val HORA = DateTimeFormatter.ofPattern("h:mm a")

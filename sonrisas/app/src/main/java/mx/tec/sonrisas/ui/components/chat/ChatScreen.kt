@@ -37,6 +37,7 @@ import mx.tec.sonrisas.ui.theme.*
  * pasando sus tabs y textos propios.
  *
  * @param tabs tabs de la BottomBar del rol; null = sin BottomBar.
+ * @param onEnviar recibe el texto y si se marcó como aviso (no se puede cambiar después de enviar).
  * @param onEliminar null = los mensajes no se pueden eliminar.
  */
 @Composable
@@ -44,22 +45,22 @@ fun ChatScreen(
     estado: UiState<List<Message>>,
     currentUserId: String,
     titulo: String,
-    textoVacio: String,
     modifier: Modifier = Modifier,
+    textoVacio: String = "Escribe un mensaje para iniciar la conversación",
     subtitulo: String? = null,
     tabs: List<TabItem>? = null,
     tabSeleccionado: Int = 0,
     onTab: (Int) -> Unit = {},
     onAtras: (() -> Unit)? = null,
-    onEnviar: (texto: String) -> Unit = {},
+    onEnviar: (texto: String, esAviso: Boolean) -> Unit = { _, _ -> },
     onEnviarFoto: (Uri) -> Unit = {},
-    onToggleImportante: (Message) -> Unit = {},
     onEliminar: ((Message) -> Unit)? = null,
     onReintentar: () -> Unit = {}
 ) {
     FlagSecureEnable()
     val context = LocalContext.current
     var texto by remember { mutableStateOf("") }
+    var esAviso by remember { mutableStateOf(false) }
     var mostrarMenuFoto by remember { mutableStateOf(false) }
     var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
     val esTecladoVisible = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > 0.dp
@@ -130,7 +131,6 @@ fun ChatScreen(
                 textoVacio = textoVacio,
                 onReintentar = onReintentar,
                 modifier = Modifier.weight(1f),
-                onToggleImportante = onToggleImportante,
                 onEliminar = onEliminar
             )
             CampoMensaje(
@@ -138,10 +138,13 @@ fun ChatScreen(
                 onValorChange = { texto = it },
                 onEnviar = {
                     if (texto.isNotBlank()) {
-                        onEnviar(texto)
+                        onEnviar(texto, esAviso)
                         texto = ""
+                        esAviso = false
                     }
                 },
+                esAviso = esAviso,
+                onAvisoChange = { esAviso = it },
                 onCamara = { mostrarMenuFoto = true },
                 modifier = Modifier.imePadding()
             )

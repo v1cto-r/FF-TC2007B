@@ -1,5 +1,6 @@
 package mx.tec.sonrisas.data.local.entities
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -21,6 +22,12 @@ data class ActivityRecordEntity(
     @PrimaryKey val id: String,
     val dailyLogId: String,
     val name: String,
+    // Server file ids of the photos, in order
     val images: List<String>,
-    val synced: Boolean
+    // Photos still on this phone (named <file id>.jpg); removed one by one as they are uploaded
+    @ColumnInfo(defaultValue = "") val pendingImagePaths: List<String> = emptyList(),
+    val synced: Boolean,
+    // Same meaning as in DailyLogEntity
+    val deleted: Boolean = false,
+    val modifiedAt: Long = 0
 )

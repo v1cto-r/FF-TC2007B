@@ -2,14 +2,19 @@ package mx.tec.sonrisas.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -22,8 +27,11 @@ fun TopBarAtras(
     subtitulo: String? = null,
     onAtras: (() -> Unit)? = null,     // null = sin flecha
     mostrarAvatar: Boolean = false,
-    avatarRes: Int? = null
+    avatarRes: Int? = null,
+    onCerrarSesion: (() -> Unit)? = null
 ) {
+    var mostrarMenu by remember { mutableStateOf(false) }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -58,7 +66,36 @@ fun TopBarAtras(
             }
         }
         if (mostrarAvatar) {
-            AvatarCircular(tamano = 36.dp, imagenRes = avatarRes)
+            Box {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clickable { if (onCerrarSesion != null) mostrarMenu = true }
+                ) {
+                    AvatarCircular(tamano = 36.dp, imagenRes = avatarRes)
+                }
+                DropdownMenu(
+                    expanded = mostrarMenu,
+                    onDismissRequest = { mostrarMenu = false },
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = Color.White
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Cerrar sesión") },
+                        onClick = {
+                            mostrarMenu = false
+                            onCerrarSesion?.invoke()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Logout,
+                                contentDescription = null,
+                                tint = Coral
+                            )
+                        }
+                    )
+                }
+            }
         }
     }
 }

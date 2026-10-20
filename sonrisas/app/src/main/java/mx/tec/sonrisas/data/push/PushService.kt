@@ -35,16 +35,16 @@ class PushService : FirebaseMessagingService() {
         CoroutineScope(Dispatchers.IO).launch { push.register(token) }
     }
 
-    // The server sends data-only pushes with ids ({type, child_id, message_id}). We fetch the chat
+    // The server sends data-only pushes with ids ({type, chat_id, message_id}). We fetch the chat
     // (authenticated) and build the notification here, so no message text goes through Google.
     override fun onMessageReceived(message: RemoteMessage) {
-        val childId = message.data["child_id"] ?: return
+        val chatId = message.data["chat_id"] ?: return
         val messageId = message.data["message_id"] ?: return
         if (message.data["type"] != "message" || !auth.hasStoredSession) return
 
         runBlocking {
             try {
-                chats.refresh(childId)
+                chats.refresh(chatId)
             } catch (e: Exception) {
                 // offline or session expired: still tell the user something arrived
             }
@@ -55,7 +55,7 @@ class PushService : FirebaseMessagingService() {
         getSystemService(NotificationManager::class.java)
             .createNotificationChannel(NotificationChannel(CHANNEL, "Mensajes", NotificationManager.IMPORTANCE_HIGH))
         val open = PendingIntent.getActivity(
-            this, messageId.hashCode(), Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_CHILD_ID, childId),
+            this, messageId.hashCode(), Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_CHAT_ID, chatId),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val notification = NotificationCompat.Builder(this, CHANNEL)

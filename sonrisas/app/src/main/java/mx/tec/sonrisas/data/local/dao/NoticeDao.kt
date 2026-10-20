@@ -3,6 +3,7 @@ package mx.tec.sonrisas.data.local.dao
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 import mx.tec.sonrisas.data.local.entities.NoticeEntity
@@ -21,4 +22,16 @@ interface NoticeDao {
 
     @Delete
     suspend fun delete(notice: NoticeEntity)
+
+    @Query("DELETE FROM notices")
+    suspend fun clear()
+
+    @Upsert
+    suspend fun saveAll(notices: List<NoticeEntity>)
+
+    @Transaction
+    suspend fun replaceAll(notices: List<NoticeEntity>) {
+        clear()
+        saveAll(notices)
+    }
 }

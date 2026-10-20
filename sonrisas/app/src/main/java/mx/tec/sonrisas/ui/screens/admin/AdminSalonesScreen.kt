@@ -33,6 +33,7 @@ fun AdminSalonesScreen(
     modifier: Modifier = Modifier,
     onSalonClick: (SalonUi) -> Unit = {},
     onCrearGrupo: () -> Unit = {},
+    onCerrarSesion: (() -> Unit)? = null,
     onTab: (Int) -> Unit = {}
 ) {
     FlagSecureDisable()
@@ -51,7 +52,12 @@ fun AdminSalonesScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            TopBarAtras(titulo = "Salones", subtitulo = "Panel de administración", mostrarAvatar = true)
+            TopBarAtras(
+                titulo = "Salones",
+                subtitulo = "Panel de administración",
+                mostrarAvatar = true,
+                onCerrarSesion = onCerrarSesion
+            )
 
             if (salones.isEmpty()) {
                 EstadoVacio(

@@ -25,7 +25,7 @@ import mx.tec.sonrisas.data.local.entities.PickupAuthorizationEntity
         MessageEntity::class,
         PickupAuthorizationEntity::class
     ],
-    version = 7,
+    version = 11,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

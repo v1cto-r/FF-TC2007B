@@ -1,12 +1,15 @@
 package mx.tec.sonrisas.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.HowToReg
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Card
@@ -23,15 +26,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import mx.tec.sonrisas.ui.components.chat.FotoMensaje
 import mx.tec.sonrisas.ui.theme.*
 
-enum class TipoActividadUi { Comida, Actividad, Aviso }
+enum class TipoActividadUi { Comida, Actividad, Aviso, Salida }
 
 data class ActividadUi(
     val tipo: TipoActividadUi,
     val titulo: String,
     val detalle: String,
-    val hora: String = ""
+    val hora: String = "",
+    // Server file ids: activity photos, or the ID of whoever picked the child up
+    val fotos: List<String> = emptyList()
 )
 
 private data class EstiloActividad(
@@ -50,6 +56,7 @@ fun TarjetaActividad(
         TipoActividadUi.Comida -> EstiloActividad("COMIDA", Icons.Outlined.Restaurant, Verde, VerdeSuave)
         TipoActividadUi.Actividad -> EstiloActividad("ACTIVIDAD", Icons.Outlined.Description, Amarillo, AmarilloSuave)
         TipoActividadUi.Aviso -> EstiloActividad("AVISO IMPORTANTE", Icons.Outlined.WarningAmber, Coral, CoralSuave)
+        TipoActividadUi.Salida -> EstiloActividad("SALIDA", Icons.Outlined.HowToReg, Verde, VerdeSuave)
     }
     val esAviso = actividad.tipo == TipoActividadUi.Aviso
     val detalle = if (actividad.hora.isNotEmpty()) "${actividad.detalle} · ${actividad.hora}" else actividad.detalle
@@ -61,10 +68,8 @@ fun TarjetaActividad(
         border = if (esAviso) BorderStroke(1.dp, Amarillo.copy(alpha = 0.4f)) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = if (esAviso) 0.dp else 1.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Column(Modifier.padding(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -93,6 +98,16 @@ fun TarjetaActividad(
                     color = TextoGris
                 )
             }
+        }
+        if (actividad.fotos.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                actividad.fotos.forEach { FotoMensaje(fileId = it, modifier = Modifier.size(96.dp)) }
+            }
+        }
         }
     }
 }

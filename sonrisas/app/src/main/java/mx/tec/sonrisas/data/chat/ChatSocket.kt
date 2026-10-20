@@ -1,5 +1,6 @@
 package mx.tec.sonrisas.data.chat
 
+import android.util.Log
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -57,6 +58,11 @@ class ChatSocket @Inject constructor(
     private var socket: WebSocket? = null
     @Volatile private var ready = false
 
+    // Chats that are not a child's: teacher -> own id (admin chat); admin -> every teacher of the estancia
+    // plus own id (org chat); ORG -> every admin's id.
+    // SesionRepository sets it on login, so the socket doesn't depend on the session.
+    @Volatile var peerChatIds: suspend () -> List<String> = { emptyList() }
+
     fun connect() {
         if (loop?.isActive == true) return
         loop = scope.launch {
@@ -68,6 +74,7 @@ class ChatSocket @Inject constructor(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
+                    Log.w(TAG, "Chat socket session failed", e)
                     failures++
                 }
                 delay(minOf(1_000L shl minOf(failures, 5), 30_000L))
@@ -91,7 +98,7 @@ class ChatSocket @Inject constructor(
             buildJsonObject {
                 put("type", "message")
                 put("id", message.id)
-                put("child_id", message.chatId)
+                put("chat_id", message.chatId)
                 put("content", message.content)
                 put("sent_at", message.sentAt.toUtcIso())
                 put("is_aviso", message.isAviso)
@@ -165,13 +172,27 @@ class ChatSocket @Inject constructor(
     private fun JsonObject.message(): MessageDto = json.decodeFromJsonElement(getValue("message"))
 
     private suspend fun catchUp() {
-        children.observeAll().first().forEach { child ->
-            messages.saveFromServer(remote.list(child.id, messages.newestCreatedAt(child.id)))
+        val chatIds = children.observeAll().first().map { it.id } + peerChatIds()
+        // One chat failing (403 / 404) must not stop the other chats, the resends or the pending deletes.
+        chatIds.forEach { id ->
+            try {
+                messages.saveFromServer(remote.list(id, messages.newestCreatedAt(id)))
+            } catch (e: Exception) {
+                Log.w(TAG, "catchUp failed for chat $id", e)
+            }
         }
         messages.getPendingDeletes().forEach {
-            remote.delete(it.id)
-            messages.save(it.copy(deletePending = false))
+            try {
+                remote.delete(it.id)
+                messages.save(it.copy(deletePending = false))
+            } catch (e: Exception) {
+                Log.w(TAG, "Pending delete failed for message ${it.id}", e)
+            }
         }
         messages.getUnsent().forEach { send(it.toDomain()) }
+    }
+
+    private companion object {
+        const val TAG = "ChatSocket"
     }
 }

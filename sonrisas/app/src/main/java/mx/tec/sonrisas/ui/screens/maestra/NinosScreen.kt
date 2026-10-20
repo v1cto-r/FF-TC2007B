@@ -117,7 +117,10 @@ fun NinosScreen(
                                     ItemNino(
                                         child = ninoConEstado.child,
                                         presente = ninoConEstado.presente,
-                                        onClick = { onNinoClick(ninoConEstado.child) }
+                                        onClick = { onNinoClick(ninoConEstado.child) },
+                                        recogeHoy = ninoConEstado.autorizacionHoy?.let {
+                                            "${it.authorizedPersonName} (${it.relationship})"
+                                        }
                                     )
                                 }
                             }

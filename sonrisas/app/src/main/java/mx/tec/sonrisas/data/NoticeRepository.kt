@@ -10,18 +10,20 @@ import mx.tec.sonrisas.data.local.toEntity
 import mx.tec.sonrisas.data.remote.NoticeRemoteDataSource
 import mx.tec.sonrisas.domain.Notice
 
+/**
+ * Notices are posted from the admin / org screens straight to the API; here they are only read.
+ * Room keeps a copy so the list shows offline.
+ */
 interface NoticeRepository {
     fun observeAll(): Flow<List<Notice>>
     fun observeById(id: String): Flow<Notice?>
-    suspend fun save(notice: Notice)
-    suspend fun delete(notice: Notice)
+    suspend fun refreshFromServer()
 }
 
 @Singleton
 class NoticeRepositoryImpl @Inject constructor(
     private val dao: NoticeDao,
-    private val remote: NoticeRemoteDataSource,
-    private val networkMonitor: NetworkMonitor
+    private val remote: NoticeRemoteDataSource
 ) : NoticeRepository {
 
     override fun observeAll(): Flow<List<Notice>> =
@@ -30,11 +32,7 @@ class NoticeRepositoryImpl @Inject constructor(
     override fun observeById(id: String): Flow<Notice?> =
         dao.observeById(id).map { row -> row?.toDomain() }
 
-    override suspend fun save(notice: Notice) {
-        if (networkMonitor.isOnline()) remote.save(notice) else dao.save(notice.toEntity())
-    }
-
-    override suspend fun delete(notice: Notice) {
-        if (networkMonitor.isOnline()) remote.delete(notice) else dao.delete(notice.toEntity())
+    override suspend fun refreshFromServer() {
+        dao.replaceAll(remote.fetchAll().map { it.toEntity() })
     }
 }

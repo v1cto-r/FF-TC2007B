@@ -20,9 +20,12 @@ import androidx.compose.ui.unit.dp
 import mx.tec.sonrisas.ui.components.BottomBar
 import mx.tec.sonrisas.ui.components.CampoOpciones
 import mx.tec.sonrisas.ui.components.CampoTexto
+import mx.tec.sonrisas.ui.components.EstadoCargando
+import mx.tec.sonrisas.ui.components.EstadoError
 import mx.tec.sonrisas.ui.components.EstadoVacio
 import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.components.TopBarAtras
+import mx.tec.sonrisas.ui.state.UiState
 import mx.tec.sonrisas.ui.theme.*
 
 private enum class FiltroInstancia(val etiqueta: String) {
@@ -33,25 +36,17 @@ private enum class FiltroInstancia(val etiqueta: String) {
 
 @Composable
 fun OrgInstanciasScreen(
-    instancias: List<InstanciaUi>,
+    estado: UiState<List<InstanciaUi>>,
     modifier: Modifier = Modifier,
     onInstanciaClick: (InstanciaUi) -> Unit = {},
     onNuevaInstancia: () -> Unit = {},
+    onReintentar: () -> Unit = {},
+    onCerrarSesion: (() -> Unit)? = null,
     onTab: (Int) -> Unit = {}
 ) {
     FlagSecureDisable()
     var busqueda by remember { mutableStateOf("") }
     var filtro by remember { mutableStateOf(FiltroInstancia.TODAS) }
-
-    val filtradas = instancias.filter { instancia ->
-        val coincideNombre = instancia.nombre.contains(busqueda, ignoreCase = true)
-        val coincideEstado = when (filtro) {
-            FiltroInstancia.ACTIVAS -> instancia.activa
-            FiltroInstancia.SUSPENDIDAS -> !instancia.activa
-            FiltroInstancia.TODAS -> true
-        }
-        coincideNombre && coincideEstado
-    }
 
     Scaffold(
         modifier = modifier,
@@ -68,40 +63,70 @@ fun OrgInstanciasScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            TopBarAtras(titulo = "Instancias", subtitulo = "Panel de organización", mostrarAvatar = true)
+            TopBarAtras(
+                titulo = "Estancias",
+                subtitulo = "Panel de organización",
+                mostrarAvatar = true,
+                onCerrarSesion = onCerrarSesion
+            )
 
-            if (instancias.isEmpty()) {
-                EstadoVacio(
-                    titulo = "Sin instancias",
-                    subtitulo = "Crea la primera con el botón +",
-                    modifier = Modifier.padding(16.dp)
-                )
-            } else {
-                Column(Modifier.padding(horizontal = 16.dp)) {
-                    CampoTexto("Buscar guardería", busqueda, { busqueda = it })
-                    Spacer(Modifier.height(4.dp))
-                    CampoOpciones(
-                        etiqueta = "Mostrar",
-                        valor = filtro,
-                        opciones = FiltroInstancia.entries,
-                        onValorChange = { filtro = it },
-                        etiquetaOpcion = { it.etiqueta }
-                    )
-                }
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                when (estado) {
+                    UiState.Cargando -> EstadoCargando()
 
-                if (filtradas.isEmpty()) {
-                    EstadoVacio(
-                        titulo = "Sin resultados",
-                        subtitulo = "Prueba con otra búsqueda o filtro",
+                    UiState.Vacio -> EstadoVacio(
+                        titulo = "Sin instancias",
+                        subtitulo = "Crea la primera con el botón +",
                         modifier = Modifier.padding(16.dp)
                     )
-                } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(filtradas, key = { it.id }) { instancia ->
-                            TarjetaInstancia(instancia = instancia, onClick = { onInstanciaClick(instancia) })
+
+                    is UiState.Error -> EstadoError(
+                        titulo = "Error al cargar",
+                        mensaje = estado.mensaje,
+                        onReintentar = onReintentar
+                    )
+
+                    is UiState.Exito -> {
+                        val instancias = estado.datos
+                        val filtradas = instancias.filter { instancia ->
+                            val coincideNombre = instancia.nombre.contains(busqueda, ignoreCase = true)
+                            val coincideEstado = when (filtro) {
+                                FiltroInstancia.ACTIVAS -> instancia.activa
+                                FiltroInstancia.SUSPENDIDAS -> !instancia.activa
+                                FiltroInstancia.TODAS -> true
+                            }
+                            coincideNombre && coincideEstado
+                        }
+
+                        Column(Modifier.fillMaxSize()) {
+                            Column(Modifier.padding(horizontal = 16.dp)) {
+                                CampoTexto("Buscar guardería", busqueda, { busqueda = it })
+                                Spacer(Modifier.height(4.dp))
+                                CampoOpciones(
+                                    etiqueta = "Mostrar",
+                                    valor = filtro,
+                                    opciones = FiltroInstancia.entries,
+                                    onValorChange = { filtro = it },
+                                    etiquetaOpcion = { it.etiqueta }
+                                )
+                            }
+
+                            if (filtradas.isEmpty()) {
+                                EstadoVacio(
+                                    titulo = "Sin resultados",
+                                    subtitulo = "Prueba con otra búsqueda o filtro",
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            } else {
+                                LazyColumn(
+                                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(filtradas, key = { it.id }) { instancia ->
+                                        TarjetaInstancia(instancia = instancia, onClick = { onInstanciaClick(instancia) })
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -113,11 +138,11 @@ fun OrgInstanciasScreen(
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun OrgInstanciasPreview() {
-    SonrisasTheme { OrgInstanciasScreen(instancias = OrgMuestra.instancias) }
+    SonrisasTheme { OrgInstanciasScreen(estado = UiState.Exito(OrgMuestra.instancias)) }
 }
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun OrgInstanciasVacioPreview() {
-    SonrisasTheme { OrgInstanciasScreen(instancias = emptyList()) }
+    SonrisasTheme { OrgInstanciasScreen(estado = UiState.Vacio) }
 }

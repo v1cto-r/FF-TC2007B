@@ -22,6 +22,7 @@ import mx.tec.sonrisas.data.ChatRepository
 import mx.tec.sonrisas.data.ChildRepository
 import mx.tec.sonrisas.data.DailyLogRepository
 import mx.tec.sonrisas.data.NoticeRepository
+import mx.tec.sonrisas.data.PickupAuthorizationRepository
 import mx.tec.sonrisas.data.SesionRepository
 import mx.tec.sonrisas.domain.ActivityRecord
 import mx.tec.sonrisas.domain.Child
@@ -29,12 +30,15 @@ import mx.tec.sonrisas.domain.DailyLog
 import mx.tec.sonrisas.domain.GroupEnum
 import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.domain.Notice
+import mx.tec.sonrisas.domain.PickupAuthorization
 
 data class NinoConEstado(
     val child: Child,
     val presente: Boolean,
     val dailyLog: DailyLog? = null,
-    val activities: List<ActivityRecord> = emptyList()
+    val activities: List<ActivityRecord> = emptyList(),
+    // Who the parent authorized to pick the child up today, if anyone
+    val autorizacionHoy: PickupAuthorization? = null
 )
 
 data class ConversacionUi(val child: Child, val ultimoMensaje: Message?)
@@ -46,6 +50,7 @@ class MaestraViewModel @Inject constructor(
     private val noticeRepository: NoticeRepository,
     private val chatRepository: ChatRepository,
     private val sesionRepository: SesionRepository,
+    private val pickupAuthorizationRepository: PickupAuthorizationRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -72,6 +77,12 @@ class MaestraViewModel @Inject constructor(
         private set
 
     private fun observarEstadoDeHoy(child: Child): Flow<NinoConEstado> =
+        combine(
+            observarRegistroDeHoy(child),
+            pickupAuthorizationRepository.observeForChildOn(child.id)
+        ) { estado, autorizacion -> estado.copy(autorizacionHoy = autorizacion) }
+
+    private fun observarRegistroDeHoy(child: Child): Flow<NinoConEstado> =
         dailyLogRepository.observeToday(child.id).flatMapLatest { log ->
             if (log == null) {
                 flowOf(NinoConEstado(child, presente = false, dailyLog = null, activities = emptyList()))
@@ -91,7 +102,13 @@ class MaestraViewModel @Inject constructor(
             }
         }
 
+    /** Polled while the home screen is open (RefrescoPeriodico). */
+    suspend fun refrescar() = sesionRepository.refrescarDatos()
+
     fun cargarNinos() {
+        viewModelScope.launch {
+            refrescar()  // never throws: offline, the copy in Room is shown
+        }
         viewModelScope.launch {
             estadoNinos = UiState.Cargando
             try {
@@ -110,6 +127,7 @@ class MaestraViewModel @Inject constructor(
 
     fun cargarInicio() {
         viewModelScope.launch {
+            launch { refrescar() }  // notices included; the list below updates from Room
             launch {
                 try {
                     misNinos.collect { lista ->
@@ -195,16 +213,6 @@ class MaestraViewModel @Inject constructor(
         }
     }
 
-    fun toggleImportant(messageId: String) {
-        viewModelScope.launch {
-            try {
-                chatRepository.toggleImportant(messageId)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
     fun cargarConversaciones() {
         viewModelScope.launch {
             estadoConversaciones = UiState.Cargando
@@ -237,7 +245,7 @@ class MaestraViewModel @Inject constructor(
     fun enviarMensaje(chatId: String, texto: String, esAviso: Boolean = false) {
         viewModelScope.launch {
             try {
-                val autor = sesionRepository.sesion.first()?.id ?: "maestra"
+                val autor = sesionRepository.sesion.first()?.id ?: ""
                 chatRepository.send(
                     Message(
                         chatId = chatId,
@@ -258,7 +266,7 @@ class MaestraViewModel @Inject constructor(
             try {
                 val log = dailyLogRepository.observeToday(ninoId).first()
                 if (log != null) {
-                    dailyLogRepository.save(log.copy(checkOut = null))
+                    dailyLogRepository.cancelCheckOut(log)
                 }
                 onListo()
             } catch (e: Exception) {
@@ -269,7 +277,7 @@ class MaestraViewModel @Inject constructor(
 
     fun enviarActividadATodos(titulo: String, mensaje: String, onListo: () -> Unit) {
         viewModelScope.launch {
-            val autor = sesionRepository.sesion.first()?.id ?: "maestra"
+            val autor = sesionRepository.sesion.first()?.id ?: ""
             val presentes = misNinos.first().filter { it.presente }
             presentes.forEach { nino ->
                 chatRepository.send(
@@ -285,9 +293,46 @@ class MaestraViewModel @Inject constructor(
         }
     }
 
+    fun enviarActividadASeleccionados(
+        titulo: String,
+        mensaje: String,
+        fotoUri: Uri?,
+        ninosSeleccionados: List<Child>,
+        onListo: () -> Unit
+    ) {
+        viewModelScope.launch {
+            val autor = sesionRepository.sesion.first()?.id ?: ""
+            val textoMensaje = if (titulo.isNotBlank() && mensaje.isNotBlank()) {
+                "$titulo: $mensaje"
+            } else {
+                titulo.ifBlank { mensaje }
+            }
+
+            ninosSeleccionados.forEach { child ->
+                if (fotoUri != null) {
+                    val foto = context.leerFoto(fotoUri)
+                    if (foto != null) {
+                        chatRepository.sendPhoto(child.id, autor, foto.first, foto.second)
+                    }
+                }
+                if (textoMensaje.isNotBlank()) {
+                    chatRepository.send(
+                        Message(
+                            chatId = child.id,
+                            authorId = autor,
+                            content = textoMensaje,
+                            sentAt = LocalDateTime.now()
+                        )
+                    )
+                }
+            }
+            onListo()
+        }
+    }
+
     fun enviarAvisoATodos(titulo: String, mensaje: String, onListo: () -> Unit) {
         viewModelScope.launch {
-            val autor = sesionRepository.sesion.first()?.id ?: "maestra"
+            val autor = sesionRepository.sesion.first()?.id ?: ""
             val todos = childRepository.observeAll().first()
             todos.forEach { child ->
                 chatRepository.send(
