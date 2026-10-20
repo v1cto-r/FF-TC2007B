@@ -79,7 +79,6 @@ object Route {
     const val ADMIN_CHAT_LIST = "admin_chat_list"
     // The admin's chat with the organization (its chat id is the admin's own user id).
     const val ADMIN_CHAT_ORG = "admin_chat_org"
-    const val ADMIN_CHAT_TEACHERS = "admin_chat_teachers"
     const val ADMIN_CHAT_TEACHER = "admin_chat_teacher/{teacherId}"
     fun adminChatTeacher(teacherId: String): String = "admin_chat_teacher/${Uri.encode(teacherId)}"
 

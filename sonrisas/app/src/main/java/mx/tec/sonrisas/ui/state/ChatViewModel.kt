@@ -11,13 +11,19 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDateTime
 import javax.inject.Inject
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import mx.tec.sonrisas.data.ChatRepository
 import mx.tec.sonrisas.data.SesionRepository
 import mx.tec.sonrisas.domain.Message
 
-/** Peer chats (org↔admin): no weekly hiding, no deleting. The chat id is the admin's user id. */
+/**
+ * Peer chats, which have no child: teacher↔admin (chat id = the teacher's user id) and admin↔ORG
+ * (chat id = the admin's user id). Same flow as the parent's chat, without weekly hiding or deleting.
+ */
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
@@ -27,6 +33,25 @@ class ChatViewModel @Inject constructor(
 
     var estadoMensajes by mutableStateOf<UiState<List<Message>>>(UiState.Cargando)
         private set
+
+    /** Last message of each chat passed to [observarUltimosMensajes], for the chat lists. */
+    var ultimosMensajes by mutableStateOf<Map<String, Message>>(emptyMap())
+        private set
+
+    private var ultimosJob: Job? = null
+
+    fun observarUltimosMensajes(chatIds: List<String>) {
+        ultimosJob?.cancel()
+        if (chatIds.isEmpty()) {
+            ultimosMensajes = emptyMap()
+            return
+        }
+        ultimosJob = viewModelScope.launch {
+            combine(chatIds.map { id -> chatRepository.observeMessages(id).map { id to it.lastOrNull() } }) { pares ->
+                pares.mapNotNull { (id, ultimo) -> ultimo?.let { id to it } }.toMap()
+            }.collect { ultimosMensajes = it }
+        }
+    }
 
     fun cargarMensajes(chatId: String) {
         viewModelScope.launch {

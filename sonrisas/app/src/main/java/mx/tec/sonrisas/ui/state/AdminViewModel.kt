@@ -1,7 +1,5 @@
 package mx.tec.sonrisas.ui.state
 
-import android.content.Context
-import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -9,21 +7,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.util.UUID
 import javax.inject.Inject
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import mx.tec.sonrisas.data.AdminRepository
 import mx.tec.sonrisas.data.AdminSnapshot
-import mx.tec.sonrisas.data.ChatRepository
 import mx.tec.sonrisas.data.GROUP_TYPE_POR_DEFECTO
 import mx.tec.sonrisas.data.RolApi
-import mx.tec.sonrisas.data.SesionRepository
 import mx.tec.sonrisas.data.remote.AdminChildDto
 import mx.tec.sonrisas.data.remote.ApiException
 import mx.tec.sonrisas.data.remote.UserDto
-import mx.tec.sonrisas.domain.Message
 import mx.tec.sonrisas.ui.screens.admin.AdminDatos
 import mx.tec.sonrisas.ui.screens.admin.AlumnoUi
 import mx.tec.sonrisas.ui.screens.admin.AvisoUi
@@ -34,9 +27,7 @@ import mx.tec.sonrisas.ui.screens.admin.SalonUi
 
 @HiltViewModel
 class AdminViewModel @Inject constructor(
-    private val repo: AdminRepository,
-    private val chatRepository: ChatRepository,
-    private val sesionRepository: dagger.Lazy<SesionRepository>
+    private val repo: AdminRepository
 ) : ViewModel() {
 
     var estado by mutableStateOf<UiState<AdminDatos>>(UiState.Cargando)
@@ -49,9 +40,6 @@ class AdminViewModel @Inject constructor(
         private set
 
     var credencial by mutableStateOf<CredencialUi?>(null)
-        private set
-
-    var estadoMensajes by mutableStateOf<UiState<List<Message>>>(UiState.Cargando)
         private set
 
     private var snapshot: AdminSnapshot? = null
@@ -119,56 +107,6 @@ class AdminViewModel @Inject constructor(
             val snap = requerir()
             repo.guardarNino(UUID.randomUUID().toString(), snap.estanciaId, nombreNino, salonId, padreId)
         }
-
-    // --- Chat ---
-
-    fun cargarMensajes(chatId: String) {
-        viewModelScope.launch {
-            estadoMensajes = UiState.Cargando
-            try {
-                launch {
-                    try { chatRepository.refresh(chatId) } catch (e: Exception) {}
-                }
-                chatRepository.observeMessages(chatId).collect { mensajes ->
-                    estadoMensajes = if (mensajes.isEmpty()) UiState.Vacio else UiState.Exito(mensajes)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                estadoMensajes = UiState.Error("Error al cargar chat: ${e.message}")
-            }
-        }
-    }
-
-    fun enviarMensaje(chatId: String, texto: String, esAviso: Boolean = false) {
-        viewModelScope.launch {
-            try {
-                val autor = sesionRepository.get().sesion.first()?.id ?: ""
-                chatRepository.send(
-                    Message(
-                        chatId = chatId,
-                        authorId = autor,
-                        content = texto,
-                        sentAt = LocalDateTime.now(),
-                        isAviso = esAviso
-                    )
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    fun enviarFoto(chatId: String, uri: Uri, context: Context) {
-        viewModelScope.launch {
-            val foto = context.leerFoto(uri) ?: return@launch
-            val autor = sesionRepository.get().sesion.first()?.id.orEmpty()
-            try {
-                chatRepository.sendPhoto(chatId, autor, foto.first, foto.second)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
 
     // --- Internos ---
 

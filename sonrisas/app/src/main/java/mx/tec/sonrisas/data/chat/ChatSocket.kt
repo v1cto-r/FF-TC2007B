@@ -1,5 +1,6 @@
 package mx.tec.sonrisas.data.chat
 
+import android.util.Log
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -73,6 +74,7 @@ class ChatSocket @Inject constructor(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
+                    Log.w(TAG, "Chat socket session failed", e)
                     failures++
                 }
                 delay(minOf(1_000L shl minOf(failures, 5), 30_000L))
@@ -171,13 +173,26 @@ class ChatSocket @Inject constructor(
 
     private suspend fun catchUp() {
         val chatIds = children.observeAll().first().map { it.id } + peerChatIds()
+        // One chat failing (403 / 404) must not stop the other chats, the resends or the pending deletes.
         chatIds.forEach { id ->
-            messages.saveFromServer(remote.list(id, messages.newestCreatedAt(id)))
+            try {
+                messages.saveFromServer(remote.list(id, messages.newestCreatedAt(id)))
+            } catch (e: Exception) {
+                Log.w(TAG, "catchUp failed for chat $id", e)
+            }
         }
         messages.getPendingDeletes().forEach {
-            remote.delete(it.id)
-            messages.save(it.copy(deletePending = false))
+            try {
+                remote.delete(it.id)
+                messages.save(it.copy(deletePending = false))
+            } catch (e: Exception) {
+                Log.w(TAG, "Pending delete failed for message ${it.id}", e)
+            }
         }
         messages.getUnsent().forEach { send(it.toDomain()) }
+    }
+
+    private companion object {
+        const val TAG = "ChatSocket"
     }
 }

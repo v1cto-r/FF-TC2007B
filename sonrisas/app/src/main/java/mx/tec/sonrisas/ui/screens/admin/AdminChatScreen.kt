@@ -17,20 +17,22 @@ fun AdminChatScreen(
     onAtras: () -> Unit = {},
     onEnviar: (texto: String, esAviso: Boolean) -> Unit = { _, _ -> },
     onEnviarFoto: (Uri) -> Unit = {},
-    onReintentar: () -> Unit = {}
+    onReintentar: () -> Unit = {},
+    onTab: (Int) -> Unit = {}
 ) {
     ChatScreen(
         estado = estado,
         currentUserId = currentUserId,
         titulo = titulo,
-        textoVacio = "Escribe un mensaje para iniciar la conversación",
         modifier = modifier,
         subtitulo = subtitulo,
-        tabs = null,
+        tabs = TabsAdmin,
+        tabSeleccionado = 4,
+        onTab = onTab,
         onAtras = onAtras,
         onEnviar = onEnviar,
         onEnviarFoto = onEnviarFoto,
-        // Messages in teacher↔admin chats can never be deleted.
+        // Messages in peer chats (teacher↔admin, admin↔org) can never be deleted.
         onEliminar = null,
         onReintentar = onReintentar
     )
