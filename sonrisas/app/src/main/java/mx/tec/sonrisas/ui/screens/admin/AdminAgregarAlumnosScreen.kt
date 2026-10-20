@@ -1,16 +1,11 @@
 package mx.tec.sonrisas.ui.screens.admin
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -29,7 +24,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import mx.tec.sonrisas.ui.components.EstadoVacio
 import mx.tec.sonrisas.ui.components.FlagSecureDisable
-import mx.tec.sonrisas.ui.components.ItemPersona
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.theme.*
 
@@ -38,8 +32,10 @@ fun AdminAgregarAlumnosScreen(
     nombreSalon: String,
     alumnosDisponibles: List<AlumnoUi>,
     modifier: Modifier = Modifier,
+    guardando: Boolean = false,
+    errorMensaje: String? = null,
     onAtras: () -> Unit = {},
-    onAgregar: () -> Unit = {}
+    onAgregar: (Set<String>) -> Unit = {}
 ) {
     FlagSecureDisable()
     var busqueda by remember { mutableStateOf("") }
@@ -49,16 +45,13 @@ fun AdminAgregarAlumnosScreen(
         modifier = modifier,
         containerColor = Fondo,
         bottomBar = {
-            Box(Modifier.fillMaxWidth().background(Color.White).padding(16.dp)) {
-                Button(
-                    onClick = onAgregar,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Coral, contentColor = Color.White)
-                ) {
-                    Text(if (seleccionados.isEmpty()) "Agregar alumnos" else "Agregar (${seleccionados.size})")
-                }
-            }
+            BarraGuardar(
+                texto = if (seleccionados.isEmpty()) "Agregar alumnos" else "Agregar (${seleccionados.size})",
+                habilitado = seleccionados.isNotEmpty(),
+                guardando = guardando,
+                errorMensaje = errorMensaje,
+                onClick = { onAgregar(seleccionados) }
+            )
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -108,21 +101,13 @@ fun AdminAgregarAlumnosScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(filtrados) { alumno ->
-                            val elegido = alumno.id in seleccionados
-                            val alternar = {
-                                seleccionados = if (elegido) seleccionados - alumno.id else seleccionados + alumno.id
-                            }
-                            ItemPersona(
+                            val marcado = alumno.id in seleccionados
+                            FilaCheck(
                                 titulo = alumno.nombre,
                                 subtitulo = "Tutor: ${alumno.tutor}",
-                                resaltado = elegido,
-                                onClick = alternar,
-                                trailing = {
-                                    Checkbox(
-                                        checked = elegido,
-                                        onCheckedChange = { alternar() },
-                                        colors = CheckboxDefaults.colors(checkedColor = Coral)
-                                    )
+                                marcado = marcado,
+                                onClick = {
+                                    seleccionados = if (marcado) seleccionados - alumno.id else seleccionados + alumno.id
                                 }
                             )
                         }

@@ -25,7 +25,8 @@ class SesionRepository @Inject constructor(
     private val socket: ChatSocket,
     private val messageDao: MessageDao,
     private val childDao: ChildDao,
-    private val push: PushRepository
+    private val push: PushRepository,
+    private val admin: AdminRepository
 ) {
     private val _sesion = MutableStateFlow<Sesion?>(null)
     val sesion: StateFlow<Sesion?> = _sesion.asStateFlow()
@@ -53,11 +54,13 @@ class SesionRepository @Inject constructor(
     }
 
     fun alPrimerPlano() {
-        if (_sesion.value?.pendiente == false) socket.reconnectNow()
+        val actual = _sesion.value ?: return
+        if (!actual.pendiente) socket.reconnectNow()
     }
 
     suspend fun salir() {
         socket.disconnect()
+        socket.peerChatIds = { emptyList() }
         _sesion.value = null
         push.unregister()
         auth.logout()
@@ -70,6 +73,8 @@ class SesionRepository @Inject constructor(
         val rol = when (me.role) {
             "DOCENTE" -> Rol.MAESTRA
             "PADRE" -> Rol.PADRE
+            "ADMIN" -> Rol.ADMIN
+            "ORG" -> Rol.ORG
             else -> {
                 auth.logout()
                 throw RolNoSoportadoException()
@@ -78,8 +83,15 @@ class SesionRepository @Inject constructor(
         val sesion = Sesion(me.sub, me.email, me.fullName, rol, me.pending)
         if (!me.pending) {
             try {
-                childRepository.refreshFromServer(parentName = if (rol == Rol.PADRE) me.fullName else "")
+                if (rol == Rol.PADRE || rol == Rol.MAESTRA) {
+                    childRepository.refreshFromServer(parentName = if (rol == Rol.PADRE) me.fullName else "")
+                }
             } catch (e: IOException) {
+            }
+            socket.peerChatIds = when (rol) {
+                Rol.MAESTRA -> { { listOf(me.sub) } }
+                Rol.ADMIN -> { { admin.teacherIds() } }
+                else -> { { emptyList() } }
             }
             socket.connect()
             push.register()

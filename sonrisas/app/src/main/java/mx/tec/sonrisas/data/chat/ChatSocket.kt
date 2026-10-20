@@ -57,6 +57,10 @@ class ChatSocket @Inject constructor(
     private var socket: WebSocket? = null
     @Volatile private var ready = false
 
+    // Chats that are not a child's (teacher↔admin): teacher -> own id, admin -> every teacher of the estancia.
+    // SesionRepository sets it on login, so the socket doesn't depend on the session.
+    @Volatile var peerChatIds: suspend () -> List<String> = { emptyList() }
+
     fun connect() {
         if (loop?.isActive == true) return
         loop = scope.launch {
@@ -165,8 +169,9 @@ class ChatSocket @Inject constructor(
     private fun JsonObject.message(): MessageDto = json.decodeFromJsonElement(getValue("message"))
 
     private suspend fun catchUp() {
-        children.observeAll().first().forEach { child ->
-            messages.saveFromServer(remote.list(child.id, messages.newestCreatedAt(child.id)))
+        val chatIds = children.observeAll().first().map { it.id } + peerChatIds()
+        chatIds.forEach { id ->
+            messages.saveFromServer(remote.list(id, messages.newestCreatedAt(id)))
         }
         messages.getPendingDeletes().forEach {
             remote.delete(it.id)
