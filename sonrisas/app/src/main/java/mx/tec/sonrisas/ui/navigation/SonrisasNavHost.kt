@@ -168,13 +168,12 @@ fun SonrisasNavHost(
 
             ChatMaestraScreen(
                 estado = viewModel.estadoMensajes,
-                currentUserId = sesion.usuario,
+                currentUserId = sesion.id,
                 titulo = if (nino != null) "${nino.parentName} - ${nino.fullName.substringBefore(" ")}" else "Chat",
                 subtitulo = nino?.fullName,
                 onAtras = { nav.popBackStack() },
-                onEnviar = { texto -> viewModel.enviarMensaje(ninoId, texto) },
+                onEnviar = { texto, esAviso -> viewModel.enviarMensaje(ninoId, texto, esAviso) },
                 onEnviarFoto = { uri -> viewModel.enviarFoto(ninoId, uri) },
-                onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
                 onReintentar = { viewModel.cargarMensajes(ninoId) },
                 onTab = { indice ->
                     when (indice) {
@@ -465,13 +464,15 @@ fun SonrisasNavHost(
 
             ChatPadreScreen(
                 estado = viewModel.estadoMensajes,
-                currentUserId = sesion.usuario,
+                currentUserId = sesion.id,
                 subtitulo = nino?.let { "Sobre ${it.fullName.substringBefore(" ")}" },
                 onAtras = { nav.popBackStack() },
-                onEnviar = { texto -> viewModel.enviarMensaje(texto) },
+                onEnviar = { texto, esAviso -> viewModel.enviarMensaje(texto, esAviso) },
                 onEnviarFoto = { uri -> viewModel.enviarFoto(uri) },
-                onToggleImportante = { mensaje -> viewModel.toggleImportant(mensaje.id) },
-                onEliminar = { mensaje -> viewModel.deleteMessage(mensaje.id) },
+                // Only the parent (or the estancia admin, in child chats) can delete; teachers can't.
+                onEliminar = if (sesion.rol == Rol.PADRE || sesion.rol == Rol.ADMIN) {
+                    { mensaje -> viewModel.deleteMessage(mensaje.id) }
+                } else null,
                 onReintentar = { viewModel.cargarMensajes(ninoId) },
                 onTab = { indice ->
                     when (indice) {

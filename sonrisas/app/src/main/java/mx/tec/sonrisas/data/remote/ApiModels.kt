@@ -68,7 +68,7 @@ data class DocumentOutDto(
 @Serializable
 data class MessageDto(
     val id: String,
-    @SerialName("child_id") val childId: String,
+    @SerialName("chat_id") val chatId: String,
     @SerialName("author_id") val authorId: String? = null,
     val content: String,
     @SerialName("sent_at") val sentAt: String,
@@ -97,14 +97,18 @@ data class UploadTicketDto(val upload: SignedUploadDto)
 data class FileDownloadDto(val url: String, @SerialName("expires_at") val expiresAt: String)
 
 private val imageLine = Regex("""(?:^|\n)::Image /([0-9a-fA-F-]{36})(?:\.\w+)?\s*$""")
+private val avisoLine = Regex("""(?:^|\n)::Aviso\s*$""")
 
 fun MessageDto.toDomain(): Message {
+    // The server appends marker lines in this order: text, ::Aviso, ::Image. Strip them from the end inwards.
     val match = imageLine.find(content)
+    val withoutImage = if (match != null) content.removeRange(match.range) else content
+    val withoutAviso = avisoLine.find(withoutImage)?.let { withoutImage.removeRange(it.range) } ?: withoutImage
     return Message(
         id = id,
-        chatId = childId,
+        chatId = chatId,
         authorId = authorId.orEmpty(),
-        content = if (match != null) content.removeRange(match.range) else content,
+        content = withoutAviso,
         sentAt = OffsetDateTime.parse(sentAt).atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime(),
         sent = true,
         synced = true,

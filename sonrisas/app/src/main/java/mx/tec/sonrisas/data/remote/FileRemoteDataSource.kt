@@ -17,10 +17,10 @@ class FileRemoteDataSource @Inject constructor(
 ) {
     private val urls = mutableMapOf<String, FileDownloadDto>()
 
-    suspend fun uploadPhoto(childId: String, contentType: String, bytes: ByteArray): String {
+    suspend fun uploadPhoto(chatId: String, contentType: String, bytes: ByteArray): String {
         val id = UUID.randomUUID().toString()
         val ticket: UploadTicketDto = auth.authed {
-            api.post("/files", FileCreateBody(id, "MESSAGE_ATTACHMENT", childId, contentType, bytes.size), it)
+            api.post("/files", FileCreateBody(id, "MESSAGE_ATTACHMENT", chatId, contentType, bytes.size), it)
         }
         val put = Request.Builder().url(ticket.upload.url)
             .method(ticket.upload.method, bytes.toRequestBody())

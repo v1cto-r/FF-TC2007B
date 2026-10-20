@@ -7,7 +7,7 @@ import mx.tec.sonrisas.data.AuthRepository
 import mx.tec.sonrisas.domain.Message
 
 interface MessageRemoteDataSource {
-    suspend fun list(childId: String, sinceMs: Long?): List<Message>
+    suspend fun list(chatId: String, sinceMs: Long?): List<Message>
 
     /**
      * API: DELETE /messages/{message_id} -> 204.
@@ -22,9 +22,9 @@ class MessageRemoteDataSourceImpl @Inject constructor(
     private val auth: AuthRepository
 ) : MessageRemoteDataSource {
 
-    override suspend fun list(childId: String, sinceMs: Long?): List<Message> {
+    override suspend fun list(chatId: String, sinceMs: Long?): List<Message> {
         val since = sinceMs?.let { "&since=" + Uri.encode(Instant.ofEpochMilli(it).toString()) }.orEmpty()
-        return auth.authed { api.get<List<MessageDto>>("/messages?child_id=$childId$since", it) }.map { it.toDomain() }
+        return auth.authed { api.get<List<MessageDto>>("/messages?chat_id=$chatId$since", it) }.map { it.toDomain() }
     }
 
     override suspend fun delete(messageId: String) {

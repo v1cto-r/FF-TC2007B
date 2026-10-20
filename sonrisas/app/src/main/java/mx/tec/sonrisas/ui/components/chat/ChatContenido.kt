@@ -25,7 +25,6 @@ fun ChatContenido(
     onReintentar: () -> Unit,
     modifier: Modifier = Modifier,
     avatarRes: Int? = null,
-    onToggleImportante: (Message) -> Unit = {},
     onEliminar: ((Message) -> Unit)? = null
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -64,7 +63,6 @@ fun ChatContenido(
                             message = mensaje,
                             esMio = mensaje.authorId == currentUserId,
                             avatarRes = avatarRes,
-                            onToggleImportante = onToggleImportante,
                             onEliminar = onEliminar
                         )
                     }
