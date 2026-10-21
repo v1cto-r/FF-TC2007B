@@ -107,7 +107,7 @@ fun OrgInicioScreen(
                             Spacer(Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = if (activas == 1) "1 instancia" else "$activas instancias",
+                                    text = if (activas == 1) "1 estancia" else "$activas estancias",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
@@ -134,7 +134,7 @@ fun OrgInicioScreen(
                                 modifier = Modifier.weight(1f)
                             )
                             AccionRapida(
-                                texto = "Nueva instancia",
+                                texto = "Nueva estancia",
                                 icono = Icons.Outlined.Add,
                                 colorIcono = Verde,
                                 colorFondo = VerdeSuave,

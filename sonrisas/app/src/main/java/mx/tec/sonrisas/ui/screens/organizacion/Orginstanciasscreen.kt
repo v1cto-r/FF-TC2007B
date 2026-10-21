@@ -58,7 +58,7 @@ fun OrgInstanciasScreen(
                 containerColor = Coral,
                 contentColor = Color.White
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = "Nueva instancia")
+                Icon(Icons.Outlined.Add, contentDescription = "Nueva enstancia")
             }
         }
     ) { padding ->
@@ -75,7 +75,7 @@ fun OrgInstanciasScreen(
                     UiState.Cargando -> EstadoCargando()
 
                     UiState.Vacio -> EstadoVacio(
-                        titulo = "Sin instancias",
+                        titulo = "Sin estancias",
                         subtitulo = "Crea la primera con el botón +",
                         modifier = Modifier.padding(16.dp)
                     )

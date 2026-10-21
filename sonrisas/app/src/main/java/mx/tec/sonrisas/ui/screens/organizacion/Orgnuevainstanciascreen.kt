@@ -81,7 +81,7 @@ fun OrgNuevaInstanciaScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             TopBarAtras(
-                titulo = if (editando) "Editar instancia" else "Nueva instancia",
+                titulo = if (editando) "Editar estancia" else "Nueva estancia",
                 subtitulo = if (editando) instanciaInicial?.nombre else "Nueva guardería",
                 onAtras = onAtras
             )

@@ -92,13 +92,13 @@ fun OrgNuevoAvisoScreen(
                         valor = paraTodas,
                         opciones = listOf(true, false),
                         onValorChange = { paraTodas = it },
-                        etiquetaOpcion = { if (it) "Todas las instancias" else "Elegir instancias" }
+                        etiquetaOpcion = { if (it) "Todas las estancias" else "Elegir estancias" }
                     )
                 }
 
                 // Lista con casillas solo si eligió instancias específicas
                 if (!paraTodas) {
-                    item { TituloSeccion("Instancias (${seleccionadas.size} seleccionadas)") }
+                    item { TituloSeccion("Estancias (${seleccionadas.size} seleccionadas)") }
                     items(instancias, key = { it.id }) { instancia ->
                         val elegida = instancia.id in seleccionadas
                         val alternar = {
