@@ -3,7 +3,6 @@
 One request per meal, one yes/no question (Noul) per allergen: the answer is the probability that the meal
 contains it. Meals are checked a few at a time over one shared client, closed on app shutdown.
 """
-import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Protocol
@@ -32,12 +31,6 @@ class AllergenDetector(Protocol):
     def detect(self, meals: list[Meal], allergens: list[AllergenRef]) -> list[dict[str, float]]:
         """For each meal (same order), allergen name -> probability that the meal contains it."""
         ...
-
-
-def normalize(text: str) -> str:
-    """Case and accent insensitive key: "Lácteos " and "lacteos" match."""
-    decomposed = unicodedata.normalize("NFKD", text.strip().casefold())
-    return "".join(c for c in decomposed if not unicodedata.combining(c))
 
 
 def _questions(allergens: list[AllergenRef]) -> dict[str, Noul]:

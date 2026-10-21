@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.allergens.detector import THRESHOLD, AllergenRef, Meal, normalize
+from app.allergens.detector import THRESHOLD, AllergenRef, Meal
+from app.allergens.names import is_no_allergy, normalize
 from app.auth.access import Access
 from app.auth.dependency import authenticated, require_access
 from app.database import lifecycle
@@ -24,7 +25,7 @@ ERRORS = {403: {"model": Detail}, 404: {"model": Detail}, 502: {"model": Detail}
 
 
 def _split(allergies: str | None) -> list[str]:
-    return [a.strip() for a in (allergies or "").split(",") if a.strip()]
+    return [a.strip() for a in (allergies or "").split(",") if a.strip() and not is_no_allergy(a)]
 
 
 @router.get("/allergens", response_model=list[AllergenOut])

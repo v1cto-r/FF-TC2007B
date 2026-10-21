@@ -1,7 +1,8 @@
 """The allergen catalog and the weekly menu check. Jev is replaced by FakeDetector: no network."""
 import pytest
 
-from app.allergens.detector import AllergenRef, Meal, normalize
+from app.allergens.detector import AllergenRef, Meal
+from app.allergens.names import is_no_allergy, normalize
 from app.database import models as m
 from app.main import app
 
@@ -100,6 +101,18 @@ def test_allergies_outside_the_catalog_are_checked_too(client, db, world, auth, 
     assert body["conflicts"][0]["conflicts"] == [{"allergen": "Pimienta", "meals": ["Bistec"]}]
 
 
+def test_no_allergy_entries_are_never_a_conflict(client, db, world, auth, detector):
+    """The old app pre-filled "Sin alergias conocidas"; Jev must not be asked whether a meal contains it."""
+    allergic(db, world.c1, "Sin alergias conocidas")
+    allergic(db, world.c2, "Ninguna,Huevo")
+    detector.table = {"Pollo con arroz": {"Sin alergias conocidas": 0.9, "Ninguna": 0.9, "Huevo": 0.5}}
+    body = check(client, auth(world.admin1), world.e1, {"name": "Pollo con arroz"}).json()
+    _, allergens = detector.calls[0]
+    assert not any(is_no_allergy(a.name) for a in allergens)
+    assert [(c["full_name"], c["conflicts"]) for c in body["conflicts"]] == \
+        [("c2", [{"allergen": "Huevo", "meals": ["Pollo con arroz"]}])]
+
+
 def test_deleted_children_are_left_out(client, db, world, auth, detector):
     allergic(db, world.c1, "Huevo")
     world.c1.status = m.RecordStatus.DELETED
@@ -135,6 +148,14 @@ def test_unconfigured_or_failing_jev(client, world, auth):
         assert check(client, h, world.e1, {"name": "Sopa"}).status_code == 502
     finally:
         app.state.allergen_detector = None
+
+
+def test_is_no_allergy():
+    for text in ["Sin alergias conocidas", "sin alergias registradas", "Ninguna", "NINGUNO", "No", "N/A", "na",
+                 "Nada", "No tiene"]:
+        assert is_no_allergy(text), text
+    for text in ["Nueces y frutos secos", "Nopal", "Naranja", "Leche y lácteos", "Soya"]:
+        assert not is_no_allergy(text), text
 
 
 def test_normalize():
