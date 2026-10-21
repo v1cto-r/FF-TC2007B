@@ -431,6 +431,16 @@ class ChildDocument(Record, Base):
   title: Mapped[str] = mapped_column(String(255), nullable=False)
 
 
+class Allergen(Entity, Base):
+  """Catalog of allergens parents pick from for a child, and that the weekly menu is checked against.
+  Reference data seeded by migration 0007, not a Record: nothing in the app edits it."""
+
+  __tablename__ = 'allergens'
+
+  name: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+  keywords: Mapped[str] = mapped_column(String(500), nullable=False)  # ingredients/synonyms that contain it, for Jev
+
+
 # --- Auth ----------------------------------------------------------------------------------
 
 class RefreshToken(Entity, Base):

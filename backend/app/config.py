@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     # Firebase service-account key (JSON file) for push notifications. Unset = pushes are off.
     firebase_credentials_path: str | None = None
 
+    # TypeSafe API key: Jev checks the weekly menu for allergens. Unset = menu checks answer 503.
+    typesafe_api_key: str | None = None
+
     # Port of the Prometheus /metrics server, separate from the API port so it is never public. Unset = not served
     metrics_port: int | None = None
 

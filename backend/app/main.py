@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
 from app import starter
+from app.allergens.detector import JevDetector
 from app.auth.security import load_wordlist
 from app.chat.hub import hub, set_push
 from app.config import settings
@@ -17,7 +18,7 @@ from app.observability.middleware import WriteLogMiddleware
 from app.push.service import FcmSender, PushService
 from app.rate_limit import rate_limit
 from app.routers import (
-    auth as auth_router, children as children_router, daily_logs as daily_logs_router,
+    allergens as allergens_router, auth as auth_router, children as children_router, daily_logs as daily_logs_router,
     chat_ws as chat_ws_router, devices as devices_router, estancias as estancias_router, files as files_router, messages as messages_router,
     notices as notices_router, pickups as pickups_router, salones as salones_router, users as users_router,
 )
@@ -55,10 +56,17 @@ async def lifespan(app: FastAPI):
             log.warning("push: notifications are off, could not load Firebase credentials: %s", e)
     else:
         log.info("push: notifications are off (FIREBASE_CREDENTIALS_PATH is not set)")
+    app.state.allergen_detector = None
+    if settings.typesafe_api_key:
+        app.state.allergen_detector = JevDetector(settings.typesafe_api_key)
+    else:
+        log.info("allergens: menu checks are off (TYPESAFE_API_KEY is not set)")
     metrics_server = metrics.serve(settings.metrics_port) if settings.metrics_port else None
     try:
         yield
     finally:
+        if app.state.allergen_detector:
+            app.state.allergen_detector.close()
         if metrics_server:
             metrics_server.shutdown()
             metrics_server.server_close()
@@ -86,7 +94,8 @@ async def integrity_error(request: Request, exc: IntegrityError):
 
 
 ROUTERS = (auth_router, users_router, estancias_router, salones_router, children_router, daily_logs_router,
-           notices_router, messages_router, files_router, chat_ws_router, devices_router, pickups_router)
+           notices_router, messages_router, files_router, chat_ws_router, devices_router, pickups_router,
+           allergens_router)
 for r in ROUTERS:
     app.include_router(r.router)
 

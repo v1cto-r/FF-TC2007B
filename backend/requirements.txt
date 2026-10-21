@@ -14,3 +14,4 @@ firebase-admin
 prometheus-client
 prometheus-fastapi-instrumentator
 tzdata
+typesafe-sdk
