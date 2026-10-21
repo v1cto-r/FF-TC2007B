@@ -69,7 +69,7 @@ fun CambiarContrasenaScreen(
 
         Image(
             painter = painterResource(R.drawable.logo),
-            contentDescription = "Logo de Estancia Mariposa",
+            contentDescription = "Logo de Sonrisas de Cristal",
             contentScale = ContentScale.Fit,
             modifier = Modifier.size(128.dp)
         )
