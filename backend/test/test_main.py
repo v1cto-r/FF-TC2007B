@@ -14,6 +14,27 @@ def test_health(client):
     assert client.get("/health").json() == {"status": "ok"}
 
 
+@pytest.mark.parametrize("path", ["/health", "/auth/me", "/does-not-exist"])  # 200, 401 and 404 alike
+def test_every_response_has_the_security_headers(client, path):
+    h = client.get(path).headers
+    assert h["strict-transport-security"] == "max-age=31536000; includeSubDomains"
+    assert h["x-content-type-options"] == "nosniff"
+    assert h["x-frame-options"] == "DENY"
+    assert h["content-security-policy"] == "default-src 'none'; frame-ancestors 'none'"
+    assert h["cache-control"] == "no-store"
+    assert h["referrer-policy"] == "no-referrer"
+
+
+def test_docs_page_gets_a_csp_that_lets_swagger_load(client):
+    csp = client.get("/docs").headers["content-security-policy"]
+    assert "script-src 'unsafe-inline' https://cdn.jsdelivr.net" in csp and "frame-ancestors 'none'" in csp
+
+
+def test_cors_preflight_gets_the_security_headers_too(client):
+    r = client.options("/health", headers={"Origin": "https://example.com", "Access-Control-Request-Method": "GET"})
+    assert r.headers["x-content-type-options"] == "nosniff"
+
+
 @pytest.mark.parametrize("path,method,op", OPERATIONS, ids=[f"{m.upper()} {p}" for p, m, _ in OPERATIONS])
 def test_every_endpoint_has_typed_input_and_output(path, method, op):
     if (path, method) in UNTYPED_OK:

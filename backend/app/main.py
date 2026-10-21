@@ -22,6 +22,7 @@ from app.routers import (
     chat_ws as chat_ws_router, devices as devices_router, estancias as estancias_router, files as files_router, messages as messages_router,
     notices as notices_router, pickups as pickups_router, salones as salones_router, users as users_router,
 )
+from app.security_headers import SecurityHeadersMiddleware
 from app.storage import StorageService
 from app.storage.policy import load_policy
 from app.storage.rules import expire_pending
@@ -82,6 +83,7 @@ app.add_middleware(
     allow_methods=["POST", "GET", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+app.add_middleware(SecurityHeadersMiddleware)  # outside CORS so its preflight answers get the headers too
 metrics.instrument(app)
 metrics.register_state(engine, hub)
 app.add_middleware(WriteLogMiddleware)  # added last = outermost: the request id is set before anything else runs
