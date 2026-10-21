@@ -104,14 +104,14 @@ fun LoginScreen(
 
         Image(
             painter = painterResource(R.drawable.logo),
-            contentDescription = "Logo de Estancia Mariposa",
+            contentDescription = "Logo de Sonrisas de Cristal",
             contentScale = ContentScale.Fit,
             modifier = Modifier.size(128.dp)
         )
 
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "Estancia Mariposa",
+            text = "Sonrisas de Cristal",
             style = MaterialTheme.typography.titleLarge,
             color = TextoOscuro
         )
