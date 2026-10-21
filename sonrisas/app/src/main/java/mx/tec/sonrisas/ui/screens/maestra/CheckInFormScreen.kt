@@ -103,7 +103,7 @@ fun CheckInFormScreen(
                         onGuardar(
                             CheckInRecord(
                                 checkInTime = checkInExistente?.checkInTime ?: LocalTime.now(),
-                                droppedOffByName = droppedOffByName,
+                                droppedOffByName = droppedOffByName.trim(),
                                 receivedByStaffName = nombreMaestra,
                                 isSick = isSick,
                                 medicationLeftWithPrescription = medicamento,
@@ -117,6 +117,8 @@ fun CheckInFormScreen(
                             )
                         )
                     },
+                    // The server rejects a check-in without who dropped the child off
+                    enabled = droppedOffByName.isNotBlank(),
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Coral, contentColor = Color.White)
