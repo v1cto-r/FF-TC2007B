@@ -2,6 +2,7 @@ package mx.tec.sonrisas.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -19,6 +20,8 @@ import mx.tec.sonrisas.ui.screens.maestra.BroadcastFormScreen
 import mx.tec.sonrisas.ui.screens.maestra.ChatListScreen
 import mx.tec.sonrisas.ui.screens.maestra.ChatMaestraScreen
 import mx.tec.sonrisas.ui.screens.maestra.CheckInFormScreen
+import mx.tec.sonrisas.ui.screens.maestra.ReporteNinoScreen
+import mx.tec.sonrisas.ui.screens.maestra.abrirPdf
 import mx.tec.sonrisas.ui.screens.maestra.CheckOutFormScreen
 import mx.tec.sonrisas.ui.screens.maestra.InicioMaestraScreen
 import mx.tec.sonrisas.ui.screens.maestra.NinosScreen
@@ -34,6 +37,7 @@ import mx.tec.sonrisas.ui.screens.padre.PadrePerfilNinoScreen
 import mx.tec.sonrisas.ui.screens.padre.PadreResumenSemanalScreen
 import mx.tec.sonrisas.ui.state.ActivityViewModel
 import mx.tec.sonrisas.ui.state.CheckInViewModel
+import mx.tec.sonrisas.ui.state.ReporteNinoViewModel
 import mx.tec.sonrisas.ui.state.CheckOutViewModel
 import mx.tec.sonrisas.ui.state.ChatViewModel
 import mx.tec.sonrisas.ui.state.MaestraViewModel
@@ -141,6 +145,7 @@ fun SonrisasNavHost(
                 onStay = { nav.navigate(Route.stay(ninoId)) },
                 onActividad = { nav.navigate(Route.activity(ninoId)) },
                 onCheckOut = { nav.navigate(Route.checkOut(ninoId)) },
+                onObtenerReporte = { nav.navigate(Route.reporteNino(ninoId)) },
                 onCancelarSalida = { viewModel.cancelarSalida(ninoId) { viewModel.cargarPerfilNino(ninoId) } },
                 onReintentar = { viewModel.cargarPerfilNino(ninoId) },
                 onTab = { indice ->
@@ -230,6 +235,28 @@ fun SonrisasNavHost(
                         2 -> nav.navigate(Route.CHAT_LISTA_MAESTRA) { launchSingleTop = true }
                     }
                 }
+            )
+        }
+
+        composable(
+            route = Route.REPORTE_NINO,
+            arguments = listOf(navArgument("ninoId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
+            val viewModel: ReporteNinoViewModel = hiltViewModel()
+            val context = LocalContext.current
+            LaunchedEffect(ninoId) { viewModel.cargar(ninoId) }
+
+            ReporteNinoScreen(
+                nombreNino = viewModel.nombreNino,
+                semanas = viewModel.semanas,
+                seleccionada = viewModel.seleccionada,
+                generando = viewModel.generando,
+                error = viewModel.error,
+                pendientes = viewModel.pendientes,
+                onSeleccionar = viewModel::seleccionar,
+                onGenerar = { viewModel.generar(ninoId) { archivo -> abrirPdf(context, archivo) } },
+                onAtras = { nav.popBackStack() }
             )
         }
 
