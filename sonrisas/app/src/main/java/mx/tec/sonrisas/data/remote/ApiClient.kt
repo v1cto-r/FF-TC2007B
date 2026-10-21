@@ -1,6 +1,7 @@
 package mx.tec.sonrisas.data.remote
 
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -36,14 +37,19 @@ class ApiClient @Inject constructor(
         method: String,
         path: String,
         token: String? = null,
-        body: RequestBody? = null
+        body: RequestBody? = null,
+        timeoutSeconds: Long? = null
     ): String {
         val request = Request.Builder()
             .url(BuildConfig.API_BASE_URL + path)
             .method(method, body ?: if (method == "GET" || method == "DELETE") null else ByteArray(0).toRequestBody())
             .apply { token?.let { header("Authorization", "Bearer $it") } }
             .build()
-        http.newCall(request).await().use { response ->
+        // newBuilder() shares the connection pool: only this call waits longer
+        val client = timeoutSeconds?.let {
+            http.newBuilder().readTimeout(it, TimeUnit.SECONDS).callTimeout(it, TimeUnit.SECONDS).build()
+        } ?: http
+        client.newCall(request).await().use { response ->
             val text = response.body.string()
             if (!response.isSuccessful) throw ApiException(response.code, detailOf(text))
             return text
@@ -53,8 +59,12 @@ class ApiClient @Inject constructor(
     suspend inline fun <reified T> get(path: String, token: String?): T =
         json.decodeFromString(send("GET", path, token))
 
-    suspend inline fun <reified B, reified T> post(path: String, body: B, token: String? = null): T =
-        json.decodeFromString(send("POST", path, token, jsonBody(body)))
+    suspend inline fun <reified B, reified T> post(
+        path: String,
+        body: B,
+        token: String? = null,
+        timeoutSeconds: Long? = null
+    ): T = json.decodeFromString(send("POST", path, token, jsonBody(body), timeoutSeconds))
 
     suspend inline fun <reified B, reified T> put(path: String, body: B, token: String? = null): T =
         json.decodeFromString(send("PUT", path, token, jsonBody(body)))

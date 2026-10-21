@@ -18,6 +18,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,23 +44,27 @@ import java.time.format.DateTimeFormatter
 import mx.tec.sonrisas.domain.Child
 import mx.tec.sonrisas.domain.GroupEnum
 import mx.tec.sonrisas.ui.components.AvatarCircular
-import mx.tec.sonrisas.ui.components.CampoTexto
 import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.components.TopBarAtras
 import mx.tec.sonrisas.ui.components.chat.SelectorFuenteFotoDialog
+import mx.tec.sonrisas.ui.state.UiState
 import mx.tec.sonrisas.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingHijoScreen(
     child: Child,
-    onGuardarInformacion: (birthdate: String, allergies: String, actaUri: Uri?) -> Unit,
-    modifier: Modifier = Modifier
+    catalogoAlergias: UiState<List<String>>,
+    onGuardarInformacion: (birthdate: String, allergies: List<String>, actaUri: Uri?) -> Unit,
+    modifier: Modifier = Modifier,
+    onReintentarCatalogo: () -> Unit = {}
 ) {
     FlagSecureDisable()
 
     var birthdate by remember { mutableStateOf(child.birthdate.ifBlank { "2021-03-12" }) }
-    var allergies by remember { mutableStateOf(child.allergies ?: "") }
+    // Solo nombres del catálogo: así el admin puede cruzarlos con los alérgenos del menú semanal
+    var alergias by remember(child.id) { mutableStateOf(setOf<String>()) }
+    var sinAlergias by remember(child.id) { mutableStateOf(false) }
     var actaUri by remember { mutableStateOf<Uri?>(null) }
     var mostrarDatePicker by remember { mutableStateOf(false) }
     var errorValidacion by remember { mutableStateOf<String?>(null) }
@@ -95,7 +100,7 @@ fun OnboardingHijoScreen(
         }
     }
 
-    val formularioCompleto = actaUri != null && birthdate.isNotBlank() && allergies.isNotBlank()
+    val formularioCompleto = actaUri != null && birthdate.isNotBlank() && (sinAlergias || alergias.isNotEmpty())
 
     Scaffold(
         modifier = modifier,
@@ -249,14 +254,21 @@ fun OnboardingHijoScreen(
                             }
                         }
 
-                        // Alergias
-                        CampoTexto(
-                            etiqueta = "Alergias",
-                            valor = allergies,
-                            onValorChange = {
-                                allergies = it
+                        SelectorAlergias(
+                            catalogo = catalogoAlergias,
+                            seleccion = alergias,
+                            sinAlergias = sinAlergias,
+                            onAlternar = { nombre ->
+                                alergias = if (nombre in alergias) alergias - nombre else alergias + nombre
+                                sinAlergias = false
                                 errorValidacion = null
-                            }
+                            },
+                            onSinAlergias = {
+                                sinAlergias = !sinAlergias
+                                if (sinAlergias) alergias = emptySet()
+                                errorValidacion = null
+                            },
+                            onReintentar = onReintentarCatalogo
                         )
                     }
                 }
@@ -273,9 +285,9 @@ fun OnboardingHijoScreen(
                 Button(
                     onClick = {
                         if (!formularioCompleto) {
-                            errorValidacion = "Por favor adjunta el acta de nacimiento (acta.pdf), selecciona la fecha de nacimiento y escribe las alergias para continuar."
+                            errorValidacion = "Por favor adjunta el acta de nacimiento (acta.pdf), selecciona la fecha de nacimiento y marca sus alergias (o \"Sin alergias\") para continuar."
                         } else {
-                            onGuardarInformacion(birthdate, allergies, actaUri)
+                            onGuardarInformacion(birthdate, if (sinAlergias) emptyList() else alergias.sorted(), actaUri)
                         }
                     },
                     modifier = Modifier
@@ -291,12 +303,62 @@ fun OnboardingHijoScreen(
     }
 }
 
+@Composable
+private fun SelectorAlergias(
+    catalogo: UiState<List<String>>,
+    seleccion: Set<String>,
+    sinAlergias: Boolean,
+    onAlternar: (String) -> Unit,
+    onSinAlergias: () -> Unit,
+    onReintentar: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Alergias",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            color = TextoOscuro
+        )
+        Spacer(Modifier.height(6.dp))
+        when (catalogo) {
+            is UiState.Exito -> FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                FilterChip(
+                    selected = sinAlergias,
+                    onClick = onSinAlergias,
+                    label = { Text("Sin alergias", style = MaterialTheme.typography.labelSmall) }
+                )
+                catalogo.datos.forEach { nombre ->
+                    FilterChip(
+                        selected = nombre in seleccion,
+                        onClick = { onAlternar(nombre) },
+                        label = { Text(nombre, style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+            }
+            is UiState.Error -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = catalogo.mensaje,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = onReintentar) { Text("Reintentar", color = Coral) }
+            }
+            else -> Text("Cargando alergias…", style = MaterialTheme.typography.bodySmall, color = TextoGris)
+        }
+    }
+}
+
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun OnboardingHijoPreview() {
     SonrisasTheme {
         OnboardingHijoScreen(
             child = Child(fullName = "Sofía Martínez", daycareCenter = "Estancia Mariposa", group = GroupEnum.P, parentName = "María López"),
+            catalogoAlergias = UiState.Exito(listOf("Cacahuate", "Huevo", "Leche y lácteos", "Trigo y gluten")),
             onGuardarInformacion = { _, _, _ -> }
         )
     }

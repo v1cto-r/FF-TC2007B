@@ -374,11 +374,16 @@ fun SonrisasNavHost(
         ) { backStackEntry ->
             val ninoId = backStackEntry.arguments?.getString("ninoId") ?: ""
             val viewModel: PadreViewModel = hiltViewModel()
-            LaunchedEffect(Unit) { viewModel.cargarInicio() }
+            LaunchedEffect(Unit) {
+                viewModel.cargarInicio()
+                viewModel.cargarCatalogoAlergias()
+            }
             val nino = viewModel.ninos.firstOrNull { it.id == ninoId } ?: Child(id = ninoId, fullName = "Alumno", daycareCenter = "Estancia Mariposa", group = GroupEnum.P, parentName = sesion.nombre)
 
             OnboardingHijoScreen(
                 child = nino,
+                catalogoAlergias = viewModel.catalogoAlergias,
+                onReintentarCatalogo = viewModel::cargarCatalogoAlergias,
                 onGuardarInformacion = { birthdate, allergies, actaUri ->
                     viewModel.actualizarDatosHijo(ninoId, birthdate, allergies, actaUri) {
                         nav.navigate(Route.INICIO_PADRE) {

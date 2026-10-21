@@ -18,14 +18,6 @@ data class PadreUi(
     val hijos: List<AlumnoUi>
 )
 
-data class AvisoUi(
-    val id: String,
-    val titulo: String,
-    val descripcion: String,
-    val fecha: String,
-    val destino: String
-)
-
 /** Cuenta recién creada: la contraseña temporal solo se puede ver una vez. */
 data class CredencialUi(val nombre: String, val correo: String, val contrasena: String)
 
@@ -33,8 +25,7 @@ data class AdminDatos(
     val salones: List<SalonUi>,
     val maestros: List<MaestroUi>,
     val padres: List<PadreUi>,
-    val alumnosSinSalon: List<AlumnoUi>,
-    val avisos: List<AvisoUi>
+    val alumnosSinSalon: List<AlumnoUi>
 )
 
 /** Datos falsos, solo para los @Preview. */
@@ -71,9 +62,14 @@ object AdminMuestra {
         PadreUi("p3", "Elena Reyes", "elena@correo.com", alumnosSinSalon.take(1)),
         PadreUi("p4", "Sandra Mora", "sandra@correo.com", emptyList())
     )
-
-    val avisos = listOf(
-        AvisoUi("n1", "Junta de padres", "El viernes a las 5 pm en el patio principal.", "2026-10-23", "Toda la estancia"),
-        AvisoUi("n2", "Traer ropa de cambio", "Favor de enviar una muda extra en la mochila.", "2026-10-20", "Salón Mariposas")
-    )
 }
+/** Un platillo del menú semanal que el admin está capturando. `id` solo distingue filas en la UI. */
+data class PlatilloUi(val id: Long, val nombre: String = "", val ingredientes: List<String> = emptyList())
+
+data class AlergenoDetectadoUi(val nombre: String, val porcentaje: Int, val platillos: List<String>)
+
+data class ConflictoUi(val alergeno: String, val platillos: List<String>)
+
+data class NinoConflictoUi(val id: String, val nombre: String, val salon: String?, val conflictos: List<ConflictoUi>)
+
+data class AnalisisMenuUi(val detectados: List<AlergenoDetectadoUi>, val ninos: List<NinoConflictoUi>)

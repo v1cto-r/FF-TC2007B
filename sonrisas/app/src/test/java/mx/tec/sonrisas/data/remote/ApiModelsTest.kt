@@ -101,4 +101,40 @@ class ApiModelsTest {
         assertTrue(domain.synced)
         assertFalse(domain.isAviso)
     }
+    @Test
+    fun `MenuCheckBody serializes meals with their ingredients`() {
+        val body = MenuCheckBody(listOf(MealBody("Pollo con mole", listOf("cacahuate")), MealBody("Hot cakes")))
+        assertEquals(
+            """{"meals":[{"name":"Pollo con mole","ingredients":["cacahuate"]},{"name":"Hot cakes","ingredients":[]}]}""",
+            json.encodeToString(body)
+        )
+    }
+
+    @Test
+    fun `MenuCheckDto deserializes detected allergens and child conflicts`() {
+        val jsonText = """
+            {
+                "detected": [{"name": "Cacahuate", "probability": 0.92, "meals": ["Pollo con mole"]}],
+                "conflicts": [{
+                    "child_id": "c_1",
+                    "full_name": "Sofía Martínez",
+                    "salon_name": null,
+                    "conflicts": [{"allergen": "Cacahuate", "meals": ["Pollo con mole"]}]
+                }]
+            }
+        """.trimIndent()
+
+        val dto = json.decodeFromString<MenuCheckDto>(jsonText)
+        assertEquals(0.92, dto.detected.single().probability, 0.0001)
+        val nino = dto.conflicts.single()
+        assertEquals("c_1", nino.childId)
+        assertEquals(null, nino.salonName)
+        assertEquals(AllergenConflictDto("Cacahuate", listOf("Pollo con mole")), nino.conflicts.single())
+    }
+
+    @Test
+    fun `AllergenDto deserializes the catalog`() {
+        val jsonText = """[{"id": "a_1", "name": "Huevo", "keywords": "huevo, clara"}]"""
+        assertEquals(listOf(AllergenDto("a_1", "Huevo", "huevo, clara")), json.decodeFromString<List<AllergenDto>>(jsonText))
+    }
 }

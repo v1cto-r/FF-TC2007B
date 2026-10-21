@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import mx.tec.sonrisas.data.AlergenosRepository
 import mx.tec.sonrisas.data.ChatRepository
 import mx.tec.sonrisas.data.ChildRepository
 import mx.tec.sonrisas.data.DailyLogRepository
@@ -47,6 +48,7 @@ class PadreViewModel @Inject constructor(
     private val sesionRepository: SesionRepository,
     private val childRemoteDataSource: ChildRemoteDataSource,
     private val fileRemoteDataSource: FileRemoteDataSource,
+    private val alergenosRepository: AlergenosRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -57,6 +59,10 @@ class PadreViewModel @Inject constructor(
         private set
 
     var ninos by mutableStateOf<List<Child>>(emptyList())
+        private set
+
+    /** Nombres del catálogo de alérgenos, para el expediente del niño. */
+    var catalogoAlergias by mutableStateOf<UiState<List<String>>>(UiState.Cargando)
         private set
 
     var ninoSeleccionadoIndex by mutableStateOf(0)
@@ -324,26 +330,32 @@ class PadreViewModel @Inject constructor(
         cargarInicio()
     }
 
-    fun actualizarDatosHijo(childId: String, birthdate: String, allergies: String, actaUri: Uri?, onListo: () -> Unit) {
+    fun cargarCatalogoAlergias() {
+        if (catalogoAlergias is UiState.Exito) return
+        viewModelScope.launch {
+            catalogoAlergias = UiState.Cargando
+            catalogoAlergias = try {
+                UiState.Exito(alergenosRepository.catalogo().map { it.name })
+            } catch (e: Exception) {
+                UiState.Error(mensajeDeError(e, ante401 = "Tu sesión venció. Inicia sesión de nuevo."))
+            }
+        }
+    }
+
+    fun actualizarDatosHijo(childId: String, birthdate: String, allergies: List<String>, actaUri: Uri?, onListo: () -> Unit) {
         viewModelScope.launch {
             try {
                 if (actaUri != null) {
                     fileRemoteDataSource.uploadChildDocument(childId, context)
                 }
 
-                val alergiasList = if (allergies.isNotBlank() && allergies.lowercase() != "ninguna" && allergies.lowercase() != "ninguno") {
-                    allergies.split(",").map { it.trim() }.filter { it.isNotBlank() }
-                } else {
-                    emptyList()
-                }
-
-                val updatedDto = childRemoteDataSource.submitProfile(childId, birthdate, alergiasList)
+                val updatedDto = childRemoteDataSource.submitProfile(childId, birthdate, allergies)
 
                 val ninoExistente = ninos.firstOrNull { it.id == childId }
                 if (ninoExistente != null) {
                     val ninoActualizado = ninoExistente.copy(
                         birthdate = birthdate,
-                        allergies = allergies,
+                        allergies = allergies.joinToString(", ").ifEmpty { "Sin alergias registradas" },
                         profileCompletedAt = updatedDto.profileCompletedAt ?: OffsetDateTime.now().toString()
                     )
                     childRepository.save(ninoActualizado)

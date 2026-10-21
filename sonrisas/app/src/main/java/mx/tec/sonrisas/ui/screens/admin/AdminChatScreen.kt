@@ -27,7 +27,7 @@ fun AdminChatScreen(
         modifier = modifier,
         subtitulo = subtitulo,
         tabs = TabsAdmin,
-        tabSeleccionado = 4,
+        tabSeleccionado = 3,
         onTab = onTab,
         onAtras = onAtras,
         onEnviar = onEnviar,

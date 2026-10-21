@@ -16,13 +16,12 @@ import mx.tec.sonrisas.ui.state.AdminViewModel
 import mx.tec.sonrisas.ui.state.ChatViewModel
 import mx.tec.sonrisas.ui.state.UiState
 
-/** Pestañas de la barra inferior: 0 = Inicio, 1 = Salones, 2 = Padres, 3 = Avisos, 4 = Chat. */
+/** Pestañas de la barra inferior: 0 = Inicio, 1 = Salones, 2 = Padres, 3 = Chat. */
 private fun NavHostController.irATabAdmin(indice: Int) {
     val destino = when (indice) {
         0 -> Route.ADMIN_INICIO
         1 -> Route.ADMIN_SALONES
         2 -> Route.ADMIN_PADRES
-        3 -> Route.ADMIN_AVISOS
         else -> Route.ADMIN_CHAT_LIST
     }
     navigate(destino) {
@@ -55,6 +54,7 @@ fun NavGraphBuilder.adminGraph(
                 onInscripcion = { nav.navigate(Route.ADMIN_INSCRIPCION) },
                 onMaestras = { nav.navigate(Route.ADMIN_MAESTRAS) },
                 onCrearPadre = { nav.navigate(Route.ADMIN_CREAR_PADRE) },
+                onMenuAlergias = { nav.navigate(Route.ADMIN_MENU_ALERGIAS) },
                 onSalonClick = { salon -> nav.navigate(Route.adminDetalleSalon(salon.id)) },
                 onCerrarSesion = onSalir,
                 onTab = { indice -> nav.irATabAdmin(indice) }
@@ -82,17 +82,6 @@ fun NavGraphBuilder.adminGraph(
                 padres = datos.padres,
                 onPadreClick = { padre -> nav.navigate(Route.adminDetallePadre(padre.id)) },
                 onNuevoPadre = { nav.navigate(Route.ADMIN_CREAR_PADRE) },
-                onCerrarSesion = onSalir,
-                onTab = { indice -> nav.irATabAdmin(indice) }
-            )
-        }
-    }
-
-    composable(Route.ADMIN_AVISOS) { entry ->
-        val vm = entry.adminViewModel(nav)
-        ConEstado(estado = vm.estado, onReintentar = vm::cargar) { datos ->
-            AdminAvisosScreen(
-                avisos = datos.avisos,
                 onCerrarSesion = onSalir,
                 onTab = { indice -> nav.irATabAdmin(indice) }
             )
@@ -166,6 +155,23 @@ fun NavGraphBuilder.adminGraph(
             onReintentar = { chat.cargarMensajes(teacherId) },
             onTab = { indice -> nav.irATabAdmin(indice) }
         )
+    }
+
+    composable(Route.ADMIN_MENU_ALERGIAS) { entry ->
+        val vm = entry.adminViewModel(nav)
+        ConEstado(estado = vm.estado, onReintentar = vm::cargar) { _ ->
+            AdminMenuAlergiasScreen(
+                platillos = vm.platillos,
+                analisis = vm.analisisMenu,
+                onAtras = { nav.popBackStack() },
+                onAgregarPlatillo = vm::agregarPlatillo,
+                onQuitarPlatillo = vm::quitarPlatillo,
+                onNombrePlatillo = vm::cambiarNombrePlatillo,
+                onAgregarIngrediente = vm::agregarIngrediente,
+                onQuitarIngrediente = vm::quitarIngrediente,
+                onAnalizar = vm::analizarMenu
+            )
+        }
     }
 
     // --- Salones ---

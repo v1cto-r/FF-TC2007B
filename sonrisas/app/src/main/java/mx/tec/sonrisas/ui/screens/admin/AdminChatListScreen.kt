@@ -42,7 +42,7 @@ fun AdminChatListScreen(
     Scaffold(
         modifier = modifier,
         containerColor = Fondo,
-        bottomBar = { BottomBar(tabs = TabsAdmin, seleccionado = 4, onSeleccionar = onTab) }
+        bottomBar = { BottomBar(tabs = TabsAdmin, seleccionado = 3, onSeleccionar = onTab) }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             TopBarAtras(
