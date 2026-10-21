@@ -27,6 +27,8 @@ import mx.tec.sonrisas.data.remote.NoticeRemoteDataSource
 import mx.tec.sonrisas.data.remote.NoticeRemoteDataSourceImpl
 import mx.tec.sonrisas.data.remote.PickupRemoteDataSource
 import mx.tec.sonrisas.data.remote.PickupRemoteDataSourceImpl
+import mx.tec.sonrisas.data.remote.ReportRemoteDataSource
+import mx.tec.sonrisas.data.remote.ReportRemoteDataSourceImpl
 
 /**
  * Wires each repository (the "handler" the UI calls) and each remote source
@@ -74,4 +76,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindEstanciaRemoteDataSource(impl: EstanciaRemoteDataSourceImpl): EstanciaRemoteDataSource
+
+    @Binds
+    abstract fun bindReportRemoteDataSource(impl: ReportRemoteDataSourceImpl): ReportRemoteDataSource
 }

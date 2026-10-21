@@ -39,7 +39,26 @@ class ApiClient @Inject constructor(
         token: String? = null,
         body: RequestBody? = null,
         timeoutSeconds: Long? = null
-    ): String {
+    ): String = call(method, path, token, body, timeoutSeconds).use { response ->
+        val text = response.body.string()
+        if (!response.isSuccessful) throw ApiException(response.code, detailOf(text))
+        text
+    }
+
+    /** A GET whose body is a file (a PDF report), returned as raw bytes. */
+    suspend fun download(path: String, token: String?, timeoutSeconds: Long? = null): ByteArray =
+        call("GET", path, token, null, timeoutSeconds).use { response ->
+            if (!response.isSuccessful) throw ApiException(response.code, detailOf(response.body.string()))
+            response.body.bytes()
+        }
+
+    private suspend fun call(
+        method: String,
+        path: String,
+        token: String?,
+        body: RequestBody?,
+        timeoutSeconds: Long?
+    ): Response {
         val request = Request.Builder()
             .url(BuildConfig.API_BASE_URL + path)
             .method(method, body ?: if (method == "GET" || method == "DELETE") null else ByteArray(0).toRequestBody())
@@ -49,11 +68,7 @@ class ApiClient @Inject constructor(
         val client = timeoutSeconds?.let {
             http.newBuilder().readTimeout(it, TimeUnit.SECONDS).callTimeout(it, TimeUnit.SECONDS).build()
         } ?: http
-        client.newCall(request).await().use { response ->
-            val text = response.body.string()
-            if (!response.isSuccessful) throw ApiException(response.code, detailOf(text))
-            return text
-        }
+        return client.newCall(request).await()
     }
 
     suspend inline fun <reified T> get(path: String, token: String?): T =

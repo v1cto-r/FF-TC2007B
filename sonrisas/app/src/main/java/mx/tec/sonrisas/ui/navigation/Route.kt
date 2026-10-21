@@ -28,6 +28,9 @@ object Route {
     const val CHECK_OUT = "check_out/{ninoId}"
     fun checkOut(ninoId: String): String = "check_out/${Uri.encode(ninoId)}"
 
+    const val REPORTE_NINO = "reporte_nino/{ninoId}"
+    fun reporteNino(ninoId: String): String = "reporte_nino/${Uri.encode(ninoId)}"
+
     const val ACTIVIDAD_MASIVA = "actividad_masiva"
     const val AVISO_MASIVO = "aviso_masivo"
 

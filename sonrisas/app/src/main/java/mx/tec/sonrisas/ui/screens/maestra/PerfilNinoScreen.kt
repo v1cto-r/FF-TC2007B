@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Restaurant
@@ -54,6 +55,7 @@ fun PerfilNinoScreen(
     onStay: () -> Unit = {},
     onActividad: () -> Unit = {},
     onCheckOut: () -> Unit = {},
+    onObtenerReporte: () -> Unit = {},
     onCancelarSalida: () -> Unit = {},
     onReintentar: () -> Unit = {},
     onTab: (Int) -> Unit = {}
@@ -302,6 +304,15 @@ fun PerfilNinoScreen(
                             }
                         }
                     }
+                    Spacer(Modifier.height(8.dp))
+                    ItemAccionRegistro(
+                        texto = "Obtener reporte",
+                        icono = Icons.Outlined.Description,
+                        colorIcono = Coral,
+                        colorFondo = CoralSuave,
+                        iconoFinal = Icons.Outlined.ChevronRight,
+                        onClick = onObtenerReporte
+                    )
                     Spacer(Modifier.height(16.dp))
                 }
             }
