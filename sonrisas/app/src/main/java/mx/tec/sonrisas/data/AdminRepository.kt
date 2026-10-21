@@ -7,8 +7,6 @@ import mx.tec.sonrisas.data.remote.ApiClient
 import mx.tec.sonrisas.data.remote.ApiException
 import mx.tec.sonrisas.data.remote.ChildInBody
 import mx.tec.sonrisas.data.remote.MeDto
-import mx.tec.sonrisas.data.remote.NoticeDto
-import mx.tec.sonrisas.data.remote.NoticeInBody
 import mx.tec.sonrisas.data.remote.SalonDto
 import mx.tec.sonrisas.data.remote.SalonInBody
 import mx.tec.sonrisas.data.remote.UserCreateBody
@@ -30,8 +28,7 @@ data class AdminSnapshot(
     val salones: List<SalonDto>,
     val docentes: List<UserDto>,
     val padres: List<UserDto>,
-    val ninos: List<AdminChildDto>,
-    val avisos: List<NoticeDto>
+    val ninos: List<AdminChildDto>
 )
 
 @Singleton
@@ -40,7 +37,7 @@ class AdminRepository @Inject constructor(
     private val auth: AuthRepository
 ) {
 
-    /** GET /auth/me, /salones, /users (DOCENTE y PADRE), /children y /notices de la estancia del admin. */
+    /** GET /auth/me, /salones, /users (DOCENTE y PADRE) y /children de la estancia del admin. */
     suspend fun cargar(): AdminSnapshot = auth.authed { token ->
         val me = api.get<MeDto>("/auth/me", token)
         val estancia = me.estanciaId ?: throw ApiException(403, "Tu cuenta no tiene una estancia asignada")
@@ -49,8 +46,7 @@ class AdminRepository @Inject constructor(
             salones = api.get<List<SalonDto>>("/salones?estancia_id=$estancia", token),
             docentes = api.get<List<UserDto>>("/users?role=${RolApi.DOCENTE}&estancia_id=$estancia", token),
             padres = api.get<List<UserDto>>("/users?role=${RolApi.PADRE}&estancia_id=$estancia", token),
-            ninos = api.get<List<AdminChildDto>>("/children?estancia_id=$estancia", token),
-            avisos = api.get<List<NoticeDto>>("/notices?estancia_id=$estancia", token)
+            ninos = api.get<List<AdminChildDto>>("/children?estancia_id=$estancia", token)
         )
     }
 
@@ -101,16 +97,5 @@ class AdminRepository @Inject constructor(
     /** DELETE /children/{id}: soft delete. Their logs, messages and documents are archived with them. */
     suspend fun eliminarNino(id: String) {
         auth.authed { api.delete("/children/$id", it) }
-    }
-
-    /** PUT /notices/{id}. salonId = null publica en toda la estancia. */
-    suspend fun guardarAviso(id: String, estanciaId: String, salonId: String?, titulo: String, descripcion: String, fecha: String) {
-        auth.authed {
-            api.put<NoticeInBody, NoticeDto>(
-                "/notices/$id",
-                NoticeInBody(estanciaId, salonId, titulo.trim(), descripcion.trim(), fecha),
-                it
-            )
-        }
     }
 }

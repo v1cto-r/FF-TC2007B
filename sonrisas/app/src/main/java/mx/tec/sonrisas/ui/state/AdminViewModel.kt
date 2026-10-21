@@ -11,23 +11,31 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.launch
 import mx.tec.sonrisas.data.AdminRepository
+import mx.tec.sonrisas.data.AlergenosRepository
 import mx.tec.sonrisas.data.AdminSnapshot
 import mx.tec.sonrisas.data.GROUP_TYPE_POR_DEFECTO
 import mx.tec.sonrisas.data.RolApi
 import mx.tec.sonrisas.data.remote.AdminChildDto
 import mx.tec.sonrisas.data.remote.ApiException
+import mx.tec.sonrisas.data.remote.MealBody
+import mx.tec.sonrisas.data.remote.MenuCheckDto
 import mx.tec.sonrisas.data.remote.UserDto
 import mx.tec.sonrisas.ui.screens.admin.AdminDatos
+import mx.tec.sonrisas.ui.screens.admin.AlergenoDetectadoUi
 import mx.tec.sonrisas.ui.screens.admin.AlumnoUi
-import mx.tec.sonrisas.ui.screens.admin.AvisoUi
+import mx.tec.sonrisas.ui.screens.admin.AnalisisMenuUi
+import mx.tec.sonrisas.ui.screens.admin.ConflictoUi
 import mx.tec.sonrisas.ui.screens.admin.CredencialUi
 import mx.tec.sonrisas.ui.screens.admin.MaestroUi
+import mx.tec.sonrisas.ui.screens.admin.NinoConflictoUi
 import mx.tec.sonrisas.ui.screens.admin.PadreUi
+import mx.tec.sonrisas.ui.screens.admin.PlatilloUi
 import mx.tec.sonrisas.ui.screens.admin.SalonUi
 
 @HiltViewModel
 class AdminViewModel @Inject constructor(
-    private val repo: AdminRepository
+    private val repo: AdminRepository,
+    private val alergenos: AlergenosRepository
 ) : ViewModel() {
 
     var estado by mutableStateOf<UiState<AdminDatos>>(UiState.Cargando)
@@ -43,6 +51,17 @@ class AdminViewModel @Inject constructor(
         private set
 
     private var snapshot: AdminSnapshot? = null
+
+    // --- Menú semanal y alergias ---
+
+    private var siguientePlatillo = 1L
+
+    var platillos by mutableStateOf(listOf(PlatilloUi(id = 0)))
+        private set
+
+    /** null = todavía no se analiza este menú. */
+    var analisisMenu by mutableStateOf<UiState<AnalisisMenuUi>?>(null)
+        private set
 
     fun cargar() {
         viewModelScope.launch {
@@ -129,6 +148,52 @@ class AdminViewModel @Inject constructor(
         repo.eliminarUsuario(padreId)
     }
 
+    // --- Menú semanal y alergias ---
+
+    fun agregarPlatillo() {
+        platillos = platillos + PlatilloUi(id = siguientePlatillo++)
+        analisisMenu = null
+    }
+
+    fun quitarPlatillo(id: Long) {
+        platillos = platillos.filterNot { it.id == id }.ifEmpty { listOf(PlatilloUi(id = siguientePlatillo++)) }
+        analisisMenu = null
+    }
+
+    fun cambiarNombrePlatillo(id: Long, nombre: String) {
+        platillos = platillos.map { if (it.id == id) it.copy(nombre = nombre) else it }
+        analisisMenu = null
+    }
+
+    /** Acepta varios separados por coma ("leche, huevo"); ignora los repetidos. */
+    fun agregarIngrediente(id: Long, texto: String) {
+        val nuevos = texto.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        if (nuevos.isEmpty()) return
+        platillos = platillos.map { p ->
+            if (p.id == id) p.copy(ingredientes = (p.ingredientes + nuevos).distinctBy { it.lowercase() }) else p
+        }
+        analisisMenu = null
+    }
+
+    fun quitarIngrediente(id: Long, ingrediente: String) {
+        platillos = platillos.map { if (it.id == id) it.copy(ingredientes = it.ingredientes - ingrediente) else it }
+        analisisMenu = null
+    }
+
+    fun analizarMenu() {
+        val enviar = platillos.filter { it.nombre.isNotBlank() }
+            .map { MealBody(it.nombre.trim(), it.ingredientes) }
+        if (enviar.isEmpty() || analisisMenu == UiState.Cargando) return
+        viewModelScope.launch {
+            analisisMenu = UiState.Cargando
+            analisisMenu = try {
+                UiState.Exito(alergenos.revisarMenu(requerir().estanciaId, enviar).toUi())
+            } catch (e: Exception) {
+                UiState.Error(mensajeAdmin(e))
+            }
+        }
+    }
+
     // --- Internos ---
 
     private suspend fun moverNinos(snap: AdminSnapshot, ids: Set<String>, salonId: String) {
@@ -168,9 +233,17 @@ class AdminViewModel @Inject constructor(
         e is ApiException && e.code == 403 -> e.detail ?: "No tienes permiso para hacer esto."
         e is ApiException && e.code == 404 -> e.detail ?: "No encontramos lo que buscas."
         e is ApiException && e.code == 409 -> e.detail ?: "Ese registro ya existe o entra en conflicto con otro."
+        e is ApiException && (e.code == 502 || e.code == 503) -> "El análisis no está disponible, intenta más tarde."
         else -> mensajeDeError(e, ante401 = "Tu sesión venció. Cierra sesión e inicia de nuevo.")
     }
 }
+
+private fun MenuCheckDto.toUi() = AnalisisMenuUi(
+    detectados = detected.map { AlergenoDetectadoUi(it.name, (it.probability * 100).toInt(), it.meals) },
+    ninos = conflicts.map { c ->
+        NinoConflictoUi(c.childId, c.fullName, c.salonName, c.conflicts.map { ConflictoUi(it.allergen, it.meals) })
+    }
+)
 
 private fun UserDto.toMaestro() = MaestroUi(id = id, nombre = fullName, correo = email)
 
@@ -213,23 +286,10 @@ private fun AdminSnapshot.toDatos(): AdminDatos {
         }
         .sortedBy { it.nombre }
 
-    val avisosUi = avisos
-        .filter { it.status == null }
-        .map { a ->
-            val destino = if (a.salonId == null) {
-                "Toda la estancia"
-            } else {
-                "Salón ${salonPorId[a.salonId]?.name.orEmpty()}".trim()
-            }
-            AvisoUi(a.id, a.name, a.description, a.date, destino)
-        }
-        .sortedByDescending { it.fecha }
-
     return AdminDatos(
         salones = salonesUi,
         maestros = maestrosApi.map { it.toMaestro() }.sortedBy { it.nombre },
         padres = padresUi,
-        alumnosSinSalon = ninosActivos.filter { it.salonId == null }.map { alumno(it) },
-        avisos = avisosUi
+        alumnosSinSalon = ninosActivos.filter { it.salonId == null }.map { alumno(it) }
     )
 }

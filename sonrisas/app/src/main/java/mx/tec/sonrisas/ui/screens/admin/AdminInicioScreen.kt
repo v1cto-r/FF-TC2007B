@@ -12,6 +12,7 @@ import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.HowToReg
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -39,6 +40,7 @@ fun AdminInicioScreen(
     onInscripcion: () -> Unit = {},
     onMaestras: () -> Unit = {},
     onCrearPadre: () -> Unit = {},
+    onMenuAlergias: () -> Unit = {},
     onSalonClick: (SalonUi) -> Unit = {},
     onCerrarSesion: (() -> Unit)? = null,
     onTab: (Int) -> Unit = {}
@@ -138,6 +140,15 @@ fun AdminInicioScreen(
                         modifier = Modifier.weight(1f)
                     )
                 }
+                Spacer(Modifier.height(12.dp))
+                AccionRapida(
+                    texto = "Menú y alergias",
+                    icono = Icons.Outlined.Restaurant,
+                    colorIcono = Amarillo,
+                    colorFondo = AmarilloSuave,
+                    onClick = onMenuAlergias,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 // Requiere atención
                 Spacer(Modifier.height(20.dp))
