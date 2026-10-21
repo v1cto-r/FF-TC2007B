@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import mx.tec.sonrisas.domain.Child
@@ -61,7 +62,11 @@ fun OnboardingHijoScreen(
 ) {
     FlagSecureDisable()
 
-    var birthdate by remember { mutableStateOf(child.birthdate.ifBlank { "2021-03-12" }) }
+    // Solo una fecha ISO sirve para el servidor: "Sin fecha registrada" o el valor por defecto de Child
+    // significan que el padre todavía tiene que elegirla
+    var birthdate by remember(child.id, child.birthdate) {
+        mutableStateOf(child.birthdate.takeIf { runCatching { LocalDate.parse(it) }.isSuccess }.orEmpty())
+    }
     // Solo nombres del catálogo: así el admin puede cruzarlos con los alérgenos del menú semanal
     var alergias by remember(child.id) { mutableStateOf(setOf<String>()) }
     var sinAlergias by remember(child.id) { mutableStateOf(false) }
@@ -241,7 +246,7 @@ fun OnboardingHijoScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = birthdate.ifBlank { "2021-03-12" },
+                                    text = birthdate.ifBlank { "Selecciona una fecha" },
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = if (birthdate.isNotBlank()) TextoOscuro else TextoGris
                                 )
