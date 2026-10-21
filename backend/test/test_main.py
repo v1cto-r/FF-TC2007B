@@ -6,7 +6,8 @@ from app.main import app
 SPEC = app.openapi()
 OPERATIONS = [(path, method, op) for path, item in SPEC["paths"].items() for method, op in item.items()
               if not path.startswith("/test/")]   # probe routes registered by other test modules
-UNTYPED_OK = {("/health", "get")}   # trivial liveness probe
+UNTYPED_OK = {("/health", "get"),          # trivial liveness probe
+              ("/daily-logs/report", "get")}  # returns a PDF, not JSON
 
 
 def test_health(client):

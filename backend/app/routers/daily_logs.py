@@ -1,20 +1,23 @@
 import uuid
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import pickups
 from app.auth.access import Access
 from app.auth.dependency import require_access
+from app.config import settings
 from app.database import lifecycle
 from app.database.connection import get_db
 from app.database.models import (
     ActivityImage, ActivityRecord, CheckIn, CheckOut, Child, DailyLog, File, FilePurpose, PickupAuthorization,
     RecordStatus, Stay,
 )
+from app.reports import weekly
 from app.schemas.common import Detail
 from app.schemas.logs import (
     ActivityImageOut, ActivityIn, ActivityOut, CheckInOut, CheckOutIn, CheckOutOut, DailyLogIn, DailyLogOut, StayOut,
@@ -109,6 +112,31 @@ def list_daily_logs(child_id: uuid.UUID | None = None, from_date: date | None = 
     if to_date:
         stmt = stmt.where(DailyLog.date <= to_date)
     return _build_logs(db, list(db.scalars(stmt)), with_deleted=include_deleted)
+
+
+@router.get("/daily-logs/report", response_class=Response, responses={
+    200: {"content": {"application/pdf": {}}, "description": "The weekly report as a PDF"}, **ERRORS})
+def weekly_report(child_id: uuid.UUID, year: int = Query(ge=2000, le=2100), week: int = Query(ge=1, le=53),
+                  access: Access = Depends(require_access("daily_log:read")), db: Session = Depends(get_db)):
+    """The logs of one child for Monday to Friday of an ISO week, laid out like the daily filter log form."""
+    if not access.can_see_child(child_id):
+        raise HTTPException(404, "Child not found")
+    child = lifecycle.get_or_404(db, Child, child_id, access)
+    try:
+        monday, friday = weekly.week_range(year, week)
+    except ValueError:
+        raise HTTPException(422, f"{year} has no week {week}")
+    stmt = lifecycle.apply_visibility(select(DailyLog), DailyLog, access).where(
+        DailyLog.child_id == child_id, DailyLog.date >= monday, DailyLog.date <= friday)
+    logs = _build_logs(db, list(db.scalars(stmt)))
+    info = weekly.ReportChild(full_name=child.full_name, estancia=child.estancia.name,
+                              salon=child.salon.name if child.salon else None,
+                              group_type=child.salon.group_type.value if child.salon else None)
+    pdf = weekly.render_weekly_report(info, monday, {log.date: log for log in logs},
+                                      generated_at=datetime.now(ZoneInfo(settings.local_timezone)))
+    name = "".join(c if c.isascii() and c.isalnum() else "_" for c in child.full_name).strip("_") or "nino"
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="reporte_{name}_{year}-W{week:02d}.pdf"'})
 
 
 @router.get("/daily-logs/{log_id}", response_model=DailyLogOut, responses=ERRORS)

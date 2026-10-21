@@ -15,3 +15,4 @@ prometheus-client
 prometheus-fastapi-instrumentator
 tzdata
 typesafe-sdk
+fpdf2
