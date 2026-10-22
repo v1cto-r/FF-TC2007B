@@ -7,18 +7,25 @@ networks:
 services:
   ff_api:
     build:
-      context: ./api
+      context: ./backend
     container_name: FF_Api
     env_file: .env
     environment:
       DB_HOST: ff_postgres
-      MINIO_HOST: ff_minio
+      S3_HOST: rustfs
+      S3_PORT: "9000"
+      METRICS_PORT: "9105" # scraped by ff_prometheus over this network; deliberately not published
+    volumes:
+      - ./secrets:/run/secrets:ro # firebase.json goes here; then FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase.json in .env
     ports:
       - "5005:5005"
+    networks:
+      - default
+      - edge # nginx (hand_warmer) reaches it as FF_Api:5005
     restart: unless-stopped
     depends_on:
-      - ff_database
-      - ff_minio
+      - ff_postgres
+      - ff_rustfs
 
   ff_postgres:
     image: postgres:18
@@ -33,20 +40,124 @@ services:
       - postgres_data:/var/lib/postgresql
     restart: unless-stopped
 
-  ff_minio:
-    image: quay.io/minio/minio:latest
-    container_name: FF_Minio
+  ff_rustfs:
+    image: rustfs/rustfs:latest
+    container_name: FF_RustFS
+    networks:
+      default:
+        aliases:
+          - rustfs # botocore rejects hostnames with underscores (ff_rustfs)
+      edge: {} # nginx (hand_warmer) reaches it as FF_RustFS:9000
     ports:
-      - "5003:9000" # API Port
+      - "5003:9000" # S3 API Port
       - "5004:9001" # Web Console Port
     volumes:
-      - minio_data:/data
+      - rustfs_data:/data
     environment:
-      MINIO_ROOT_USER: ${MINIO_USERNAME}
-      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
-    command: server --console-address ":9001" /data
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY}
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
     restart: unless-stopped
 
+  # --- Observability ------------------------------------------------------------------------
+  ff_prometheus:
+    image: prom/prometheus:latest
+    container_name: FF_Prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Keep everything by default: Prometheus has no "forever", so 100 years; size 0 = no size limit
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-100y}
+      - --storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-0}
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:5007:9090" # host only (SSM / ssh tunnel); Prometheus has no login
+    restart: unless-stopped
+    depends_on:
+      - ff_api
+
+  ff_grafana:
+    image: grafana/grafana:latest
+    container_name: FF_Grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro # just the Prometheus data source
+      - grafana_data:/var/lib/grafana # dashboards, users and settings made in the UI live here and survive restarts
+    ports:
+      - "5006:3000"
+    networks:
+      - default # reaches ff_prometheus
+      - edge # nginx (hand_warmer) reaches it as FF_Grafana:3000
+    restart: unless-stopped
+    depends_on:
+      - ff_prometheus
+
+  # --- Tests: `docker compose --profile test run --rm --build ff_api_test` -----------------------
+  # Throwaway Postgres and RustFS, separate from the real ones; nothing here is persisted.
+  ff_test_postgres:
+    profiles: [test]
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ff
+      POSTGRES_PASSWORD: ff
+      POSTGRES_DB: ff_test
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ff -d ff_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  ff_test_rustfs:
+    profiles: [test]
+    image: rustfs/rustfs:latest
+    networks:
+      default:
+        aliases:
+          - rustfs-test # botocore rejects hostnames with underscores
+    environment:
+      RUSTFS_ACCESS_KEY: test-access-key
+      RUSTFS_SECRET_KEY: test-secret-key
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ENABLE: "false"
+
+  ff_api_test:
+    profiles: [test]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+    environment:
+      POSTGRES_USER: ff
+      POSTGRES_PASSWORD: ff
+      POSTGRES_DB: ff_test
+      DB_HOST: ff_test_postgres
+      S3_HOST: rustfs-test
+      S3_PORT: "9000"
+      S3_PUBLIC_ENDPOINT: http://rustfs-test:9000
+      S3_ACCESS_KEY: test-access-key
+      S3_SECRET_KEY: test-secret-key
+      S3_INTEGRATION: "1" # also run the tests that talk to the real RustFS
+    depends_on:
+      ff_test_postgres:
+        condition: service_healthy
+      ff_test_rustfs:
+        condition: service_started
+
 volumes:
-  minio_data:
+  rustfs_data:
   postgres_data:
+  prometheus_data:
+  grafana_data:

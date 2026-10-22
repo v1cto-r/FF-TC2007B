@@ -1,0 +1,48 @@
+"""Notices and chat messages."""
+import uuid
+from datetime import date, datetime
+from typing import Literal
+
+from pydantic import AwareDatetime, BaseModel
+
+from app.schemas.common import Name, RecordOut, Text
+
+
+class NoticeIn(BaseModel):
+    estancia_id: uuid.UUID
+    salon_id: uuid.UUID | None = None  # null = the whole estancia (ADMIN only)
+    name: Name
+    description: Text
+    date: date
+
+
+class NoticeOut(RecordOut):
+    estancia_id: uuid.UUID
+    salon_id: uuid.UUID | None
+    author_id: uuid.UUID | None
+    name: str
+    description: str
+    date: date
+
+
+class MessageIn(BaseModel):
+    chat_id: uuid.UUID  # a child's id, a DOCENTE's (their chat with the admin) or an ADMIN's (their chat with ORG)
+    content: Text
+    sent_at: AwareDatetime
+    is_aviso: bool = False
+    attachment_file_id: uuid.UUID | None = None
+
+
+class MessageOut(RecordOut):
+    chat_id: uuid.UUID
+    author_id: uuid.UUID | None
+    content: str
+    sent_at: datetime
+    is_aviso: bool
+    attachment_file_id: uuid.UUID | None
+
+
+class MessageFrame(MessageIn):
+    """What a client sends over the chat socket: a message with its id (the idempotency key for retries)."""
+    type: Literal["message"]
+    id: uuid.UUID
