@@ -12,9 +12,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
 import mx.tec.sonrisas.ui.state.FotoViewModel
 
 @Composable
@@ -24,8 +27,12 @@ fun FotoMensaje(fileId: String, modifier: Modifier = Modifier, viewModel: FotoVi
     LaunchedEffect(fileId, intento) {
         url = try { viewModel.url(fileId) } catch (e: Exception) { null }
     }
+    // Memory cache only: chat photos are never written to disk on the phone
     AsyncImage(
-        model = url,
+        model = ImageRequest.Builder(LocalContext.current)
+            .data(url)
+            .diskCachePolicy(CachePolicy.DISABLED)
+            .build(),
         contentDescription = "Foto del mensaje",
         contentScale = ContentScale.Crop,
         onError = { if (intento == 0) intento = 1 },

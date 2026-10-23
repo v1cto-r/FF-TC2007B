@@ -38,11 +38,19 @@ suspend fun Context.leerFoto(uri: Uri): Pair<String, ByteArray>? = withContext(D
     "image/jpeg" to salida.toByteArray()
 }
 
-/** Reads a camera shot like [leerFoto] and then deletes the temporary file the camera wrote. */
+/**
+ * Reads a photo like [leerFoto] and, if it is a camera shot in our cache, deletes that temporary file
+ * so no copy stays on the phone. Photos picked from the gallery are never deleted.
+ */
 suspend fun Context.leerYBorrarFoto(uri: Uri): Pair<String, ByteArray>? {
     val foto = leerFoto(uri)
-    withContext(Dispatchers.IO) { runCatching { contentResolver.delete(uri, null, null) } }
+    borrarFotoTemporal(uri)
     return foto
+}
+
+/** Deletes [uri] only if it is a camera shot this app wrote through its own FileProvider. */
+suspend fun Context.borrarFotoTemporal(uri: Uri) = withContext(Dispatchers.IO) {
+    if (uri.authority == "$packageName.fileprovider") runCatching { contentResolver.delete(uri, null, null) }
 }
 
 @HiltViewModel

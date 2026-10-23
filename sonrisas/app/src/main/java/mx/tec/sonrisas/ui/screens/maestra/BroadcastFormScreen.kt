@@ -38,18 +38,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
-import java.io.File
 import mx.tec.sonrisas.domain.Child
 import mx.tec.sonrisas.ui.components.AvatarCircular
 import mx.tec.sonrisas.ui.components.CampoTexto
 import mx.tec.sonrisas.ui.components.FlagSecureDisable
 import mx.tec.sonrisas.ui.components.TopBarAtras
+import mx.tec.sonrisas.ui.components.rememberTomarFoto
 import mx.tec.sonrisas.ui.components.chat.SelectorFuenteFotoDialog
 import mx.tec.sonrisas.ui.theme.*
 
@@ -67,14 +65,12 @@ fun BroadcastFormScreen(
     modifier: Modifier = Modifier
 ) {
     FlagSecureDisable()
-    val context = LocalContext.current
 
     var tituloMensaje by remember { mutableStateOf("") }
     var mensaje by remember { mutableStateOf("") }
     var fotoUri by remember { mutableStateOf<Uri?>(null) }
     var mostrarMenuFoto by remember { mutableStateOf(false) }
     var mostrarDialogoSeleccion by remember { mutableStateOf(false) }
-    var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var enviando by remember { mutableStateOf(false) }
 
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -83,28 +79,7 @@ fun BroadcastFormScreen(
         uri?.let { fotoUri = it }
     }
 
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { exito ->
-        if (exito) {
-            tempPhotoUri?.let { uri -> fotoUri = uri }
-        }
-    }
-
-    val abrirCamara = {
-        try {
-            val file = File(context.cacheDir, "actividad_foto_${System.currentTimeMillis()}.jpg")
-            val uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file
-            )
-            tempPhotoUri = uri
-            cameraLauncher.launch(uri)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
+    val abrirCamara = rememberTomarFoto { fotoUri = it }
 
     if (mostrarMenuFoto && !enviando) {
         SelectorFuenteFotoDialog(

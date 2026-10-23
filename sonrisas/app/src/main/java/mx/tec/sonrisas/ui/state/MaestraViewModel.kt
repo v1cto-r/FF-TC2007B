@@ -216,7 +216,7 @@ class MaestraViewModel @Inject constructor(
 
     fun enviarFoto(chatId: String, uri: Uri) {
         viewModelScope.launch {
-            val foto = context.leerFoto(uri) ?: return@launch
+            val foto = context.leerYBorrarFoto(uri) ?: return@launch
             val autor = sesionRepository.sesion.first()?.id.orEmpty()
             try {
                 chatRepository.sendPhoto(chatId, autor, foto.first, foto.second)
@@ -320,9 +320,9 @@ class MaestraViewModel @Inject constructor(
                 val todos = childRepository.observeAll().first()
                 val texto = if (titulo.isNotBlank() && mensaje.isNotBlank()) "$titulo: $mensaje" else titulo.ifBlank { mensaje }
 
+                val foto = fotoUri?.let { context.leerYBorrarFoto(it) }
                 todos.forEach { child ->
                     if (fotoUri != null) {
-                        val foto = context.leerFoto(fotoUri)
                         if (foto != null) {
                             chatRepository.sendPhoto(child.id, autor, foto.first, foto.second, textContent = texto)
                         } else if (texto.isNotBlank()) {
@@ -367,9 +367,9 @@ class MaestraViewModel @Inject constructor(
                 val autor = sesionRepository.sesion.first()?.id ?: ""
                 val texto = if (titulo.isNotBlank() && mensaje.isNotBlank()) "$titulo: $mensaje" else titulo.ifBlank { mensaje }
 
+                val foto = fotoUri?.let { context.leerYBorrarFoto(it) }
                 ninosSeleccionados.forEach { child ->
                     if (fotoUri != null) {
-                        val foto = context.leerFoto(fotoUri)
                         if (foto != null) {
                             chatRepository.sendPhoto(child.id, autor, foto.first, foto.second, textContent = texto)
                         } else if (texto.isNotBlank()) {

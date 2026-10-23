@@ -393,7 +393,7 @@ class PadreViewModel @Inject constructor(
 
     fun enviarFoto(uri: Uri) {
         viewModelScope.launch {
-            val foto = context.leerFoto(uri) ?: return@launch
+            val foto = context.leerYBorrarFoto(uri) ?: return@launch
             val autor = sesionRepository.sesion.first()?.id.orEmpty()
             try {
                 chatRepository.sendPhoto(chatIdActual, autor, foto.first, foto.second)
